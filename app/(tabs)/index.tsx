@@ -1,98 +1,283 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
+import {
+  ActivityIndicator,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from 'react-native';
+import MapView, { Marker, Region } from 'react-native-maps';
+import * as Location from 'expo-location';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { NearbyTechnicians } from '@/components/home/nearby-technicians';
+import { PanicButton } from '@/components/home/panic-button';
+import { QuickActionCard } from '@/components/home/quick-action-card';
+import { HOME_THEME_COLORS } from '@/constants/home-theme';
+
+type TechnicianMarker = {
+  id: string;
+  name: string;
+  specialty: string;
+  eta: string;
+  distance: string;
+  latitude: number;
+  longitude: number;
+};
+
+const TECHNICIAN_BASE: Omit<TechnicianMarker, 'distance' | 'latitude' | 'longitude'>[] = [
+  { id: '1', name: 'Luis Martinez', specialty: 'Mecanico', eta: '8 min' },
+  { id: '2', name: 'Ana Gomez', specialty: 'Grua', eta: '12 min' },
+  { id: '3', name: 'Carlos Rojas', specialty: 'Plomero', eta: '9 min' },
+];
+
+const INITIAL_REGION: Region = {
+  latitude: 19.7008,
+  longitude: -101.1844,
+  latitudeDelta: 0.03,
+  longitudeDelta: 0.03,
+};
+
+function toKmLabel(lat1: number, lon1: number, lat2: number, lon2: number): string {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = earthRadiusKm * c;
+
+  return `${distance.toFixed(1)} km`;
+}
+
+function createNearbyTechnicians(latitude: number, longitude: number, jitter = 0): TechnicianMarker[] {
+  const offsets = [
+    { lat: 0.0042, lng: -0.0038 },
+    { lat: -0.0035, lng: 0.0029 },
+    { lat: 0.0028, lng: 0.0041 },
+  ];
+
+  return TECHNICIAN_BASE.map((tech, index) => {
+    const offset = offsets[index];
+    const lat = latitude + offset.lat + jitter;
+    const lng = longitude + offset.lng - jitter;
+
+    return {
+      ...tech,
+      latitude: lat,
+      longitude: lng,
+      distance: toKmLabel(latitude, longitude, lat, lng),
+    };
+  });
+}
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const colors = colorScheme === 'dark' ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const [panicCount, setPanicCount] = useState<number>(0);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [region, setRegion] = useState<Region>(INITIAL_REGION);
+  const [isLocating, setIsLocating] = useState<boolean>(true);
+  const [technicians, setTechnicians] = useState<TechnicianMarker[]>([]);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    let subscription: Location.LocationSubscription | null = null;
+
+    const setupLiveLocation = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLocationError('Activa ubicacion para mostrar el mapa en tiempo real.');
+        setIsLocating(false);
+        return;
+      }
+
+      const current = await Location.getCurrentPositionAsync({});
+      const currentRegion: Region = {
+        latitude: current.coords.latitude,
+        longitude: current.coords.longitude,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      };
+
+      setRegion(currentRegion);
+      setTechnicians(createNearbyTechnicians(current.coords.latitude, current.coords.longitude));
+      setIsLocating(false);
+
+      subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 3500,
+          distanceInterval: 3,
+        },
+        (position) => {
+          const jitter = (Math.random() - 0.5) * 0.0012;
+          setRegion((prev) => ({
+            ...prev,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }));
+          setTechnicians(createNearbyTechnicians(position.coords.latitude, position.coords.longitude, jitter));
+        }
+      );
+    };
+
+    setupLiveLocation().catch(() => {
+      setLocationError('No se pudo obtener tu ubicacion en este momento.');
+      setIsLocating(false);
+    });
+
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, []);
+
+  const mapRegion = useMemo(() => region, [region]);
+
+  const handlePanicPress = () => {
+    setPanicCount((prev) => prev + 1);
+    router.push('/modal');
+  };
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={[styles.greeting, { color: colors.textSecondary }]}>RescueNow</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Asistencia activa</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+            <Text style={[styles.statusText, { color: colors.primary }]}>Online</Text>
+          </View>
+        </View>
+
+        <View style={[styles.mapWrap, { borderColor: colors.cardBorder, backgroundColor: colors.surface }]}>
+          {isLocating ? (
+            <View style={styles.mapLoading}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.mapInfoText, { color: colors.textSecondary }]}>Ubicando...</Text>
+            </View>
+          ) : (
+            <MapView
+              style={styles.map}
+              region={mapRegion}
+              showsUserLocation
+              followsUserLocation
+              loadingEnabled>
+              {technicians.map((tech) => (
+                <Marker
+                  key={tech.id}
+                  coordinate={{ latitude: tech.latitude, longitude: tech.longitude }}
+                  title={tech.name}
+                  description={`${tech.specialty} · ETA ${tech.eta}`}
+                  pinColor={colors.accent}
+                />
+              ))}
+            </MapView>
+          )}
+        </View>
+
+        {locationError ? (
+          <Text style={[styles.locationErrorText, { color: colors.danger }]}>{locationError}</Text>
+        ) : null}
+
+        <View style={styles.actionsRow}>
+          <QuickActionCard
+            title="Solicitar servicio"
+            subtitle="Opciones normales de asistencia"
+            icon="construct-outline"
+            colors={colors}
+            onPress={() => router.push('/(tabs)/services')}
+          />
+        </View>
+
+        <PanicButton colors={colors} onPress={handlePanicPress} />
+
+        <Text style={[styles.panicCounter, { color: colors.textSecondary }]}>
+          Activaciones de panico (sesion): {panicCount}
+        </Text>
+
+        <NearbyTechnicians colors={colors} data={technicians} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  safeArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    paddingTop: 10,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  greeting: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  title: {
+    marginTop: 2,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  statusBadge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  actionsRow: {
+    marginTop: 12,
+    alignItems: 'stretch',
+  },
+  mapWrap: {
+    borderWidth: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    height: 210,
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  mapLoading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  mapInfoText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  locationErrorText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  panicCounter: {
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
