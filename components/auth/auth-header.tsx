@@ -1,7 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from "react-native";
 
-import { AuthThemeColors } from '@/constants/auth-theme';
+import { AuthThemeColors } from "@/constants/auth-theme";
 
 type AuthHeaderProps = {
   colors: AuthThemeColors;
@@ -10,13 +9,27 @@ type AuthHeaderProps = {
 export function AuthHeader({ colors }: AuthHeaderProps) {
   return (
     <View style={styles.container}>
-      <View style={[styles.iconBadge, { backgroundColor: colors.iconBadgeBackground }]}>
-        <Ionicons name="shield-checkmark" size={28} color={colors.primary} />
+      <View
+        style={[
+          styles.iconBadge,
+          {
+            backgroundColor: colors.iconBadgeBackground,
+            borderColor: colors.cardBorder,
+          },
+        ]}
+      >
+        <Image
+          source={require("../../assets/images/icon.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
       </View>
 
-      <Text style={[styles.title, { color: colors.textPrimary }]}>RescueNow</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>
+        RESCUE NOW
+      </Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Conecta con asistencia tecnica confiable en minutos.
+        Tu salvavidas tecnico.
       </Text>
     </View>
   );
@@ -24,27 +37,33 @@ export function AuthHeader({ colors }: AuthHeaderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 24,
-    alignItems: 'center',
+    marginBottom: 20,
+    alignItems: "center",
   },
   iconBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
+    width: 78,
+    height: 78,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  logo: {
+    width: 52,
+    height: 52,
   },
   title: {
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: 0.8,
   },
   subtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 6,
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 4,
     paddingHorizontal: 14,
-    lineHeight: 20,
+    lineHeight: 18,
   },
 });

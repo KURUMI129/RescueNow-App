@@ -1,7 +1,8 @@
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useRef } from 'react';
+import * as Haptics from "expo-haptics";
+import { useEffect, useRef } from "react";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { HomeThemeColors } from '@/constants/home-theme';
+import { HomeThemeColors } from "@/constants/home-theme";
 
 type PanicButtonProps = {
   colors: HomeThemeColors;
@@ -10,6 +11,11 @@ type PanicButtonProps = {
 
 export function PanicButton({ colors, onPress }: PanicButtonProps) {
   const pulse = useRef(new Animated.Value(0.8)).current;
+
+  const handlePress = () => {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    onPress();
+  };
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -24,7 +30,7 @@ export function PanicButton({ colors, onPress }: PanicButtonProps) {
           duration: 1000,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
 
     loop.start();
@@ -48,8 +54,12 @@ export function PanicButton({ colors, onPress }: PanicButtonProps) {
 
       <Pressable
         accessibilityRole="button"
-        onPress={onPress}
-        style={({ pressed }) => [styles.button, { backgroundColor: colors.danger, opacity: pressed ? 0.85 : 1 }]}>
+        onPress={handlePress}
+        style={({ pressed }) => [
+          styles.button,
+          { backgroundColor: colors.danger, opacity: pressed ? 0.85 : 1 },
+        ]}
+      >
         <Text style={styles.buttonTitle}>PANICO</Text>
         <Text style={styles.buttonSubtitle}>Asistencia inmediata</Text>
       </Pressable>
@@ -59,12 +69,12 @@ export function PanicButton({ colors, onPress }: PanicButtonProps) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginVertical: 18,
   },
   pulseRing: {
-    position: 'absolute',
+    position: "absolute",
     width: 160,
     height: 160,
     borderRadius: 80,
@@ -75,24 +85,24 @@ const styles = StyleSheet.create({
     width: 130,
     height: 130,
     borderRadius: 65,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#7f1d1d',
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#7f1d1d",
     shadowOpacity: 0.26,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
     elevation: 7,
   },
   buttonTitle: {
-    color: '#fff',
-    fontWeight: '900',
+    color: "#fff",
+    fontWeight: "900",
     fontSize: 22,
     letterSpacing: 1,
   },
   buttonSubtitle: {
     marginTop: 3,
-    color: '#fff',
+    color: "#fff",
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

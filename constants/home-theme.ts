@@ -7,6 +7,8 @@ export type HomeThemeColors = {
   primary: string;
   accent: string;
   danger: string;
+  tracking: string;
+  success: string;
   onPrimary: string;
   mapBackground: string;
   mapGrid: string;
@@ -14,35 +16,39 @@ export type HomeThemeColors = {
   technicianPin: string;
 };
 
-export const HOME_THEME_COLORS: Record<'light' | 'dark', HomeThemeColors> = {
+export const HOME_THEME_COLORS: Record<"light" | "dark", HomeThemeColors> = {
   light: {
-    background: '#f8fafc',
-    surface: '#ffffff',
-    cardBorder: '#dbe2ea',
-    textPrimary: '#0f172a',
-    textSecondary: '#475569',
-    primary: '#2563eb',
-    accent: '#d97706',
-    danger: '#dc2626',
-    onPrimary: '#ffffff',
-    mapBackground: '#edf4ff',
-    mapGrid: '#cfe1fb',
-    userPin: '#2563eb',
-    technicianPin: '#d97706',
+    background: "#FFFFFF",
+    surface: "#FFFFFF",
+    cardBorder: "#D8E2F0",
+    textPrimary: "#333333",
+    textSecondary: "#5E6B7A",
+    primary: "#0047AB",
+    accent: "#FF6600",
+    danger: "#E11D48",
+    tracking: "#00CED1",
+    success: "#34A853",
+    onPrimary: "#FFFFFF",
+    mapBackground: "#EAF2FF",
+    mapGrid: "#C8DCF7",
+    userPin: "#0047AB",
+    technicianPin: "#FF6600",
   },
   dark: {
-    background: '#091427',
-    surface: '#0f1d35',
-    cardBorder: '#20324d',
-    textPrimary: '#eaf2ff',
-    textSecondary: '#b8c7dd',
-    primary: '#3b82f6',
-    accent: '#f59e0b',
-    danger: '#ef4444',
-    onPrimary: '#f8fbff',
-    mapBackground: '#132540',
-    mapGrid: '#2a3f60',
-    userPin: '#60a5fa',
-    technicianPin: '#fbbf24',
+    background: "#06152B",
+    surface: "#0B2345",
+    cardBorder: "#1B3B66",
+    textPrimary: "#EAF2FF",
+    textSecondary: "#AFC2DB",
+    primary: "#2C7BFF",
+    accent: "#FF8A34",
+    danger: "#FF4D73",
+    tracking: "#2DE4E9",
+    success: "#52D071",
+    onPrimary: "#FFFFFF",
+    mapBackground: "#102F5A",
+    mapGrid: "#244875",
+    userPin: "#2C7BFF",
+    technicianPin: "#FF8A34",
   },
 };
