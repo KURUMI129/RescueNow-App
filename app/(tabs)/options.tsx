@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useMemo } from "react";
 import {
     Animated,
-    Image,
     Pressable,
     SafeAreaView,
     ScrollView,
@@ -14,7 +13,9 @@ import {
     View,
 } from "react-native";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
+import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
 
 type OptionItem = {
   id: string;
@@ -53,12 +54,19 @@ export default function OptionsScreen() {
   const colorScheme = useColorScheme();
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const { reduceMotionEnabled } = useAccessibilityPreferences();
   const { width } = useWindowDimensions();
   const titleSize = Math.max(22, Math.min(28, width * 0.075));
   const entranceOpacity = useMemo(() => new Animated.Value(0), []);
   const entranceTranslateY = useMemo(() => new Animated.Value(12), []);
 
   useEffect(() => {
+    if (reduceMotionEnabled) {
+      entranceOpacity.setValue(1);
+      entranceTranslateY.setValue(0);
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(entranceOpacity, {
         toValue: 1,
@@ -71,7 +79,7 @@ export default function OptionsScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [entranceOpacity, entranceTranslateY]);
+  }, [entranceOpacity, entranceTranslateY, reduceMotionEnabled]);
 
   return (
     <SafeAreaView
@@ -91,7 +99,7 @@ export default function OptionsScreen() {
           ]}
         >
           <Text style={[styles.topLabel, { color: colors.textSecondary }]}>
-            Cuenta
+            Cuenta demo
           </Text>
           <Text
             style={[
@@ -111,11 +119,7 @@ export default function OptionsScreen() {
               },
             ]}
           >
-            <Image
-              source={require("../../assets/images/icon.png")}
-              style={styles.profileLogo}
-              resizeMode="contain"
-            />
+            <BrandLogo width={52} height={46} />
             <View style={styles.profileTextWrap}>
               <Text style={[styles.profileName, { color: colors.textPrimary }]}>
                 Miembro Rescue
@@ -123,7 +127,7 @@ export default function OptionsScreen() {
               <Text
                 style={[styles.profileEmail, { color: colors.textSecondary }]}
               >
-                usuario@rescuenow.app
+                demo@rescuenow.app
               </Text>
             </View>
             <View
@@ -235,10 +239,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     flexDirection: "row",
     alignItems: "center",
-  },
-  profileLogo: {
-    width: 36,
-    height: 36,
   },
   profileTextWrap: {
     flex: 1,

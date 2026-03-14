@@ -1,5 +1,6 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { AuthThemeColors } from "@/constants/auth-theme";
 
 type AuthHeaderProps = {
@@ -9,25 +10,8 @@ type AuthHeaderProps = {
 export function AuthHeader({ colors }: AuthHeaderProps) {
   return (
     <View style={styles.container}>
-      <View
-        style={[
-          styles.iconBadge,
-          {
-            backgroundColor: colors.iconBadgeBackground,
-            borderColor: colors.cardBorder,
-          },
-        ]}
-      >
-        <Image
-          source={require("../../assets/images/icon.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
+      <BrandLogo width={132} height={118} />
 
-      <Text style={[styles.title, { color: colors.textPrimary }]}>
-        RESCUE NOW
-      </Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
         Tu salvavidas tecnico.
       </Text>
@@ -40,29 +24,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     alignItems: "center",
   },
-  iconBadge: {
-    width: 78,
-    height: 78,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-    borderWidth: 1,
-  },
-  logo: {
-    width: 52,
-    height: 52,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: 0.8,
-  },
   subtitle: {
     fontSize: 13,
     fontWeight: "600",
     textAlign: "center",
-    marginTop: 4,
+    marginTop: 10,
     paddingHorizontal: 14,
     lineHeight: 18,
   },

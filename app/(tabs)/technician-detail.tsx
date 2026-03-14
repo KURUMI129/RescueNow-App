@@ -23,6 +23,7 @@ import {
     ServiceComplexity,
     TECHNICIANS,
 } from "@/constants/service-flow";
+import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
 
 function getParamValue(value: string | string[] | undefined): string {
   if (!value) {
@@ -81,6 +82,7 @@ export default function TechnicianDetailScreen() {
   const colorScheme = useColorScheme();
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const { reduceMotionEnabled } = useAccessibilityPreferences();
 
   const techId = getParamValue(params.techId);
   const rawCategory = getParamValue(params.category);
@@ -127,6 +129,12 @@ export default function TechnicianDetailScreen() {
   const hasWeekendSurcharge = estimate.meta.weekendFactor > 1;
 
   useEffect(() => {
+    if (reduceMotionEnabled) {
+      entranceOpacity.setValue(1);
+      entranceTranslateY.setValue(0);
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(entranceOpacity, {
         toValue: 1,
@@ -139,29 +147,37 @@ export default function TechnicianDetailScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [entranceOpacity, entranceTranslateY]);
+  }, [entranceOpacity, entranceTranslateY, reduceMotionEnabled]);
 
   const handleModePress = (isUrgent: boolean) => {
-    void Haptics.impactAsync(
-      isUrgent
-        ? Haptics.ImpactFeedbackStyle.Heavy
-        : Haptics.ImpactFeedbackStyle.Light,
-    );
+    if (!reduceMotionEnabled) {
+      void Haptics.impactAsync(
+        isUrgent
+          ? Haptics.ImpactFeedbackStyle.Heavy
+          : Haptics.ImpactFeedbackStyle.Light,
+      );
+    }
     setUrgent(isUrgent);
   };
 
   const handleComplexityPress = (value: ServiceComplexity) => {
-    void Haptics.selectionAsync();
+    if (!reduceMotionEnabled) {
+      void Haptics.selectionAsync();
+    }
     setComplexity(value);
   };
 
   const handleSchedulePress = (value: ScheduleOption) => {
-    void Haptics.selectionAsync();
+    if (!reduceMotionEnabled) {
+      void Haptics.selectionAsync();
+    }
     setSchedule(value);
   };
 
   const handleConfirm = () => {
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (!reduceMotionEnabled) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     router.push("/(tabs)/tracking");
   };
 

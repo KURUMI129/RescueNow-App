@@ -17,6 +17,7 @@ import {
 
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { SERVICE_OPTIONS, ServiceCategory } from "@/constants/service-flow";
+import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
 
 const SERVICE_ACCENT: Record<ServiceCategory, string> = {
   mech: "#0047AB",
@@ -30,6 +31,7 @@ export default function ServicesScreen() {
   const colorScheme = useColorScheme();
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const { reduceMotionEnabled } = useAccessibilityPreferences();
   const { width } = useWindowDimensions();
   const titleSize = Math.max(22, Math.min(28, width * 0.075));
   const [issueDescription, setIssueDescription] = useState<string>("");
@@ -41,6 +43,12 @@ export default function ServicesScreen() {
   );
 
   useEffect(() => {
+    if (reduceMotionEnabled) {
+      entranceOpacity.setValue(1);
+      entranceTranslateY.setValue(0);
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(entranceOpacity, {
         toValue: 1,
@@ -53,9 +61,14 @@ export default function ServicesScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [entranceOpacity, entranceTranslateY]);
+  }, [entranceOpacity, entranceTranslateY, reduceMotionEnabled]);
 
   useEffect(() => {
+    if (reduceMotionEnabled) {
+      cardAnimValues.forEach((value) => value.setValue(1));
+      return;
+    }
+
     Animated.stagger(
       65,
       cardAnimValues.map((value) =>
@@ -66,10 +79,12 @@ export default function ServicesScreen() {
         }),
       ),
     ).start();
-  }, [cardAnimValues]);
+  }, [cardAnimValues, reduceMotionEnabled]);
 
   const handleServicePress = (category: ServiceCategory) => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!reduceMotionEnabled) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     router.push({
       pathname: "/(tabs)/technicians",
       params: {

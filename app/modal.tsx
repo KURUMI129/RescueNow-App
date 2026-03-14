@@ -14,11 +14,13 @@ import {
 } from "react-native";
 
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
+import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
 
 export default function ModalScreen() {
   const colorScheme = useColorScheme();
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const { reduceMotionEnabled } = useAccessibilityPreferences();
   const entranceOpacity = useMemo(() => new Animated.Value(0), []);
   const entranceTranslateY = useMemo(() => new Animated.Value(12), []);
   const optionAnimValues = useMemo(
@@ -27,6 +29,12 @@ export default function ModalScreen() {
   );
 
   useEffect(() => {
+    if (reduceMotionEnabled) {
+      entranceOpacity.setValue(1);
+      entranceTranslateY.setValue(0);
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(entranceOpacity, {
         toValue: 1,
@@ -39,9 +47,14 @@ export default function ModalScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [entranceOpacity, entranceTranslateY]);
+  }, [entranceOpacity, entranceTranslateY, reduceMotionEnabled]);
 
   useEffect(() => {
+    if (reduceMotionEnabled) {
+      optionAnimValues.forEach((value) => value.setValue(1));
+      return;
+    }
+
     Animated.stagger(
       70,
       optionAnimValues.map((value) =>
@@ -52,15 +65,19 @@ export default function ModalScreen() {
         }),
       ),
     ).start();
-  }, [optionAnimValues]);
+  }, [optionAnimValues, reduceMotionEnabled]);
 
   const handleEmergencySelect = () => {
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    if (!reduceMotionEnabled) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
     router.back();
   };
 
   const handleClose = () => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!reduceMotionEnabled) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     router.back();
   };
 

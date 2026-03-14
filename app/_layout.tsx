@@ -46,14 +46,24 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={navigationTheme}>
       <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="(auth)"
+          options={{ headerShown: false, statusBarHidden: true }}
+        />
+        <Stack.Screen
+          name="(tabs)"
+          options={{ headerShown: false, statusBarHidden: true }}
+        />
         <Stack.Screen
           name="modal"
-          options={{ presentation: "modal", title: "Modal" }}
+          options={{
+            presentation: "modal",
+            title: "Emergencia",
+            statusBarHidden: true,
+          }}
         />
       </Stack>
-      <StatusBar hidden />
+      <StatusBar hidden animated={false} />
     </ThemeProvider>
   );
 }

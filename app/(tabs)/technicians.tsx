@@ -21,6 +21,7 @@ import {
     ServiceCategory,
     TECHNICIANS,
 } from "@/constants/service-flow";
+import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
 
 function getParamValue(value: string | string[] | undefined): string {
   if (!value) {
@@ -40,6 +41,7 @@ export default function TechniciansScreen() {
   const colorScheme = useColorScheme();
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const { reduceMotionEnabled } = useAccessibilityPreferences();
   const { width } = useWindowDimensions();
   const titleSize = Math.max(22, Math.min(28, width * 0.075));
 
@@ -60,6 +62,12 @@ export default function TechniciansScreen() {
   );
 
   useEffect(() => {
+    if (reduceMotionEnabled) {
+      entranceOpacity.setValue(1);
+      entranceTranslateY.setValue(0);
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(entranceOpacity, {
         toValue: 1,
@@ -72,9 +80,14 @@ export default function TechniciansScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [entranceOpacity, entranceTranslateY]);
+  }, [entranceOpacity, entranceTranslateY, reduceMotionEnabled]);
 
   useEffect(() => {
+    if (reduceMotionEnabled) {
+      cardAnimValues.forEach((value) => value.setValue(1));
+      return;
+    }
+
     Animated.stagger(
       70,
       cardAnimValues.map((value) =>
@@ -85,10 +98,12 @@ export default function TechniciansScreen() {
         }),
       ),
     ).start();
-  }, [cardAnimValues]);
+  }, [cardAnimValues, reduceMotionEnabled]);
 
   const handleTechnicianPress = (techId: string) => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!reduceMotionEnabled) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     router.push({
       pathname: "/(tabs)/technician-detail",
       params: {

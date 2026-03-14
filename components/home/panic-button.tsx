@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { HomeThemeColors } from "@/constants/home-theme";
+import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
 
 type PanicButtonProps = {
   colors: HomeThemeColors;
@@ -11,13 +12,21 @@ type PanicButtonProps = {
 
 export function PanicButton({ colors, onPress }: PanicButtonProps) {
   const pulse = useRef(new Animated.Value(0.8)).current;
+  const { reduceMotionEnabled } = useAccessibilityPreferences();
 
   const handlePress = () => {
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    if (!reduceMotionEnabled) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
     onPress();
   };
 
   useEffect(() => {
+    if (reduceMotionEnabled) {
+      pulse.setValue(1);
+      return;
+    }
+
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
@@ -38,7 +47,7 @@ export function PanicButton({ colors, onPress }: PanicButtonProps) {
     return () => {
       loop.stop();
     };
-  }, [pulse]);
+  }, [pulse, reduceMotionEnabled]);
 
   return (
     <View style={styles.wrapper}>

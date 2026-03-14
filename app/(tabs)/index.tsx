@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Animated,
-    Image,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -14,10 +13,12 @@ import {
 } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { NearbyTechnicians } from "@/components/home/nearby-technicians";
 import { PanicButton } from "@/components/home/panic-button";
 import { QuickActionCard } from "@/components/home/quick-action-card";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
+import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
 
 type TechnicianMarker = {
   id: string;
@@ -99,6 +100,7 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const { reduceMotionEnabled } = useAccessibilityPreferences();
   const [panicCount, setPanicCount] = useState<number>(0);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [region, setRegion] = useState<Region>(INITIAL_REGION);
@@ -106,6 +108,10 @@ export default function HomeScreen() {
   const [technicians, setTechnicians] = useState<TechnicianMarker[]>([]);
   const entranceOpacity = useMemo(() => new Animated.Value(0), []);
   const entranceTranslateY = useMemo(() => new Animated.Value(14), []);
+  const sectionAnimValues = useMemo(
+    () => [new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)],
+    [],
+  );
 
   useEffect(() => {
     let subscription: Location.LocationSubscription | null = null;
@@ -174,6 +180,12 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    if (reduceMotionEnabled) {
+      entranceOpacity.setValue(1);
+      entranceTranslateY.setValue(0);
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(entranceOpacity, {
         toValue: 1,
@@ -186,7 +198,25 @@ export default function HomeScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [entranceOpacity, entranceTranslateY]);
+  }, [entranceOpacity, entranceTranslateY, reduceMotionEnabled]);
+
+  useEffect(() => {
+    if (reduceMotionEnabled) {
+      sectionAnimValues.forEach((value) => value.setValue(1));
+      return;
+    }
+
+    Animated.stagger(
+      90,
+      sectionAnimValues.map((value) =>
+        Animated.timing(value, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+      ),
+    ).start();
+  }, [sectionAnimValues, reduceMotionEnabled]);
 
   const mapRegion = useMemo(() => region, [region]);
 
@@ -214,34 +244,14 @@ export default function HomeScreen() {
         >
           <View style={styles.headerRow}>
             <View style={styles.brandWrap}>
-              <Image
-                source={require("../../assets/images/icon.png")}
-                style={styles.brandLogo}
-                resizeMode="contain"
-              />
-              <View>
+              <BrandLogo width={76} height={66} />
+              <View style={styles.brandTextWrap}>
                 <Text
                   style={[styles.greeting, { color: colors.textSecondary }]}
                 >
-                  Tu salvavidas tecnico
-                </Text>
-                <Text style={[styles.title, { color: colors.textPrimary }]}>
-                  RESCUE NOW
+                  Asistencia tecnica y vial en tiempo real
                 </Text>
               </View>
-            </View>
-            <View
-              style={[
-                styles.statusBadge,
-                {
-                  backgroundColor: colors.mapBackground,
-                  borderColor: colors.cardBorder,
-                },
-              ]}
-            >
-              <Text style={[styles.statusText, { color: colors.tracking }]}>
-                En ruta
-              </Text>
             </View>
           </View>
 
@@ -294,24 +304,72 @@ export default function HomeScreen() {
           ) : null}
 
           <View style={styles.actionsRow}>
-            <QuickActionCard
-              title="Solicitar servicio"
-              subtitle="Opciones normales de asistencia"
-              icon="construct-outline"
-              colors={colors}
-              onPress={() => router.push("/(tabs)/services")}
-            />
+            <Animated.View
+              style={[
+                styles.staggerItem,
+                {
+                  opacity: sectionAnimValues[0],
+                  transform: [
+                    {
+                      translateY: sectionAnimValues[0].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [12, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <QuickActionCard
+                title="Solicitar servicio"
+                subtitle="Opciones normales de asistencia"
+                icon="construct-outline"
+                colors={colors}
+                onPress={() => router.push("/(tabs)/services")}
+              />
+            </Animated.View>
 
-            <QuickActionCard
-              title="Seguimiento en vivo"
-              subtitle="Visualiza avance y tiempo estimado"
-              icon="navigate-outline"
-              colors={colors}
-              onPress={() => router.push("/(tabs)/tracking")}
-            />
+            <Animated.View
+              style={[
+                styles.staggerItem,
+                {
+                  opacity: sectionAnimValues[1],
+                  transform: [
+                    {
+                      translateY: sectionAnimValues[1].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [12, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <QuickActionCard
+                title="Seguimiento en vivo"
+                subtitle="Visualiza avance y tiempo estimado"
+                icon="navigate-outline"
+                colors={colors}
+                onPress={() => router.push("/(tabs)/tracking")}
+              />
+            </Animated.View>
           </View>
 
-          <PanicButton colors={colors} onPress={handlePanicPress} />
+          <Animated.View
+            style={{
+              opacity: sectionAnimValues[2],
+              transform: [
+                {
+                  translateY: sectionAnimValues[2].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [12, 0],
+                  }),
+                },
+              ],
+            }}
+          >
+            <PanicButton colors={colors} onPress={handlePanicPress} />
+          </Animated.View>
 
           <Text style={[styles.panicCounter, { color: colors.textSecondary }]}>
             Activaciones de panico (sesion): {panicCount}
@@ -339,42 +397,32 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     marginBottom: 12,
   },
   brandWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
+    flex: 1,
   },
-  brandLogo: {
-    width: 36,
-    height: 36,
+  brandTextWrap: {
+    flex: 1,
+    justifyContent: "center",
+    paddingRight: 4,
   },
   greeting: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
-  },
-  title: {
-    marginTop: 1,
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: 0.4,
-  },
-  statusBadge: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "800",
+    lineHeight: 18,
   },
   actionsRow: {
     marginTop: 12,
     alignItems: "stretch",
     gap: 8,
+  },
+  staggerItem: {
+    width: "100%",
   },
   mapWrap: {
     borderWidth: 1,
