@@ -14,14 +14,17 @@ import {
     View,
 } from "react-native";
 
+import { getAppCopy } from "@/constants/app-copy";
+import { AppLanguage } from "@/constants/app-preferences";
+import { formatDistanceKm } from "@/constants/display-format";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import {
-    getCategoryLabel,
     SERVICE_OPTIONS,
     ServiceCategory,
     TECHNICIANS,
 } from "@/constants/service-flow";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
+import { useAppLanguage } from "@/hooks/use-app-language";
 
 function getParamValue(value: string | string[] | undefined): string {
   if (!value) {
@@ -42,6 +45,7 @@ export default function TechniciansScreen() {
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
   const { reduceMotionEnabled } = useAccessibilityPreferences();
+  const language = useAppLanguage();
   const { width } = useWindowDimensions();
   const titleSize = Math.max(22, Math.min(28, width * 0.075));
 
@@ -60,6 +64,10 @@ export default function TechniciansScreen() {
     () => availableTechnicians.map(() => new Animated.Value(0)),
     [availableTechnicians],
   );
+
+  const copy = getAppCopy(language as AppLanguage);
+  const t = copy.tabs.technicians;
+  const categoryLabel = t.categoryPlural[category];
 
   useEffect(() => {
     if (reduceMotionEnabled) {
@@ -132,7 +140,7 @@ export default function TechniciansScreen() {
           ]}
         >
           <Text style={[styles.topLabel, { color: colors.textSecondary }]}>
-            Paso 2 de 3
+            {t.step}
           </Text>
           <Text
             style={[
@@ -140,7 +148,7 @@ export default function TechniciansScreen() {
               { color: colors.textPrimary, fontSize: titleSize },
             ]}
           >
-            {getCategoryLabel(category)}s disponibles
+            {categoryLabel} {t.availableSuffix}
           </Text>
 
           <View
@@ -154,7 +162,7 @@ export default function TechniciansScreen() {
           >
             <Ionicons name="construct" size={16} color={colors.primary} />
             <Text style={[styles.statusText, { color: colors.primary }]}>
-              {availableTechnicians.length} tecnicos activos cerca de ti
+              {t.activeNearby(availableTechnicians.length)}
             </Text>
           </View>
 
@@ -169,7 +177,7 @@ export default function TechniciansScreen() {
               ]}
             >
               <Text style={[styles.issueTitle, { color: colors.textPrimary }]}>
-                Trabajo solicitado:
+                {t.requestedWork}
               </Text>
               <Text style={[styles.issueText, { color: colors.textSecondary }]}>
                 {issue}
@@ -221,7 +229,8 @@ export default function TechniciansScreen() {
                     {tech.name}
                   </Text>
                   <Text style={[styles.meta, { color: colors.textSecondary }]}>
-                    ETA {tech.etaMin} min · {tech.distanceKm.toFixed(1)} km
+                    {t.etaPrefix} {tech.etaMin} {t.min} ·{" "}
+                    {formatDistanceKm(tech.distanceKm, language as AppLanguage)}
                   </Text>
 
                   <View style={styles.ratingRow}>
@@ -234,7 +243,7 @@ export default function TechniciansScreen() {
                     <Text
                       style={[styles.meta, { color: colors.textSecondary }]}
                     >
-                      {tech.jobsDone} servicios completados
+                      {t.completedServices(tech.jobsDone)}
                     </Text>
                   </View>
                 </View>
@@ -243,7 +252,7 @@ export default function TechniciansScreen() {
                   <View
                     style={[styles.badge, { backgroundColor: colors.tracking }]}
                   >
-                    <Text style={styles.badgeText}>Disponible</Text>
+                    <Text style={styles.badgeText}>{t.available}</Text>
                   </View>
                   <Ionicons
                     name="chevron-forward"

@@ -17,10 +17,7 @@
     "android": {
       "package": "com.inovatec.rescuenow",
       "versionCode": 1,
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ],
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -36,6 +33,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "RescueNow usa tu ubicacion para enviar alertas de emergencia y mostrar asistencia cercana."
+        }
+      ],
       [
         "expo-splash-screen",
         {

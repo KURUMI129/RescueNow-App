@@ -1,45 +1,56 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
-  Animated,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native';
+    Animated,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useColorScheme,
+} from "react-native";
 
-import { AuthHeader } from '@/components/auth/auth-header';
-import { RoleOptionCard, UserRole } from '@/components/auth/role-option-card';
-import { AUTH_THEME_COLORS } from '@/constants/auth-theme';
+import { AuthHeader } from "@/components/auth/auth-header";
+import { RoleOptionCard, UserRole } from "@/components/auth/role-option-card";
+import { getAppCopy } from "@/constants/app-copy";
+import { AppLanguage } from "@/constants/app-preferences";
+import { AUTH_THEME_COLORS } from "@/constants/auth-theme";
+import { useAppLanguage } from "@/hooks/use-app-language";
 
 export default function LoginScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const colors = colorScheme === 'dark' ? AUTH_THEME_COLORS.dark : AUTH_THEME_COLORS.light;
+  const colors =
+    colorScheme === "dark" ? AUTH_THEME_COLORS.dark : AUTH_THEME_COLORS.light;
+  const language = useAppLanguage();
 
-  const [role, setRole] = useState<UserRole>('user');
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [role, setRole] = useState<UserRole>("user");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
 
-  const userScale = useRef(new Animated.Value(role === 'user' ? 1.02 : 1)).current;
-  const technicianScale = useRef(new Animated.Value(role === 'technician' ? 1.02 : 1)).current;
+  const t = getAppCopy(language as AppLanguage).auth.login;
+
+  const userScale = useRef(
+    new Animated.Value(role === "user" ? 1.02 : 1),
+  ).current;
+  const technicianScale = useRef(
+    new Animated.Value(role === "technician" ? 1.02 : 1),
+  ).current;
 
   useEffect(() => {
     Animated.spring(userScale, {
-      toValue: role === 'user' ? 1.02 : 1,
+      toValue: role === "user" ? 1.02 : 1,
       useNativeDriver: true,
       speed: 16,
       bounciness: 6,
     }).start();
 
     Animated.spring(technicianScale, {
-      toValue: role === 'technician' ? 1.02 : 1,
+      toValue: role === "technician" ? 1.02 : 1,
       useNativeDriver: true,
       speed: 16,
       bounciness: 6,
@@ -49,55 +60,75 @@ export default function LoginScreen() {
   const handleLogin = () => {
     // Flujo temporal: navega al modulo principal.
     // En el siguiente paso lo conectamos con la API real de autenticacion.
-    router.replace('/(tabs)');
+    router.replace("/(tabs)");
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flexContainer}>
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.flexContainer}
+      >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+        >
           <AuthHeader colors={colors} />
 
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Ingresa a tu cuenta</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-              Selecciona tu perfil y accede rapido a la asistencia.
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              {t.sectionTitle}
+            </Text>
+            <Text
+              style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
+            >
+              {t.sectionSubtitle}
             </Text>
 
             <View style={styles.rolesContainer}>
               <Animated.View style={{ transform: [{ scale: userScale }] }}>
                 <RoleOptionCard
                   role="user"
-                  title="Entrar como Usuario"
-                  description="Solicita asistencia tecnica o vial en tiempo real."
-                  selected={role === 'user'}
+                  title={t.userTitle}
+                  description={t.userDesc}
+                  selected={role === "user"}
                   colors={colors}
                   onPress={setRole}
                 />
               </Animated.View>
 
-              <Animated.View style={{ transform: [{ scale: technicianScale }] }}>
+              <Animated.View
+                style={{ transform: [{ scale: technicianScale }] }}
+              >
                 <RoleOptionCard
                   role="technician"
-                  title="Entrar como Tecnico"
-                  description="Recibe solicitudes cercanas y brinda apoyo inmediato."
-                  selected={role === 'technician'}
+                  title={t.technicianTitle}
+                  description={t.technicianDesc}
+                  selected={role === "technician"}
                   colors={colors}
                   onPress={setRole}
                 />
               </Animated.View>
             </View>
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Correo electronico</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t.email}
+            </Text>
             <TextInput
               autoCapitalize="none"
               keyboardType="email-address"
-              placeholder="ejemplo@correo.com"
+              placeholder={t.emailPlaceholder}
               placeholderTextColor={colors.inputPlaceholder}
               style={[
                 styles.input,
@@ -111,10 +142,12 @@ export default function LoginScreen() {
               onChangeText={setEmail}
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Contrasena</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t.password}
+            </Text>
             <TextInput
               secureTextEntry
-              placeholder="Tu contrasena"
+              placeholder={t.passwordPlaceholder}
               placeholderTextColor={colors.inputPlaceholder}
               style={[
                 styles.input,
@@ -129,28 +162,40 @@ export default function LoginScreen() {
             />
 
             <TouchableOpacity
-              onPress={() => router.push('/(auth)/forgot-password')}
-              style={styles.forgotPasswordButton}>
-              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Olvide mi contrasena</Text>
+              onPress={() => router.push("/(auth)/forgot-password")}
+              style={styles.forgotPasswordButton}
+            >
+              <Text
+                style={[styles.forgotPasswordText, { color: colors.primary }]}
+              >
+                {t.forgot}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               accessibilityRole="button"
               activeOpacity={0.9}
               onPress={handleLogin}
-              style={[
-                styles.submitButton,
-                { backgroundColor: colors.primary },
-              ]}>
-              <Text style={[styles.submitButtonText, { color: colors.onPrimary }]}>Continuar</Text>
+              style={[styles.submitButton, { backgroundColor: colors.primary }]}
+            >
+              <Text
+                style={[styles.submitButtonText, { color: colors.onPrimary }]}
+              >
+                {t.submit}
+              </Text>
             </TouchableOpacity>
 
             <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-              En RescueNow priorizamos la seguridad y respuesta rapida.
+              {t.footer}
             </Text>
 
-            <TouchableOpacity onPress={() => router.push('/(auth)/register')} style={styles.registerButton}>
-              <Text style={[styles.registerText, { color: colors.primary }]}>No tienes cuenta? Registrate</Text>
+            <TouchableOpacity
+              onPress={() => router.push("/(auth)/register")}
+              style={styles.registerButton}
+            >
+              <Text style={[styles.registerText, { color: colors.primary }]}>
+                {t.register}
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -170,15 +215,15 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 18,
     paddingVertical: 20,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   card: {
-    width: '100%',
+    width: "100%",
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 18,
     borderWidth: 1,
-    shadowColor: '#0f172a',
+    shadowColor: "#0f172a",
     shadowOpacity: 0.06,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -186,7 +231,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   sectionSubtitle: {
     fontSize: 13,
@@ -198,7 +243,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   label: {
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 13,
     marginTop: 8,
     marginBottom: 6,
@@ -213,35 +258,35 @@ const styles = StyleSheet.create({
     marginTop: 16,
     borderRadius: 14,
     paddingVertical: 13,
-    alignItems: 'center',
+    alignItems: "center",
   },
   submitButtonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
-    fontWeight: '700',
+    fontWeight: "700",
     fontSize: 15,
   },
   forgotPasswordButton: {
     marginTop: 10,
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   forgotPasswordText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   footerText: {
     marginTop: 14,
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 12,
     lineHeight: 18,
   },
   registerButton: {
     marginTop: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   registerText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

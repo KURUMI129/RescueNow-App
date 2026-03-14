@@ -1,0 +1,12 @@
+.git
+.expo
+.vscode
+node_modules
+dist
+web-build
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+app-example
+RescueNow logo.jpeg

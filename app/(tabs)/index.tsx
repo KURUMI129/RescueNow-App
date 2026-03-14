@@ -17,12 +17,18 @@ import { BrandLogo } from "@/components/brand/brand-logo";
 import { NearbyTechnicians } from "@/components/home/nearby-technicians";
 import { PanicButton } from "@/components/home/panic-button";
 import { QuickActionCard } from "@/components/home/quick-action-card";
+import { getAppCopy } from "@/constants/app-copy";
+import { AppLanguage } from "@/constants/app-preferences";
+import { formatDistanceKm, formatEtaMinutes } from "@/constants/display-format";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
+import { ServiceCategory } from "@/constants/service-flow";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
+import { useAppLanguage } from "@/hooks/use-app-language";
 
 type TechnicianMarker = {
   id: string;
   name: string;
+  category: ServiceCategory;
   specialty: string;
   eta: string;
   distance: string;
@@ -30,13 +36,17 @@ type TechnicianMarker = {
   longitude: number;
 };
 
-const TECHNICIAN_BASE: Omit<
-  TechnicianMarker,
-  "distance" | "latitude" | "longitude"
->[] = [
-  { id: "1", name: "Luis Martinez", specialty: "Mecanico", eta: "8 min" },
-  { id: "2", name: "Ana Gomez", specialty: "Grua", eta: "12 min" },
-  { id: "3", name: "Carlos Rojas", specialty: "Plomero", eta: "9 min" },
+type TechnicianSeed = {
+  id: string;
+  name: string;
+  category: ServiceCategory;
+  etaMin: number;
+};
+
+const TECHNICIAN_BASE: TechnicianSeed[] = [
+  { id: "1", name: "Luis Martinez", category: "mech", etaMin: 8 },
+  { id: "2", name: "Ana Gomez", category: "tow", etaMin: 12 },
+  { id: "3", name: "Carlos Rojas", category: "plumb", etaMin: 9 },
 ];
 
 const INITIAL_REGION: Region = {
@@ -46,11 +56,26 @@ const INITIAL_REGION: Region = {
   longitudeDelta: 0.03,
 };
 
+async function getBestAvailablePosition() {
+  try {
+    return await Location.getCurrentPositionAsync({});
+  } catch {
+    const lastKnownPosition = await Location.getLastKnownPositionAsync();
+
+    if (lastKnownPosition) {
+      return lastKnownPosition;
+    }
+
+    throw new Error("location-unavailable");
+  }
+}
+
 function toKmLabel(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number,
+  language: AppLanguage,
 ): string {
   const toRad = (value: number) => (value * Math.PI) / 180;
   const earthRadiusKm = 6371;
@@ -67,12 +92,14 @@ function toKmLabel(
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = earthRadiusKm * c;
 
-  return `${distance.toFixed(1)} km`;
+  return formatDistanceKm(distance, language);
 }
 
 function createNearbyTechnicians(
   latitude: number,
   longitude: number,
+  categories: Record<ServiceCategory, string>,
+  language: AppLanguage,
   jitter = 0,
 ): TechnicianMarker[] {
   const offsets = [
@@ -88,9 +115,11 @@ function createNearbyTechnicians(
 
     return {
       ...tech,
+      specialty: categories[tech.category],
+      eta: formatEtaMinutes(tech.etaMin, language),
       latitude: lat,
       longitude: lng,
-      distance: toKmLabel(latitude, longitude, lat, lng),
+      distance: toKmLabel(latitude, longitude, lat, lng, language),
     };
   });
 }
@@ -101,6 +130,7 @@ export default function HomeScreen() {
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
   const { reduceMotionEnabled } = useAccessibilityPreferences();
+  const language = useAppLanguage();
   const [panicCount, setPanicCount] = useState<number>(0);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [region, setRegion] = useState<Region>(INITIAL_REGION);
@@ -113,20 +143,21 @@ export default function HomeScreen() {
     [],
   );
 
+  const copy = getAppCopy(language as AppLanguage);
+  const t = copy.tabs.home;
+
   useEffect(() => {
     let subscription: Location.LocationSubscription | null = null;
 
     const setupLiveLocation = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        setLocationError(
-          "Activa ubicacion para mostrar el mapa en tiempo real.",
-        );
+        setLocationError(t.locationPermissionError);
         setIsLocating(false);
         return;
       }
 
-      const current = await Location.getCurrentPositionAsync({});
+      const current = await getBestAvailablePosition();
       const currentRegion: Region = {
         latitude: current.coords.latitude,
         longitude: current.coords.longitude,
@@ -139,6 +170,8 @@ export default function HomeScreen() {
         createNearbyTechnicians(
           current.coords.latitude,
           current.coords.longitude,
+          copy.categories,
+          language as AppLanguage,
         ),
       );
       setIsLocating(false);
@@ -160,6 +193,8 @@ export default function HomeScreen() {
             createNearbyTechnicians(
               position.coords.latitude,
               position.coords.longitude,
+              copy.categories,
+              language as AppLanguage,
               jitter,
             ),
           );
@@ -168,7 +203,7 @@ export default function HomeScreen() {
     };
 
     setupLiveLocation().catch(() => {
-      setLocationError("No se pudo obtener tu ubicacion en este momento.");
+      setLocationError(t.locationError);
       setIsLocating(false);
     });
 
@@ -177,7 +212,7 @@ export default function HomeScreen() {
         subscription.remove();
       }
     };
-  }, []);
+  }, [copy.categories, language, t.locationError, t.locationPermissionError]);
 
   useEffect(() => {
     if (reduceMotionEnabled) {
@@ -222,7 +257,6 @@ export default function HomeScreen() {
 
   const handlePanicPress = () => {
     setPanicCount((prev) => prev + 1);
-    router.push("/modal");
   };
 
   return (
@@ -249,7 +283,7 @@ export default function HomeScreen() {
                 <Text
                   style={[styles.greeting, { color: colors.textSecondary }]}
                 >
-                  Asistencia tecnica y vial en tiempo real
+                  {t.tagline}
                 </Text>
               </View>
             </View>
@@ -270,7 +304,7 @@ export default function HomeScreen() {
                 <Text
                   style={[styles.mapInfoText, { color: colors.textSecondary }]}
                 >
-                  Ubicando...
+                  {t.locating}
                 </Text>
               </View>
             ) : (
@@ -289,7 +323,7 @@ export default function HomeScreen() {
                       longitude: tech.longitude,
                     }}
                     title={tech.name}
-                    description={`${tech.specialty} · ETA ${tech.eta}`}
+                    description={`${tech.specialty} · ${t.etaPrefix} ${tech.eta}`}
                     pinColor={colors.accent}
                   />
                 ))}
@@ -321,8 +355,8 @@ export default function HomeScreen() {
               ]}
             >
               <QuickActionCard
-                title="Solicitar servicio"
-                subtitle="Opciones normales de asistencia"
+                title={t.requestService}
+                subtitle={t.requestServiceSub}
                 icon="construct-outline"
                 colors={colors}
                 onPress={() => router.push("/(tabs)/services")}
@@ -346,8 +380,8 @@ export default function HomeScreen() {
               ]}
             >
               <QuickActionCard
-                title="Seguimiento en vivo"
-                subtitle="Visualiza avance y tiempo estimado"
+                title={t.tracking}
+                subtitle={t.trackingSub}
                 icon="navigate-outline"
                 colors={colors}
                 onPress={() => router.push("/(tabs)/tracking")}
@@ -372,10 +406,15 @@ export default function HomeScreen() {
           </Animated.View>
 
           <Text style={[styles.panicCounter, { color: colors.textSecondary }]}>
-            Activaciones de panico (sesion): {panicCount}
+            {t.panicCounter(panicCount)}
           </Text>
 
-          <NearbyTechnicians colors={colors} data={technicians} />
+          <NearbyTechnicians
+            colors={colors}
+            data={technicians}
+            title={t.nearbyTitle}
+            etaPrefix={t.etaPrefix}
+          />
         </Animated.View>
       </ScrollView>
     </SafeAreaView>

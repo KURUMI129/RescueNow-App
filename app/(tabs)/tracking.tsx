@@ -11,25 +11,24 @@ import {
     View,
 } from "react-native";
 
+import { getAppCopy } from "@/constants/app-copy";
+import { AppLanguage } from "@/constants/app-preferences";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
-
-const TRACKING_STEPS = [
-  { id: "1", label: "Solicitud recibida", done: true, time: "12:01" },
-  { id: "2", label: "Tecnico asignado", done: true, time: "12:03" },
-  { id: "3", label: "Tecnico en camino", done: true, time: "12:05" },
-  { id: "4", label: "Llegada estimada", done: false, time: "12:13" },
-];
+import { useAppLanguage } from "@/hooks/use-app-language";
 
 export default function TrackingScreen() {
   const colorScheme = useColorScheme();
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
   const { reduceMotionEnabled } = useAccessibilityPreferences();
+  const language = useAppLanguage();
   const { width } = useWindowDimensions();
   const titleSize = Math.max(22, Math.min(28, width * 0.075));
   const entranceOpacity = useMemo(() => new Animated.Value(0), []);
   const entranceTranslateY = useMemo(() => new Animated.Value(12), []);
+
+  const t = getAppCopy(language as AppLanguage).tabs.tracking;
 
   useEffect(() => {
     if (reduceMotionEnabled) {
@@ -70,7 +69,7 @@ export default function TrackingScreen() {
           ]}
         >
           <Text style={[styles.topTitle, { color: colors.textSecondary }]}>
-            Espejo de ruta
+            {t.topTitle}
           </Text>
           <Text
             style={[
@@ -78,7 +77,7 @@ export default function TrackingScreen() {
               { color: colors.textPrimary, fontSize: titleSize },
             ]}
           >
-            Tu tecnico se acerca
+            {t.title}
           </Text>
 
           <View
@@ -91,18 +90,18 @@ export default function TrackingScreen() {
             ]}
           >
             <Text style={[styles.etaLabel, { color: colors.textSecondary }]}>
-              ETA
+              {t.etaLabel}
             </Text>
             <Text style={[styles.etaValue, { color: colors.primary }]}>
-              8 min
+              {t.etaValue}
             </Text>
             <Text style={[styles.etaSub, { color: colors.textSecondary }]}>
-              Distancia actual: 1.4 km
+              {t.distance}
             </Text>
             <View
               style={[styles.liveBadge, { backgroundColor: colors.tracking }]}
             >
-              <Text style={styles.liveBadgeText}>Seguimiento en vivo</Text>
+              <Text style={styles.liveBadgeText}>{t.live}</Text>
             </View>
           </View>
 
@@ -149,7 +148,7 @@ export default function TrackingScreen() {
           </View>
 
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            Estado del servicio
+            {t.section}
           </Text>
 
           <View
@@ -162,10 +161,10 @@ export default function TrackingScreen() {
             ]}
           >
             <Text style={[styles.jobText, { color: colors.textPrimary }]}>
-              Servicio: RN-1024
+              {t.service}
             </Text>
             <Text style={[styles.jobText, { color: colors.textPrimary }]}>
-              Estado: En progreso
+              {t.status}
             </Text>
           </View>
 
@@ -178,7 +177,7 @@ export default function TrackingScreen() {
               },
             ]}
           >
-            {TRACKING_STEPS.map((step) => (
+            {t.steps.map((step) => (
               <View key={step.id} style={styles.stepRow}>
                 <Ionicons
                   name={step.done ? "checkmark-circle" : "ellipse-outline"}
@@ -204,7 +203,7 @@ export default function TrackingScreen() {
               <Text
                 style={[styles.progressLabel, { color: colors.textSecondary }]}
               >
-                Diagnostico: 75%
+                {t.diagnosis}
               </Text>
               <View
                 style={[

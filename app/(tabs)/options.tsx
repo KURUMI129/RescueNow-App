@@ -1,53 +1,31 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
     Animated,
     Pressable,
     SafeAreaView,
     ScrollView,
     StyleSheet,
+    Switch,
     Text,
+    TextInput,
     useColorScheme,
     useWindowDimensions,
     View,
 } from "react-native";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { getAppCopy } from "@/constants/app-copy";
+import {
+    AppLanguage,
+    DEFAULT_APP_PREFERENCES,
+    getAppPreferences,
+    updateAppPreferences,
+} from "@/constants/app-preferences";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
-
-type OptionItem = {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  accent?: "primary" | "accent";
-};
-
-const USER_OPTIONS: OptionItem[] = [
-  {
-    id: "premium",
-    title: "Comprar premium",
-    subtitle: "Prioridad de asistencia y beneficios exclusivos",
-    icon: "diamond-outline",
-    accent: "accent",
-  },
-  {
-    id: "payment",
-    title: "Metodos de pago",
-    subtitle: "Administrar tarjetas y facturacion",
-    icon: "card-outline",
-    accent: "primary",
-  },
-  {
-    id: "support",
-    title: "Soporte y ayuda",
-    subtitle: "Centro de ayuda y contacto rapido",
-    icon: "help-circle-outline",
-    accent: "primary",
-  },
-];
 
 export default function OptionsScreen() {
   const router = useRouter();
@@ -55,10 +33,80 @@ export default function OptionsScreen() {
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
   const { reduceMotionEnabled } = useAccessibilityPreferences();
+  const [language, setLanguage] = useState<AppLanguage>(
+    DEFAULT_APP_PREFERENCES.language,
+  );
+  const [trustedContactPhone, setTrustedContactPhone] = useState(
+    DEFAULT_APP_PREFERENCES.trustedContactPhone,
+  );
+  const [useTrustedContact, setUseTrustedContact] = useState(
+    DEFAULT_APP_PREFERENCES.useTrustedContact,
+  );
+  const [isSavingLanguage, setIsSavingLanguage] = useState(false);
+  const [isSavingContact, setIsSavingContact] = useState(false);
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(true);
   const { width } = useWindowDimensions();
   const titleSize = Math.max(22, Math.min(28, width * 0.075));
   const entranceOpacity = useMemo(() => new Animated.Value(0), []);
   const entranceTranslateY = useMemo(() => new Animated.Value(12), []);
+
+  useEffect(() => {
+    const loadPreferences = async () => {
+      setIsLoadingPrefs(true);
+      const preferences = await getAppPreferences();
+      setLanguage(preferences.language);
+      setTrustedContactPhone(preferences.trustedContactPhone);
+      setUseTrustedContact(preferences.useTrustedContact);
+      setIsLoadingPrefs(false);
+    };
+
+    void loadPreferences();
+  }, []);
+
+  const copy = getAppCopy(language).tabs.options;
+
+  const handleLanguageChange = async (nextLanguage: AppLanguage) => {
+    if (nextLanguage === language || isSavingLanguage) {
+      return;
+    }
+
+    setLanguage(nextLanguage);
+    setIsSavingLanguage(true);
+    await updateAppPreferences({ language: nextLanguage });
+    setIsSavingLanguage(false);
+  };
+
+  const handleSaveContact = async () => {
+    if (isSavingContact) {
+      return;
+    }
+
+    setIsSavingContact(true);
+    const nextPrefs = await updateAppPreferences({
+      trustedContactPhone,
+      useTrustedContact,
+    });
+    setTrustedContactPhone(nextPrefs.trustedContactPhone);
+    setUseTrustedContact(nextPrefs.useTrustedContact);
+    setLanguage(nextPrefs.language);
+    setIsSavingContact(false);
+  };
+
+  const handleClearContact = async () => {
+    if (isSavingContact) {
+      return;
+    }
+
+    setIsSavingContact(true);
+    const nextPrefs = await updateAppPreferences({
+      trustedContactPhone: "",
+      useTrustedContact: false,
+    });
+    setTrustedContactPhone(nextPrefs.trustedContactPhone);
+    setUseTrustedContact(nextPrefs.useTrustedContact);
+    setLanguage(nextPrefs.language);
+    setIsSavingContact(false);
+  };
 
   useEffect(() => {
     if (reduceMotionEnabled) {
@@ -99,7 +147,7 @@ export default function OptionsScreen() {
           ]}
         >
           <Text style={[styles.topLabel, { color: colors.textSecondary }]}>
-            Cuenta demo
+            {copy.topLabel}
           </Text>
           <Text
             style={[
@@ -107,8 +155,30 @@ export default function OptionsScreen() {
               { color: colors.textPrimary, fontSize: titleSize },
             ]}
           >
-            Opciones
+            {copy.title}
           </Text>
+
+          {isLoadingPrefs ? (
+            <View
+              style={[
+                styles.loadingPrefsCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text
+                style={[
+                  styles.loadingPrefsText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {copy.loading}
+              </Text>
+            </View>
+          ) : null}
 
           <View
             style={[
@@ -122,7 +192,7 @@ export default function OptionsScreen() {
             <BrandLogo width={52} height={46} />
             <View style={styles.profileTextWrap}>
               <Text style={[styles.profileName, { color: colors.textPrimary }]}>
-                Miembro Rescue
+                {copy.profileName}
               </Text>
               <Text
                 style={[styles.profileEmail, { color: colors.textSecondary }]}
@@ -136,11 +206,182 @@ export default function OptionsScreen() {
                 { backgroundColor: colors.tracking },
               ]}
             >
-              <Text style={styles.profileBadgeText}>Activo</Text>
+              <Text style={styles.profileBadgeText}>{copy.activeBadge}</Text>
             </View>
           </View>
 
-          {USER_OPTIONS.map((item) => {
+          <View
+            style={[
+              styles.settingsCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <Text style={[styles.settingsTitle, { color: colors.textPrimary }]}>
+              {copy.languageTitle}
+            </Text>
+            <Text
+              style={[styles.settingsSubtitle, { color: colors.textSecondary }]}
+            >
+              {copy.languageSubtitle}
+            </Text>
+
+            <View style={styles.languageRow}>
+              <Pressable
+                onPress={() => {
+                  void handleLanguageChange("es");
+                }}
+                style={[
+                  styles.languagePill,
+                  {
+                    backgroundColor:
+                      language === "es" ? colors.primary : colors.mapBackground,
+                    borderColor:
+                      language === "es" ? colors.primary : colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.languagePillText,
+                    {
+                      color:
+                        language === "es"
+                          ? colors.onPrimary
+                          : colors.textPrimary,
+                    },
+                  ]}
+                >
+                  {copy.spanish}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  void handleLanguageChange("en");
+                }}
+                style={[
+                  styles.languagePill,
+                  {
+                    backgroundColor:
+                      language === "en" ? colors.primary : colors.mapBackground,
+                    borderColor:
+                      language === "en" ? colors.primary : colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.languagePillText,
+                    {
+                      color:
+                        language === "en"
+                          ? colors.onPrimary
+                          : colors.textPrimary,
+                    },
+                  ]}
+                >
+                  {copy.english}
+                </Text>
+              </Pressable>
+            </View>
+
+            {isSavingLanguage ? (
+              <Text style={[styles.saveHint, { color: colors.textSecondary }]}>
+                {copy.saving}
+              </Text>
+            ) : null}
+          </View>
+
+          <View
+            style={[
+              styles.settingsCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <Text style={[styles.settingsTitle, { color: colors.textPrimary }]}>
+              {copy.emergencyContactTitle}
+            </Text>
+            <Text
+              style={[styles.settingsSubtitle, { color: colors.textSecondary }]}
+            >
+              {copy.emergencyContactSubtitle}
+            </Text>
+
+            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>
+              {copy.trustedInputLabel}
+            </Text>
+            <TextInput
+              value={trustedContactPhone}
+              onChangeText={setTrustedContactPhone}
+              keyboardType="phone-pad"
+              placeholder={copy.trustedInputPlaceholder}
+              placeholderTextColor={colors.textSecondary}
+              style={[
+                styles.phoneInput,
+                {
+                  color: colors.textPrimary,
+                  borderColor: colors.cardBorder,
+                  backgroundColor: colors.mapBackground,
+                },
+              ]}
+            />
+
+            <View style={styles.switchRow}>
+              <Text style={[styles.switchLabel, { color: colors.textPrimary }]}>
+                {copy.directSwitchLabel}
+              </Text>
+              <Switch
+                value={useTrustedContact}
+                onValueChange={setUseTrustedContact}
+                trackColor={{ false: colors.cardBorder, true: colors.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.contactButtonsRow}>
+              <Pressable
+                onPress={() => {
+                  void handleSaveContact();
+                }}
+                style={({ pressed }) => [
+                  styles.contactButton,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: pressed || isSavingContact ? 0.82 : 1,
+                  },
+                ]}
+              >
+                <Text style={styles.contactButtonText}>
+                  {isSavingContact ? copy.saving : copy.saveContact}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  void handleClearContact();
+                }}
+                style={({ pressed }) => [
+                  styles.contactButton,
+                  {
+                    backgroundColor: colors.danger,
+                    opacity: pressed || isSavingContact ? 0.82 : 1,
+                  },
+                ]}
+              >
+                <Text style={styles.contactButtonText}>
+                  {copy.clearContact}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {copy.userOptions.map((item) => {
             const iconColor =
               item.accent === "accent" ? colors.accent : colors.primary;
 
@@ -201,7 +442,7 @@ export default function OptionsScreen() {
             ]}
           >
             <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={styles.logoutText}>Cerrar sesion</Text>
+            <Text style={styles.logoutText}>{copy.logout}</Text>
           </Pressable>
         </Animated.View>
       </ScrollView>
@@ -224,6 +465,20 @@ const styles = StyleSheet.create({
   topLabel: {
     fontSize: 13,
     fontWeight: "700",
+  },
+  loadingPrefsCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  loadingPrefsText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   title: {
     marginTop: 2,
@@ -261,6 +516,87 @@ const styles = StyleSheet.create({
   profileBadgeText: {
     color: "#003A3D",
     fontSize: 11,
+    fontWeight: "800",
+  },
+  settingsCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  settingsTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  settingsSubtitle: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 10,
+  },
+  languageRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  languagePill: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  languagePillText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  saveHint: {
+    marginTop: 8,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  phoneInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    marginBottom: 10,
+    fontWeight: "600",
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 10,
+  },
+  switchLabel: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "700",
+    lineHeight: 17,
+  },
+  contactButtonsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  contactButton: {
+    flex: 1,
+    borderRadius: 10,
+    minHeight: 42,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  contactButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
     fontWeight: "800",
   },
   optionCard: {

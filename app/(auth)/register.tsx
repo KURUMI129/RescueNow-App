@@ -1,35 +1,43 @@
-import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native';
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useColorScheme,
+} from "react-native";
 
-import { AuthHeader } from '@/components/auth/auth-header';
-import { RoleOptionCard, UserRole } from '@/components/auth/role-option-card';
-import { AUTH_THEME_COLORS } from '@/constants/auth-theme';
+import { AuthHeader } from "@/components/auth/auth-header";
+import { RoleOptionCard, UserRole } from "@/components/auth/role-option-card";
+import { getAppCopy } from "@/constants/app-copy";
+import { AppLanguage } from "@/constants/app-preferences";
+import { AUTH_THEME_COLORS } from "@/constants/auth-theme";
+import { useAppLanguage } from "@/hooks/use-app-language";
 
 export default function RegisterScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const colors = colorScheme === 'dark' ? AUTH_THEME_COLORS.dark : AUTH_THEME_COLORS.light;
+  const colors =
+    colorScheme === "dark" ? AUTH_THEME_COLORS.dark : AUTH_THEME_COLORS.light;
+  const language = useAppLanguage();
 
-  const [role, setRole] = useState<UserRole>('user');
-  const [fullName, setFullName] = useState<string>('');
-  const [phone, setPhone] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [role, setRole] = useState<UserRole>("user");
+  const [fullName, setFullName] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
 
-  const passwordsMatch = password.trim().length > 0 && password === confirmPassword;
+  const t = getAppCopy(language as AppLanguage).auth.register;
+
+  const passwordsMatch =
+    password.trim().length > 0 && password === confirmPassword;
 
   // Valida datos base del formulario sin cambiar logica de negocio aun.
   const canSubmit = useMemo(() => {
@@ -48,46 +56,64 @@ export default function RegisterScreen() {
       return;
     }
 
-    router.replace('/(tabs)');
+    router.replace("/(tabs)");
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flexContainer}>
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.flexContainer}
+      >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+        >
           <AuthHeader colors={colors} />
 
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Crear cuenta</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-              Registra tu perfil para solicitar o brindar asistencia.
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              {t.sectionTitle}
+            </Text>
+            <Text
+              style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
+            >
+              {t.sectionSubtitle}
             </Text>
 
             <RoleOptionCard
               role="user"
-              title="Registro como Usuario"
-              description="Podras solicitar ayuda en carretera o domicilio."
-              selected={role === 'user'}
+              title={t.userTitle}
+              description={t.userDesc}
+              selected={role === "user"}
               colors={colors}
               onPress={setRole}
             />
             <RoleOptionCard
               role="technician"
-              title="Registro como Tecnico"
-              description="Recibiras servicios cercanos segun tu ubicacion."
-              selected={role === 'technician'}
+              title={t.technicianTitle}
+              description={t.technicianDesc}
+              selected={role === "technician"}
               colors={colors}
               onPress={setRole}
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Nombre completo</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t.fullName}
+            </Text>
             <TextInput
-              placeholder="Tu nombre"
+              placeholder={t.fullNamePlaceholder}
               placeholderTextColor={colors.inputPlaceholder}
               style={[
                 styles.input,
@@ -101,10 +127,12 @@ export default function RegisterScreen() {
               onChangeText={setFullName}
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Telefono</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t.phone}
+            </Text>
             <TextInput
               keyboardType="phone-pad"
-              placeholder="Ej. 4431234567"
+              placeholder={t.phonePlaceholder}
               placeholderTextColor={colors.inputPlaceholder}
               style={[
                 styles.input,
@@ -118,11 +146,13 @@ export default function RegisterScreen() {
               onChangeText={setPhone}
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Correo electronico</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t.email}
+            </Text>
             <TextInput
               autoCapitalize="none"
               keyboardType="email-address"
-              placeholder="ejemplo@correo.com"
+              placeholder={t.emailPlaceholder}
               placeholderTextColor={colors.inputPlaceholder}
               style={[
                 styles.input,
@@ -136,10 +166,12 @@ export default function RegisterScreen() {
               onChangeText={setEmail}
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Contrasena</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t.password}
+            </Text>
             <TextInput
               secureTextEntry
-              placeholder="Minimo 6 caracteres"
+              placeholder={t.passwordPlaceholder}
               placeholderTextColor={colors.inputPlaceholder}
               style={[
                 styles.input,
@@ -153,10 +185,12 @@ export default function RegisterScreen() {
               onChangeText={setPassword}
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Confirmar contrasena</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t.confirmPassword}
+            </Text>
             <TextInput
               secureTextEntry
-              placeholder="Repite tu contrasena"
+              placeholder={t.confirmPasswordPlaceholder}
               placeholderTextColor={colors.inputPlaceholder}
               style={[
                 styles.input,
@@ -171,7 +205,9 @@ export default function RegisterScreen() {
             />
 
             {confirmPassword.trim().length > 0 && !passwordsMatch ? (
-              <Text style={[styles.errorText, { color: '#dc2626' }]}>Las contrasenas no coinciden.</Text>
+              <Text style={[styles.errorText, { color: "#dc2626" }]}>
+                {t.passwordMismatch}
+              </Text>
             ) : null}
 
             <TouchableOpacity
@@ -181,13 +217,27 @@ export default function RegisterScreen() {
               onPress={handleRegister}
               style={[
                 styles.submitButton,
-                { backgroundColor: canSubmit ? colors.primary : colors.primaryDisabled },
-              ]}>
-              <Text style={[styles.submitButtonText, { color: colors.onPrimary }]}>Crear cuenta</Text>
+                {
+                  backgroundColor: canSubmit
+                    ? colors.primary
+                    : colors.primaryDisabled,
+                },
+              ]}
+            >
+              <Text
+                style={[styles.submitButtonText, { color: colors.onPrimary }]}
+              >
+                {t.submit}
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={styles.linkButton}>
-              <Text style={[styles.linkText, { color: colors.primary }]}>Ya tienes cuenta? Inicia sesion</Text>
+            <TouchableOpacity
+              onPress={() => router.push("/(auth)/login")}
+              style={styles.linkButton}
+            >
+              <Text style={[styles.linkText, { color: colors.primary }]}>
+                {t.loginLink}
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -207,15 +257,15 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 18,
     paddingVertical: 20,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   card: {
-    width: '100%',
+    width: "100%",
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 18,
     borderWidth: 1,
-    shadowColor: '#0f172a',
+    shadowColor: "#0f172a",
     shadowOpacity: 0.06,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -223,7 +273,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   sectionSubtitle: {
     fontSize: 13,
@@ -232,7 +282,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   label: {
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 13,
     marginTop: 8,
     marginBottom: 6,
@@ -246,24 +296,24 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 6,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   submitButton: {
     marginTop: 16,
     borderRadius: 14,
     paddingVertical: 13,
-    alignItems: 'center',
+    alignItems: "center",
   },
   submitButtonText: {
-    fontWeight: '700',
+    fontWeight: "700",
     fontSize: 15,
   },
   linkButton: {
     marginTop: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   linkText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

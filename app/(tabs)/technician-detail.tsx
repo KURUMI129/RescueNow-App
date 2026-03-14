@@ -14,9 +14,14 @@ import {
     View,
 } from "react-native";
 
+import { getAppCopy, getScheduleLabel } from "@/constants/app-copy";
+import { AppLanguage } from "@/constants/app-preferences";
+import {
+    formatCurrencyMxn,
+    formatDistanceKm,
+} from "@/constants/display-format";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import {
-    getCategoryLabel,
     getSuggestedPrices,
     SERVICE_OPTIONS,
     ServiceCategory,
@@ -24,6 +29,7 @@ import {
     TECHNICIANS,
 } from "@/constants/service-flow";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
+import { useAppLanguage } from "@/hooks/use-app-language";
 
 function getParamValue(value: string | string[] | undefined): string {
   if (!value) {
@@ -56,22 +62,6 @@ function buildDateBySchedule(schedule: ScheduleOption): Date {
   return now;
 }
 
-function formatScheduleLabel(schedule: ScheduleOption, date: Date): string {
-  if (schedule === "now") {
-    return "Ahora";
-  }
-
-  if (schedule === "in2h") {
-    return "En 2 horas";
-  }
-
-  const hour = date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `Manana, ${hour}`;
-}
-
 export default function TechnicianDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -83,6 +73,7 @@ export default function TechnicianDetailScreen() {
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
   const { reduceMotionEnabled } = useAccessibilityPreferences();
+  const language = useAppLanguage();
 
   const techId = getParamValue(params.techId);
   const rawCategory = getParamValue(params.category);
@@ -105,11 +96,18 @@ export default function TechnicianDetailScreen() {
   const entranceOpacity = useMemo(() => new Animated.Value(0), []);
   const entranceTranslateY = useMemo(() => new Animated.Value(12), []);
 
+  const copy = getAppCopy(language as AppLanguage);
+  const t = copy.tabs.technicianDetail;
+  const categoryLabel = copy.categories[category];
+
   const scheduleDate = useMemo(() => buildDateBySchedule(schedule), [schedule]);
-  const scheduleLabel = useMemo(
-    () => formatScheduleLabel(schedule, scheduleDate),
-    [schedule, scheduleDate],
-  );
+  const scheduleLabel = useMemo(() => {
+    const hourLabel = scheduleDate.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return getScheduleLabel(language as AppLanguage, schedule, hourLabel);
+  }, [language, schedule, scheduleDate]);
 
   // Estimacion basada en distancia, urgencia, complejidad y contexto horario.
   const estimate = useMemo(
@@ -120,8 +118,16 @@ export default function TechnicianDetailScreen() {
         urgent,
         complexity,
         scheduleDate,
+        language as AppLanguage,
       ),
-    [category, technician.distanceKm, urgent, complexity, scheduleDate],
+    [
+      category,
+      technician.distanceKm,
+      urgent,
+      complexity,
+      scheduleDate,
+      language,
+    ],
   );
 
   const priceSuggestions = estimate.prices;
@@ -199,10 +205,10 @@ export default function TechnicianDetailScreen() {
           ]}
         >
           <Text style={[styles.topLabel, { color: colors.textSecondary }]}>
-            Paso 3 de 3
+            {t.step}
           </Text>
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Detalle del tecnico
+            {t.title}
           </Text>
 
           <View
@@ -216,7 +222,7 @@ export default function TechnicianDetailScreen() {
           >
             <Ionicons name="time" size={16} color={colors.primary} />
             <Text style={[styles.summaryText, { color: colors.primary }]}>
-              Llegada estimada en {technician.etaMin} minutos
+              {t.etaSummary(technician.etaMin)}
             </Text>
           </View>
 
@@ -233,26 +239,26 @@ export default function TechnicianDetailScreen() {
               {technician.name}
             </Text>
             <Text style={[styles.techMeta, { color: colors.textSecondary }]}>
-              {getCategoryLabel(category)} · Calificacion{" "}
-              {technician.rating.toFixed(1)}
+              {categoryLabel} · {t.rating} {technician.rating.toFixed(1)}
             </Text>
             <Text style={[styles.techMeta, { color: colors.textSecondary }]}>
-              ETA {technician.etaMin} min · {technician.distanceKm.toFixed(1)}{" "}
-              km · {technician.jobsDone} servicios
+              {t.etaPrefix} {technician.etaMin} {t.min} ·{" "}
+              {formatDistanceKm(technician.distanceKm, language as AppLanguage)}{" "}
+              · {technician.jobsDone} {t.services}
             </Text>
             <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
-              {technician.about}
+              {technician.about[language as AppLanguage]}
             </Text>
           </View>
 
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            Que trabajo necesitas?
+            {t.workLabel}
           </Text>
           <TextInput
             multiline
             value={issueDescription}
             onChangeText={setIssueDescription}
-            placeholder="Ejemplo: Cambio de llanta trasera y revision de presion."
+            placeholder={t.workPlaceholder}
             placeholderTextColor={colors.textSecondary}
             style={[
               styles.issueInput,
@@ -265,7 +271,7 @@ export default function TechnicianDetailScreen() {
           />
 
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            Modalidad
+            {t.mode}
           </Text>
           <View style={styles.modeRow}>
             <Pressable
@@ -284,7 +290,7 @@ export default function TechnicianDetailScreen() {
                   { color: !urgent ? colors.onPrimary : colors.textPrimary },
                 ]}
               >
-                Normal
+                {t.normal}
               </Text>
             </Pressable>
             <Pressable
@@ -303,13 +309,13 @@ export default function TechnicianDetailScreen() {
                   { color: urgent ? "#fff" : colors.textPrimary },
                 ]}
               >
-                Urgente
+                {t.urgent}
               </Text>
             </Pressable>
           </View>
 
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            Complejidad
+            {t.complexity}
           </Text>
           <View style={styles.modeRow}>
             <Pressable
@@ -334,7 +340,7 @@ export default function TechnicianDetailScreen() {
                   },
                 ]}
               >
-                Basica
+                {t.basic}
               </Text>
             </Pressable>
             <Pressable
@@ -359,7 +365,7 @@ export default function TechnicianDetailScreen() {
                   },
                 ]}
               >
-                Media
+                {t.medium}
               </Text>
             </Pressable>
             <Pressable
@@ -384,13 +390,13 @@ export default function TechnicianDetailScreen() {
                   },
                 ]}
               >
-                Alta
+                {t.high}
               </Text>
             </Pressable>
           </View>
 
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            Horario de servicio
+            {t.schedule}
           </Text>
           <View style={styles.modeRow}>
             <Pressable
@@ -415,7 +421,7 @@ export default function TechnicianDetailScreen() {
                   },
                 ]}
               >
-                Ahora
+                {t.now}
               </Text>
             </Pressable>
             <Pressable
@@ -440,7 +446,7 @@ export default function TechnicianDetailScreen() {
                   },
                 ]}
               >
-                En 2 horas
+                {t.in2h}
               </Text>
             </Pressable>
             <Pressable
@@ -465,13 +471,13 @@ export default function TechnicianDetailScreen() {
                   },
                 ]}
               >
-                Manana 9:00
+                {t.tomorrow}
               </Text>
             </Pressable>
           </View>
 
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            Precios sugeridos (aprox.)
+            {t.suggestedPrices}
           </Text>
           <View
             style={[
@@ -496,20 +502,30 @@ export default function TechnicianDetailScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    Base ${price.basePrice} MXN
+                    {t.base}{" "}
+                    {formatCurrencyMxn(
+                      price.basePrice,
+                      language as AppLanguage,
+                    )}
                   </Text>
                 </View>
                 <Text style={[styles.priceAmount, { color: colors.accent }]}>
-                  ${price.estimatedPrice} MXN
+                  {formatCurrencyMxn(
+                    price.estimatedPrice,
+                    language as AppLanguage,
+                  )}
                 </Text>
               </View>
             ))}
           </View>
 
           <View style={[styles.totalCard, { backgroundColor: colors.primary }]}>
-            <Text style={styles.totalLabel}>Estimado recomendado</Text>
+            <Text style={styles.totalLabel}>{t.recommendedEstimate}</Text>
             <Text style={styles.totalValue}>
-              ${priceSuggestions[0]?.estimatedPrice ?? 0} MXN
+              {formatCurrencyMxn(
+                priceSuggestions[0]?.estimatedPrice ?? 0,
+                language as AppLanguage,
+              )}
             </Text>
           </View>
 
@@ -523,29 +539,28 @@ export default function TechnicianDetailScreen() {
             ]}
           >
             <Text style={[styles.factorTitle, { color: colors.textPrimary }]}>
-              Factores aplicados
+              {t.factors}
             </Text>
             <Text style={[styles.factorText, { color: colors.textSecondary }]}>
-              Horario: {scheduleLabel}
+              {t.scheduleFactor}: {scheduleLabel}
             </Text>
             <Text style={[styles.factorText, { color: colors.textSecondary }]}>
-              Distancia: x{estimate.meta.distanceFactor.toFixed(2)}
+              {t.distanceFactor}: x{estimate.meta.distanceFactor.toFixed(2)}
             </Text>
             <Text style={[styles.factorText, { color: colors.textSecondary }]}>
-              Urgencia: x{estimate.meta.urgencyFactor.toFixed(2)}
+              {t.urgencyFactor}: x{estimate.meta.urgencyFactor.toFixed(2)}
             </Text>
             <Text style={[styles.factorText, { color: colors.textSecondary }]}>
-              Complejidad: x{estimate.meta.complexityFactor.toFixed(2)}
+              {t.complexityFactor}: x{estimate.meta.complexityFactor.toFixed(2)}
             </Text>
             {hasNightSurcharge ? (
               <Text style={[styles.factorText, { color: colors.danger }]}>
-                Recargo nocturno activo: x{estimate.meta.nightFactor.toFixed(2)}
+                {t.nightSurcharge}: x{estimate.meta.nightFactor.toFixed(2)}
               </Text>
             ) : null}
             {hasWeekendSurcharge ? (
               <Text style={[styles.factorText, { color: colors.danger }]}>
-                Recargo fin de semana activo: x
-                {estimate.meta.weekendFactor.toFixed(2)}
+                {t.weekendSurcharge}: x{estimate.meta.weekendFactor.toFixed(2)}
               </Text>
             ) : null}
           </View>
@@ -558,7 +573,7 @@ export default function TechnicianDetailScreen() {
             ]}
           >
             <Text style={[styles.confirmText, { color: colors.onPrimary }]}>
-              Confirmar y ver ruta
+              {t.confirm}
             </Text>
           </Pressable>
         </Animated.View>

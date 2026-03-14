@@ -13,14 +13,18 @@ import {
     useColorScheme,
 } from "react-native";
 
+import { getAppCopy } from "@/constants/app-copy";
+import { AppLanguage } from "@/constants/app-preferences";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
+import { useAppLanguage } from "@/hooks/use-app-language";
 
 export default function ModalScreen() {
   const colorScheme = useColorScheme();
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
   const { reduceMotionEnabled } = useAccessibilityPreferences();
+  const language = useAppLanguage();
   const entranceOpacity = useMemo(() => new Animated.Value(0), []);
   const entranceTranslateY = useMemo(() => new Animated.Value(12), []);
   const optionAnimValues = useMemo(
@@ -81,26 +85,9 @@ export default function ModalScreen() {
     router.back();
   };
 
-  const emergencyOptions = [
-    {
-      id: "1",
-      title: "Mecanico urgente",
-      subtitle: "Falla severa en carretera",
-      icon: "construct" as const,
-    },
-    {
-      id: "2",
-      title: "Grua inmediata",
-      subtitle: "Traslado en emergencia",
-      icon: "car-sport" as const,
-    },
-    {
-      id: "3",
-      title: "Plomeria critica",
-      subtitle: "Fuga o rotura mayor",
-      icon: "water" as const,
-    },
-  ];
+  const t = getAppCopy(language as AppLanguage).modal;
+
+  const emergencyOptions = t.options;
 
   return (
     <SafeAreaView
@@ -118,14 +105,14 @@ export default function ModalScreen() {
         >
           <View style={[styles.alertBadge, { backgroundColor: colors.danger }]}>
             <Ionicons name="warning" size={15} color="#fff" />
-            <Text style={styles.alertBadgeText}>ALERTA CRITICA</Text>
+            <Text style={styles.alertBadgeText}>{t.alert}</Text>
           </View>
 
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Emergencia rapida
+            {t.title}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Selecciona tu tipo de incidente para priorizar la asistencia.
+            {t.subtitle}
           </Text>
 
           <View
@@ -139,7 +126,7 @@ export default function ModalScreen() {
           >
             <Ionicons name="pulse" size={16} color={colors.tracking} />
             <Text style={[styles.routeText, { color: colors.primary }]}>
-              Unidad disponible para salida inmediata
+              {t.routeStatus}
             </Text>
           </View>
 
@@ -212,7 +199,7 @@ export default function ModalScreen() {
             style={[styles.closeButton, { backgroundColor: colors.primary }]}
           >
             <Text style={[styles.closeText, { color: colors.onPrimary }]}>
-              Cerrar
+              {t.close}
             </Text>
           </Pressable>
         </Animated.View>

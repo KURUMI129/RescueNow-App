@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 
-import { HomeThemeColors } from '@/constants/home-theme';
+import { HomeThemeColors } from "@/constants/home-theme";
 
 type Technician = {
   id: string;
@@ -14,12 +14,19 @@ type Technician = {
 type NearbyTechniciansProps = {
   colors: HomeThemeColors;
   data: Technician[];
+  title?: string;
+  etaPrefix?: string;
 };
 
-export function NearbyTechnicians({ colors, data }: NearbyTechniciansProps) {
+export function NearbyTechnicians({
+  colors,
+  data,
+  title = "Técnicos cercanos",
+  etaPrefix = "ETA",
+}: NearbyTechniciansProps) {
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>Tecnicos cercanos</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
 
       <FlatList
         data={data}
@@ -27,19 +34,48 @@ export function NearbyTechnicians({ colors, data }: NearbyTechniciansProps) {
         scrollEnabled={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item }) => (
-          <View style={[styles.card, { borderColor: colors.cardBorder, backgroundColor: colors.surface }]}>
+          <View
+            style={[
+              styles.card,
+              {
+                borderColor: colors.cardBorder,
+                backgroundColor: colors.surface,
+              },
+            ]}
+          >
             <View style={styles.nameRow}>
-              <Text style={[styles.name, { color: colors.textPrimary }]}>{item.name}</Text>
-              <View style={[styles.specialtyPill, { backgroundColor: colors.mapBackground }]}>
-                <Text style={[styles.specialtyText, { color: colors.accent }]}>{item.specialty}</Text>
+              <Text style={[styles.name, { color: colors.textPrimary }]}>
+                {item.name}
+              </Text>
+              <View
+                style={[
+                  styles.specialtyPill,
+                  { backgroundColor: colors.mapBackground },
+                ]}
+              >
+                <Text style={[styles.specialtyText, { color: colors.accent }]}>
+                  {item.specialty}
+                </Text>
               </View>
             </View>
 
             <View style={styles.metaRow}>
-              <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>ETA {item.eta}</Text>
-              <Ionicons name="navigate-outline" size={14} color={colors.textSecondary} />
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>{item.distance}</Text>
+              <Ionicons
+                name="time-outline"
+                size={14}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                {etaPrefix} {item.eta}
+              </Text>
+              <Ionicons
+                name="navigate-outline"
+                size={14}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                {item.distance}
+              </Text>
             </View>
           </View>
         )}
@@ -54,7 +90,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: "800",
     marginBottom: 10,
   },
   card: {
@@ -66,13 +102,13 @@ const styles = StyleSheet.create({
     height: 8,
   },
   nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   name: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   specialtyPill: {
     borderRadius: 999,
@@ -81,12 +117,12 @@ const styles = StyleSheet.create({
   },
   specialtyText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   metaRow: {
     marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   metaText: {

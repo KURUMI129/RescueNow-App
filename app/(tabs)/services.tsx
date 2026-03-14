@@ -15,9 +15,12 @@ import {
     View,
 } from "react-native";
 
+import { getAppCopy } from "@/constants/app-copy";
+import { AppLanguage } from "@/constants/app-preferences";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { SERVICE_OPTIONS, ServiceCategory } from "@/constants/service-flow";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
+import { useAppLanguage } from "@/hooks/use-app-language";
 
 const SERVICE_ACCENT: Record<ServiceCategory, string> = {
   mech: "#0047AB",
@@ -32,6 +35,7 @@ export default function ServicesScreen() {
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
   const { reduceMotionEnabled } = useAccessibilityPreferences();
+  const language = useAppLanguage();
   const { width } = useWindowDimensions();
   const titleSize = Math.max(22, Math.min(28, width * 0.075));
   const [issueDescription, setIssueDescription] = useState<string>("");
@@ -41,6 +45,8 @@ export default function ServicesScreen() {
     () => SERVICE_OPTIONS.map(() => new Animated.Value(0)),
     [],
   );
+
+  const t = getAppCopy(language as AppLanguage).tabs.services;
 
   useEffect(() => {
     if (reduceMotionEnabled) {
@@ -112,7 +118,7 @@ export default function ServicesScreen() {
           ]}
         >
           <Text style={[styles.topLabel, { color: colors.textSecondary }]}>
-            Paso 1 de 3
+            {t.step}
           </Text>
           <Text
             style={[
@@ -120,7 +126,7 @@ export default function ServicesScreen() {
               { color: colors.textPrimary, fontSize: titleSize },
             ]}
           >
-            Que servicio necesitas?
+            {t.title}
           </Text>
 
           <View
@@ -134,18 +140,18 @@ export default function ServicesScreen() {
           >
             <Ionicons name="navigate" size={16} color={colors.primary} />
             <Text style={[styles.statusText, { color: colors.primary }]}>
-              Asistencia activa en tu zona
+              {t.activeAssistance}
             </Text>
           </View>
 
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            Describe tu problema (opcional)
+            {t.issueLabel}
           </Text>
           <TextInput
             multiline
             value={issueDescription}
             onChangeText={setIssueDescription}
-            placeholder="Ejemplo: Se me poncho una llanta en carretera."
+            placeholder={t.issuePlaceholder}
             placeholderTextColor={colors.textSecondary}
             style={[
               styles.issueInput,
@@ -158,77 +164,83 @@ export default function ServicesScreen() {
           />
 
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            Categorias disponibles
+            {t.categories}
           </Text>
 
-          {SERVICE_OPTIONS.map((option, index) => (
-            <Animated.View
-              key={option.id}
-              style={{
-                opacity: cardAnimValues[index],
-                transform: [
-                  {
-                    translateY: cardAnimValues[index].interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [10, 0],
-                    }),
-                  },
-                ],
-              }}
-            >
-              <Pressable
-                onPress={() => handleServicePress(option.id as ServiceCategory)}
-                style={({ pressed }) => [
-                  styles.card,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: SERVICE_ACCENT[option.id as ServiceCategory],
-                    opacity: pressed ? 0.86 : 1,
-                  },
-                ]}
+          {SERVICE_OPTIONS.map((option, index) => {
+            const optionCopy = t.options[option.id as ServiceCategory];
+
+            return (
+              <Animated.View
+                key={option.id}
+                style={{
+                  opacity: cardAnimValues[index],
+                  transform: [
+                    {
+                      translateY: cardAnimValues[index].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0],
+                      }),
+                    },
+                  ],
+                }}
               >
-                <View
-                  style={[
-                    styles.iconWrap,
-                    { backgroundColor: colors.mapBackground },
+                <Pressable
+                  onPress={() =>
+                    handleServicePress(option.id as ServiceCategory)
+                  }
+                  style={({ pressed }) => [
+                    styles.card,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: SERVICE_ACCENT[option.id as ServiceCategory],
+                      opacity: pressed ? 0.86 : 1,
+                    },
                   ]}
                 >
-                  <Ionicons
-                    name={option.icon}
-                    size={18}
-                    color={SERVICE_ACCENT[option.id as ServiceCategory]}
-                  />
-                </View>
-
-                <View style={styles.textWrap}>
-                  <Text
-                    style={[styles.cardTitle, { color: colors.textPrimary }]}
-                  >
-                    {option.title}
-                  </Text>
-                  <Text
+                  <View
                     style={[
-                      styles.cardSubtitle,
-                      { color: colors.textSecondary },
+                      styles.iconWrap,
+                      { backgroundColor: colors.mapBackground },
                     ]}
                   >
-                    {option.subtitle}
-                  </Text>
-                  <Text
-                    style={[styles.cardHint, { color: colors.textSecondary }]}
-                  >
-                    Tecnicos disponibles ahora
-                  </Text>
-                </View>
+                    <Ionicons
+                      name={option.icon}
+                      size={18}
+                      color={SERVICE_ACCENT[option.id as ServiceCategory]}
+                    />
+                  </View>
 
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color={colors.textSecondary}
-                />
-              </Pressable>
-            </Animated.View>
-          ))}
+                  <View style={styles.textWrap}>
+                    <Text
+                      style={[styles.cardTitle, { color: colors.textPrimary }]}
+                    >
+                      {optionCopy.title}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.cardSubtitle,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {optionCopy.subtitle}
+                    </Text>
+                    <Text
+                      style={[styles.cardHint, { color: colors.textSecondary }]}
+                    >
+                      {t.techAvailable}
+                    </Text>
+                  </View>
+
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                </Pressable>
+              </Animated.View>
+            );
+          })}
         </Animated.View>
       </ScrollView>
     </SafeAreaView>

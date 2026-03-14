@@ -4,13 +4,17 @@ import { StyleSheet, View } from "react-native";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { getAppCopy } from "@/constants/app-copy";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
+import { useAppLanguage } from "@/hooks/use-app-language";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const language = useAppLanguage();
   const colors =
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const navigationCopy = getAppCopy(language).navigation;
 
   const renderTabIcon = (
     name: React.ComponentProps<typeof IconSymbol>["name"],
@@ -72,7 +76,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: navigationCopy.homeTab,
           tabBarIcon: ({ color, focused }) =>
             renderTabIcon("house.fill", color, focused),
         }}
@@ -104,7 +108,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="options"
         options={{
-          title: "Ajustes",
+          title: navigationCopy.optionsTab,
           tabBarIcon: ({ color, focused }) =>
             renderTabIcon("gearshape.fill", color, focused),
         }}

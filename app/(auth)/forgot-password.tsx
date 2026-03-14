@@ -1,28 +1,35 @@
-import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native';
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useColorScheme,
+} from "react-native";
 
-import { AuthHeader } from '@/components/auth/auth-header';
-import { AUTH_THEME_COLORS } from '@/constants/auth-theme';
+import { AuthHeader } from "@/components/auth/auth-header";
+import { getAppCopy } from "@/constants/app-copy";
+import { AppLanguage } from "@/constants/app-preferences";
+import { AUTH_THEME_COLORS } from "@/constants/auth-theme";
+import { useAppLanguage } from "@/hooks/use-app-language";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const colors = colorScheme === 'dark' ? AUTH_THEME_COLORS.dark : AUTH_THEME_COLORS.light;
+  const colors =
+    colorScheme === "dark" ? AUTH_THEME_COLORS.dark : AUTH_THEME_COLORS.light;
+  const language = useAppLanguage();
 
-  const [email, setEmail] = useState<string>('');
+  const [email, setEmail] = useState<string>("");
   const [sent, setSent] = useState<boolean>(false);
+
+  const t = getAppCopy(language as AppLanguage).auth.forgotPassword;
 
   const canSubmit = email.trim().length > 4;
 
@@ -36,27 +43,45 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flexContainer}>
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.flexContainer}
+      >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+        >
           <AuthHeader colors={colors} />
 
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recuperar contrasena</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-              Ingresa tu correo y te enviaremos instrucciones para restablecer tu acceso.
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              {t.sectionTitle}
+            </Text>
+            <Text
+              style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
+            >
+              {t.sectionSubtitle}
             </Text>
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Correo electronico</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t.email}
+            </Text>
             <TextInput
               autoCapitalize="none"
               keyboardType="email-address"
-              placeholder="ejemplo@correo.com"
+              placeholder={t.emailPlaceholder}
               placeholderTextColor={colors.inputPlaceholder}
               style={[
                 styles.input,
@@ -76,8 +101,10 @@ export default function ForgotPasswordScreen() {
             />
 
             {sent ? (
-              <Text style={[styles.successText, { color: colors.textSecondary }]}>
-                Te enviamos un enlace de recuperacion. Revisa tu bandeja de entrada.
+              <Text
+                style={[styles.successText, { color: colors.textSecondary }]}
+              >
+                {t.sentMessage}
               </Text>
             ) : null}
 
@@ -88,13 +115,27 @@ export default function ForgotPasswordScreen() {
               onPress={handleRecover}
               style={[
                 styles.submitButton,
-                { backgroundColor: canSubmit ? colors.primary : colors.primaryDisabled },
-              ]}>
-              <Text style={[styles.submitButtonText, { color: colors.onPrimary }]}>Enviar enlace</Text>
+                {
+                  backgroundColor: canSubmit
+                    ? colors.primary
+                    : colors.primaryDisabled,
+                },
+              ]}
+            >
+              <Text
+                style={[styles.submitButtonText, { color: colors.onPrimary }]}
+              >
+                {t.sendLink}
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={styles.linkButton}>
-              <Text style={[styles.linkText, { color: colors.primary }]}>Volver a iniciar sesion</Text>
+            <TouchableOpacity
+              onPress={() => router.push("/(auth)/login")}
+              style={styles.linkButton}
+            >
+              <Text style={[styles.linkText, { color: colors.primary }]}>
+                {t.backToLogin}
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -114,15 +155,15 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 18,
     paddingVertical: 20,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   card: {
-    width: '100%',
+    width: "100%",
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 18,
     borderWidth: 1,
-    shadowColor: '#0f172a',
+    shadowColor: "#0f172a",
     shadowOpacity: 0.06,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -130,7 +171,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   sectionSubtitle: {
     fontSize: 13,
@@ -139,7 +180,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   label: {
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 13,
     marginTop: 8,
     marginBottom: 6,
@@ -159,18 +200,18 @@ const styles = StyleSheet.create({
     marginTop: 16,
     borderRadius: 14,
     paddingVertical: 13,
-    alignItems: 'center',
+    alignItems: "center",
   },
   submitButtonText: {
-    fontWeight: '700',
+    fontWeight: "700",
     fontSize: 15,
   },
   linkButton: {
     marginTop: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   linkText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

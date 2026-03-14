@@ -1,77 +1,231 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import * as Haptics from "expo-haptics";
-import { useEffect, useRef } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import * as Location from "expo-location";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
+import { getAppCopy } from "@/constants/app-copy";
+import { AppLanguage, getAppPreferences } from "@/constants/app-preferences";
 import { HomeThemeColors } from "@/constants/home-theme";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
+import { useAppLanguage } from "@/hooks/use-app-language";
 
 type PanicButtonProps = {
   colors: HomeThemeColors;
-  onPress: () => void;
+  onPress?: () => void;
 };
 
-export function PanicButton({ colors, onPress }: PanicButtonProps) {
-  const pulse = useRef(new Animated.Value(0.8)).current;
-  const { reduceMotionEnabled } = useAccessibilityPreferences();
+const PANIC_RED = "#DC2626";
 
-  const handlePress = () => {
-    if (!reduceMotionEnabled) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+async function getEmergencyCoordinates() {
+  try {
+    const currentPosition = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+
+    return currentPosition.coords;
+  } catch {
+    const lastKnownPosition = await Location.getLastKnownPositionAsync();
+
+    if (lastKnownPosition) {
+      return lastKnownPosition.coords;
     }
-    onPress();
+
+    throw new Error("location-unavailable");
+  }
+}
+
+export function PanicButton({ colors, onPress }: PanicButtonProps) {
+  const { reduceMotionEnabled } = useAccessibilityPreferences();
+  const language = useAppLanguage();
+  const [isLoading, setIsLoading] = useState(false);
+  const copy = getAppCopy(language as AppLanguage).panicButton;
+
+  const openWhatsApp = async (message: string, phone?: string) => {
+    const normalizedPhone = (phone ?? "").replace(/[^\d]/g, "");
+    const whatsappUrl = normalizedPhone
+      ? `whatsapp://send?phone=${normalizedPhone}&text=${encodeURIComponent(message)}`
+      : `whatsapp://send?text=${encodeURIComponent(message)}`;
+
+    if (await Linking.canOpenURL(whatsappUrl)) {
+      await Linking.openURL(whatsappUrl);
+      return true;
+    }
+
+    return false;
   };
 
-  useEffect(() => {
-    if (reduceMotionEnabled) {
-      pulse.setValue(1);
+  const openSms = async (message: string, phone?: string) => {
+    const normalizedPhone = (phone ?? "").replace(/[^\d+]/g, "");
+    const smsBase = normalizedPhone ? `sms:${normalizedPhone}` : "sms:";
+
+    const smsUrlAndroid = `${smsBase}?body=${encodeURIComponent(message)}`;
+    const smsUrliOS = `${smsBase}&body=${encodeURIComponent(message)}`;
+    const smsUrlLegacy = `${smsBase};body=${encodeURIComponent(message)}`;
+
+    const smsCandidates = [smsUrlAndroid, smsUrliOS, smsUrlLegacy];
+
+    for (const candidate of smsCandidates) {
+      if (await Linking.canOpenURL(candidate)) {
+        await Linking.openURL(candidate);
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const pickManualChannel = () =>
+    new Promise<"whatsapp" | "sms" | null>((resolve) => {
+      Alert.alert(copy.chooseTitle, copy.chooseMessage, [
+        {
+          text: copy.whatsappPick,
+          onPress: () => resolve("whatsapp"),
+        },
+        {
+          text: copy.smsPick,
+          onPress: () => resolve("sms"),
+        },
+        {
+          text: copy.cancel,
+          style: "cancel",
+          onPress: () => resolve(null),
+        },
+      ]);
+    });
+
+  const triggerEmergency = async () => {
+    if (isLoading) {
       return;
     }
 
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.8,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
+    try {
+      setIsLoading(true);
 
-    loop.start();
+      if (!reduceMotionEnabled) {
+        void Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Warning,
+        );
+      }
 
-    return () => {
-      loop.stop();
-    };
-  }, [pulse, reduceMotionEnabled]);
+      const appPreferences = await getAppPreferences();
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(copy.permissionTitle, copy.permissionMessage);
+        return;
+      }
+
+      const { latitude, longitude } = await getEmergencyCoordinates();
+      const message = copy.emergencyBody(latitude, longitude);
+      const hasTrustedContact =
+        appPreferences.useTrustedContact &&
+        appPreferences.trustedContactPhone.length >= 7;
+
+      let didOpenChannel = false;
+      if (hasTrustedContact) {
+        didOpenChannel = await openWhatsApp(
+          message,
+          appPreferences.trustedContactPhone,
+        );
+
+        if (!didOpenChannel) {
+          didOpenChannel = await openSms(
+            message,
+            appPreferences.trustedContactPhone,
+          );
+        }
+      } else {
+        const selectedChannel = await pickManualChannel();
+
+        if (!selectedChannel) {
+          return;
+        }
+
+        didOpenChannel =
+          selectedChannel === "whatsapp"
+            ? await openWhatsApp(message)
+            : await openSms(message);
+      }
+
+      if (!didOpenChannel) {
+        Alert.alert(copy.channelErrorTitle, copy.channelErrorMessage);
+        if (!reduceMotionEnabled) {
+          void Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Error,
+          );
+        }
+        return;
+      }
+
+      onPress?.();
+
+      if (!reduceMotionEnabled) {
+        void Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        );
+      }
+    } catch {
+      Alert.alert(copy.sendErrorTitle, copy.sendErrorMessage);
+      if (!reduceMotionEnabled) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const confirmAndTriggerEmergency = () => {
+    Alert.alert(copy.confirmTitle, copy.confirmMessage, [
+      { text: copy.cancel, style: "cancel" },
+      {
+        text: copy.sendAlert,
+        style: "destructive",
+        onPress: () => {
+          void triggerEmergency();
+        },
+      },
+    ]);
+  };
 
   return (
     <View style={styles.wrapper}>
-      <Animated.View
-        style={[
-          styles.pulseRing,
-          {
-            borderColor: colors.danger,
-            transform: [{ scale: pulse }],
-          },
-        ]}
-      />
-
       <Pressable
         accessibilityRole="button"
-        onPress={handlePress}
+        accessibilityLabel={copy.a11yLabel}
+        accessibilityHint={copy.a11yHint}
+        onLongPress={confirmAndTriggerEmergency}
+        delayLongPress={550}
+        disabled={isLoading}
         style={({ pressed }) => [
           styles.button,
-          { backgroundColor: colors.danger, opacity: pressed ? 0.85 : 1 },
+          {
+            backgroundColor: PANIC_RED,
+            opacity: pressed || isLoading ? 0.82 : 1,
+          },
         ]}
       >
-        <Text style={styles.buttonTitle}>PANICO</Text>
-        <Text style={styles.buttonSubtitle}>Asistencia inmediata</Text>
+        {isLoading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <MaterialCommunityIcons name="bullhorn" size={42} color="#fff" />
+        )}
+        <Text style={styles.buttonTitle}>
+          {isLoading ? copy.sending : copy.panic}
+        </Text>
       </Pressable>
+
+      <Text style={[styles.hintText, { color: colors.textSecondary }]}>
+        {copy.holdHint}
+      </Text>
     </View>
   );
 }
@@ -82,36 +236,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginVertical: 18,
   },
-  pulseRing: {
-    position: "absolute",
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 2,
-    opacity: 0.35,
-  },
   button: {
-    width: 130,
-    height: 130,
-    borderRadius: 65,
+    width: 154,
+    height: 154,
+    borderRadius: 77,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#7f1d1d",
-    shadowOpacity: 0.26,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 7,
+    shadowColor: "#7F1D1D",
+    shadowOpacity: 0.34,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 11,
   },
   buttonTitle: {
     color: "#fff",
     fontWeight: "900",
-    fontSize: 22,
-    letterSpacing: 1,
+    fontSize: 16,
+    letterSpacing: 1.1,
+    marginTop: 8,
   },
-  buttonSubtitle: {
-    marginTop: 3,
-    color: "#fff",
-    fontSize: 11,
+  hintText: {
+    marginTop: 14,
+    fontSize: 12,
     fontWeight: "700",
+    textAlign: "center",
   },
 });
