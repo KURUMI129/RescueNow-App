@@ -1,11 +1,6 @@
-import { getAppCopy } from "@/constants/app-copy";
-import { useAppLanguage } from "@/hooks/use-app-language";
 import { Tabs } from "expo-router";
 
 export default function TabLayout() {
-  const language = useAppLanguage();
-  const navigationCopy = getAppCopy(language).navigation;
-
   return (
     <Tabs
       screenOptions={{
@@ -18,7 +13,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: navigationCopy.homeTab,
+          title: "Inicio",
         }}
       />
       <Tabs.Screen
@@ -48,7 +43,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="options"
         options={{
-          title: navigationCopy.optionsTab,
+          title: "Ajustes",
         }}
       />
       <Tabs.Screen

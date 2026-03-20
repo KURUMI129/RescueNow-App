@@ -125,7 +125,10 @@ const APP_COPY = {
       options: {
         topLabel: "Cuenta demo",
         title: "Opciones",
+        backHome: "Volver a inicio",
         loading: "Cargando preferencias...",
+        storageWarning:
+          "No se pudo acceder al almacenamiento del dispositivo. Los cambios se aplican solo durante esta sesion.",
         profileName: "Miembro Rescue",
         activeBadge: "Activo",
         languageTitle: "Idioma de la app",
@@ -414,7 +417,10 @@ const APP_COPY = {
       options: {
         topLabel: "Demo account",
         title: "Options",
+        backHome: "Back to home",
         loading: "Loading preferences...",
+        storageWarning:
+          "Device storage is unavailable. Changes apply only for this session.",
         profileName: "Rescue member",
         activeBadge: "Active",
         languageTitle: "App language",
@@ -587,7 +593,7 @@ const APP_COPY = {
 } as const;
 
 export function getAppCopy(language: AppLanguage) {
-  return APP_COPY[language];
+  return APP_COPY[language] ?? APP_COPY.es;
 }
 
 export function getScheduleLabel(

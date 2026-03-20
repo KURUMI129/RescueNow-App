@@ -1,14 +1,14 @@
 import { usePathname, useRouter } from "expo-router";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
-    Animated,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    useColorScheme,
-    useWindowDimensions,
-    View,
+  Animated,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+  useWindowDimensions,
 } from "react-native";
 import MapView from "react-native-maps";
 
@@ -20,17 +20,17 @@ import { NearbyTechnicians } from "@/components/home/nearby-technicians";
 import { PanicButton } from "@/components/home/panic-button";
 import { getAppCopy } from "@/constants/app-copy";
 import {
-    getHomeDrawerPathFromAction,
-    getHomeDrawerRouteFromPath,
-    HOME_DRAWER_PATHS,
-    HomeDrawerActionId,
-    HomeDrawerRouteId,
+  getHomeDrawerPathFromAction,
+  getHomeDrawerRouteFromPath,
+  HomeDrawerActionId,
+  HomeDrawerRouteId,
+  HOME_DRAWER_PATHS,
 } from "@/constants/home-drawer-routes";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
 import { useAppLanguage } from "@/hooks/use-app-language";
-import { useHomeDrawer } from "@/hooks/use-home-drawer";
 import { useHomeEntranceAnimation } from "@/hooks/use-home-entrance-animation";
+import { useHomeDrawer } from "@/hooks/use-home-drawer";
 import { useLiveMap } from "@/hooks/use-live-map";
 
 export default function HomeScreen() {
@@ -43,6 +43,7 @@ export default function HomeScreen() {
     colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
   const { reduceMotionEnabled } = useAccessibilityPreferences();
   const language = useAppLanguage();
+  const [panicCount, setPanicCount] = useState<number>(0);
   const { entranceOpacity, entranceTranslateY, sectionAnimValues } =
     useHomeEntranceAnimation({ reduceMotionEnabled });
 
@@ -75,6 +76,10 @@ export default function HomeScreen() {
   });
 
   const mapRegion = useMemo(() => region, [region]);
+
+  const handlePanicPress = () => {
+    setPanicCount((prev) => prev + 1);
+  };
 
   const handleCenterMap = () => {
     mapRef.current?.animateToRegion(mapRegion, 450);
@@ -160,8 +165,12 @@ export default function HomeScreen() {
               ],
             }}
           >
-            <PanicButton colors={colors} />
+            <PanicButton colors={colors} onPress={handlePanicPress} />
           </Animated.View>
+
+          <Text style={[styles.panicCounter, { color: colors.textSecondary }]}>
+            {t.panicCounter(panicCount)}
+          </Text>
 
           <NearbyTechnicians
             colors={colors}
@@ -210,6 +219,11 @@ const styles = StyleSheet.create({
   },
   locationErrorText: {
     marginTop: 8,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  panicCounter: {
+    textAlign: "center",
     fontSize: 12,
     fontWeight: "600",
   },

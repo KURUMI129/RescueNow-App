@@ -1,0 +1,15 @@
+export const RescueNowColors = {
+  primary: "#0047AB",
+  danger: "#E11D48",
+  accent: "#FF6600",
+  tracking: "#00CED1",
+  success: "#34A853",
+  text: "#333333",
+  surface: "#FFFFFF",
+  background: "#FFFFFF",
+  textMuted: "#333333",
+  border: "#333333",
+  lightBlue: "#00CED1",
+  dangerSoft: "#E11D48",
+  trackingSoft: "#00CED1",
+};
