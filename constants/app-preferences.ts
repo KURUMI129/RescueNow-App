@@ -17,6 +17,9 @@ const DEFAULT_APP_PREFERENCES: AppPreferences = {
   useTrustedContact: false,
 };
 
+let inMemoryPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
+let isPersistentStorageAvailable = true;
+
 function normalizePhone(phone: string): string {
   return phone.replace(/[^\d+]/g, "").trim();
 }
@@ -40,16 +43,25 @@ function sanitizePreferences(
 }
 
 export async function getAppPreferences(): Promise<AppPreferences> {
+  if (!isPersistentStorageAvailable) {
+    return inMemoryPreferences;
+  }
+
   try {
     const rawStoredValue = await AsyncStorage.getItem(APP_PREFERENCES_KEY);
+    isPersistentStorageAvailable = true;
+
     if (!rawStoredValue) {
-      return DEFAULT_APP_PREFERENCES;
+      return inMemoryPreferences;
     }
 
     const parsedValue = JSON.parse(rawStoredValue) as Partial<AppPreferences>;
-    return sanitizePreferences(parsedValue);
+    const sanitized = sanitizePreferences(parsedValue);
+    inMemoryPreferences = sanitized;
+    return sanitized;
   } catch {
-    return DEFAULT_APP_PREFERENCES;
+    isPersistentStorageAvailable = false;
+    return inMemoryPreferences;
   }
 }
 
@@ -62,10 +74,26 @@ export async function updateAppPreferences(
     ...partialPreferences,
   });
 
-  await AsyncStorage.setItem(
-    APP_PREFERENCES_KEY,
-    JSON.stringify(nextPreferences),
-  );
+  inMemoryPreferences = nextPreferences;
+
+  if (!isPersistentStorageAvailable) {
+    preferenceListeners.forEach((listener) => {
+      listener(nextPreferences);
+    });
+
+    return nextPreferences;
+  }
+
+  try {
+    await AsyncStorage.setItem(
+      APP_PREFERENCES_KEY,
+      JSON.stringify(nextPreferences),
+    );
+    isPersistentStorageAvailable = true;
+  } catch {
+    isPersistentStorageAvailable = false;
+    // Keep in-memory preferences when native storage is unavailable.
+  }
 
   preferenceListeners.forEach((listener) => {
     listener(nextPreferences);
@@ -82,6 +110,10 @@ export function subscribeToAppPreferences(
   return () => {
     preferenceListeners.delete(listener);
   };
+}
+
+export function appPreferencesStorageAvailable() {
+  return isPersistentStorageAvailable;
 }
 
 export { DEFAULT_APP_PREFERENCES };
