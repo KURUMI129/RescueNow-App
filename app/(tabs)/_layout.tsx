@@ -1,10 +1,20 @@
 import { getAppCopy } from "@/constants/app-copy";
 import { useAppLanguage } from "@/hooks/use-app-language";
-import { Tabs } from "expo-router";
+import { useAuthSession } from "@/hooks/use-auth-session";
+import { Redirect, Tabs } from "expo-router";
 
 export default function TabLayout() {
+  const { isAuthLoading, isAuthenticated } = useAuthSession();
   const language = useAppLanguage();
   const navigationCopy = getAppCopy(language).navigation;
+
+  if (isAuthLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
     <Tabs
@@ -49,12 +59,6 @@ export default function TabLayout() {
         name="options"
         options={{
           title: navigationCopy.optionsTab,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          href: null,
         }}
       />
     </Tabs>

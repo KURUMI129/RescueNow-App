@@ -1,11 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type AppLanguage = "es" | "en";
+export type SubscriptionPlan = "free" | "premium";
+export type AccountRole = "user" | "technician";
 
 export type AppPreferences = {
   language: AppLanguage;
   trustedContactPhone: string;
   useTrustedContact: boolean;
+  subscriptionPlan: SubscriptionPlan;
+  accountRole: AccountRole;
 };
 
 const APP_PREFERENCES_KEY = "@rescuenow/app-preferences";
@@ -15,6 +19,8 @@ const DEFAULT_APP_PREFERENCES: AppPreferences = {
   language: "es",
   trustedContactPhone: "",
   useTrustedContact: false,
+  subscriptionPlan: "free",
+  accountRole: "user",
 };
 
 let inMemoryPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
@@ -28,6 +34,10 @@ function sanitizePreferences(
   rawPreferences?: Partial<AppPreferences> | null,
 ): AppPreferences {
   const language = rawPreferences?.language === "en" ? "en" : "es";
+  const subscriptionPlan =
+    rawPreferences?.subscriptionPlan === "premium" ? "premium" : "free";
+  const accountRole =
+    rawPreferences?.accountRole === "technician" ? "technician" : "user";
   const trustedContactPhone = normalizePhone(
     rawPreferences?.trustedContactPhone ?? "",
   );
@@ -39,6 +49,8 @@ function sanitizePreferences(
     language,
     trustedContactPhone,
     useTrustedContact,
+    subscriptionPlan,
+    accountRole,
   };
 }
 

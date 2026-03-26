@@ -16,9 +16,12 @@ import {
 import { AuthHeader } from "@/components/auth/auth-header";
 import { RoleOptionCard, UserRole } from "@/components/auth/role-option-card";
 import { getAppCopy } from "@/constants/app-copy";
-import { AppLanguage } from "@/constants/app-preferences";
+import { AppLanguage, updateAppPreferences } from "@/constants/app-preferences";
 import { AUTH_THEME_COLORS } from "@/constants/auth-theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
+import { firebaseAuth, firestoreDb } from "@/lib/firebase";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -33,6 +36,8 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authError, setAuthError] = useState("");
 
   const t = getAppCopy(language as AppLanguage).auth.register;
 
@@ -51,12 +56,52 @@ export default function RegisterScreen() {
     );
   }, [confirmPassword, email, fullName, password, passwordsMatch, phone]);
 
-  const handleRegister = () => {
-    if (!canSubmit) {
+  const handleRegister = async () => {
+    if (!canSubmit || isSubmitting) {
       return;
     }
 
-    router.replace("/(tabs)");
+    setIsSubmitting(true);
+    setAuthError("");
+
+    try {
+      const credentials = await createUserWithEmailAndPassword(
+        firebaseAuth,
+        email.trim(),
+        password,
+      );
+
+      if (fullName.trim().length > 0) {
+        await updateProfile(credentials.user, { displayName: fullName.trim() });
+      }
+
+      await setDoc(doc(firestoreDb, "users", credentials.user.uid), {
+        uid: credentials.user.uid,
+        email: credentials.user.email ?? email.trim(),
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        role,
+        subscriptionPlan: "free",
+        language,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      await updateAppPreferences({
+        accountRole: role,
+        subscriptionPlan: "free",
+      });
+
+      router.replace("/(tabs)");
+    } catch {
+      setAuthError(
+        language === "es"
+          ? "No se pudo crear la cuenta. Intenta con otro correo."
+          : "Could not create account. Try another email.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -213,8 +258,10 @@ export default function RegisterScreen() {
             <TouchableOpacity
               accessibilityRole="button"
               activeOpacity={0.9}
-              disabled={!canSubmit}
-              onPress={handleRegister}
+              disabled={!canSubmit || isSubmitting}
+              onPress={() => {
+                void handleRegister();
+              }}
               style={[
                 styles.submitButton,
                 {
@@ -230,6 +277,12 @@ export default function RegisterScreen() {
                 {t.submit}
               </Text>
             </TouchableOpacity>
+
+            {authError ? (
+              <Text style={[styles.errorText, { color: colors.danger }]}>
+                {authError}
+              </Text>
+            ) : null}
 
             <TouchableOpacity
               onPress={() => router.push("/(auth)/login")}

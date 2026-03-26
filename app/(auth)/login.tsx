@@ -17,9 +17,17 @@ import {
 import { AuthHeader } from "@/components/auth/auth-header";
 import { RoleOptionCard, UserRole } from "@/components/auth/role-option-card";
 import { getAppCopy } from "@/constants/app-copy";
-import { AppLanguage } from "@/constants/app-preferences";
+import {
+  AccountRole,
+  AppLanguage,
+  SubscriptionPlan,
+  updateAppPreferences,
+} from "@/constants/app-preferences";
 import { AUTH_THEME_COLORS } from "@/constants/auth-theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
+import { firebaseAuth, firestoreDb } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -31,6 +39,8 @@ export default function LoginScreen() {
   const [role, setRole] = useState<UserRole>("user");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authError, setAuthError] = useState<string>("");
 
   const t = getAppCopy(language as AppLanguage).auth.login;
 
@@ -57,10 +67,51 @@ export default function LoginScreen() {
     }).start();
   }, [role, technicianScale, userScale]);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setAuthError("");
+
     // Flujo temporal: navega al modulo principal.
     // En el siguiente paso lo conectamos con la API real de autenticacion.
-    router.replace("/(tabs)");
+    try {
+      const credentials = await signInWithEmailAndPassword(
+        firebaseAuth,
+        email.trim(),
+        password,
+      );
+      const userProfileRef = doc(firestoreDb, "users", credentials.user.uid);
+      const userProfileSnap = await getDoc(userProfileRef);
+      const profile = userProfileSnap.data() as
+        | {
+            role?: AccountRole;
+            subscriptionPlan?: SubscriptionPlan;
+            trustedContactPhone?: string;
+            language?: AppLanguage;
+          }
+        | undefined;
+
+      await updateAppPreferences({
+        accountRole: profile?.role === "technician" ? "technician" : role,
+        subscriptionPlan:
+          profile?.subscriptionPlan === "premium" ? "premium" : "free",
+        trustedContactPhone: profile?.trustedContactPhone ?? "",
+        language: profile?.language === "en" ? "en" : language,
+      });
+
+      router.replace("/(tabs)");
+    } catch {
+      setAuthError(
+        language === "es"
+          ? "No se pudo iniciar sesion. Revisa correo y contraseña."
+          : "Could not sign in. Check your email and password.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -175,8 +226,15 @@ export default function LoginScreen() {
             <TouchableOpacity
               accessibilityRole="button"
               activeOpacity={0.9}
-              onPress={handleLogin}
-              style={[styles.submitButton, { backgroundColor: colors.primary }]}
+              disabled={isSubmitting}
+              onPress={() => {
+                void handleLogin();
+              }}
+              style={[
+                styles.submitButton,
+                isSubmitting && styles.submitButtonDisabled,
+                { backgroundColor: colors.primary },
+              ]}
             >
               <Text
                 style={[styles.submitButtonText, { color: colors.onPrimary }]}
@@ -184,6 +242,12 @@ export default function LoginScreen() {
                 {t.submit}
               </Text>
             </TouchableOpacity>
+
+            {authError ? (
+              <Text style={[styles.errorText, { color: colors.danger }]}>
+                {authError}
+              </Text>
+            ) : null}
 
             <Text style={[styles.footerText, { color: colors.textSecondary }]}>
               {t.footer}
@@ -274,6 +338,12 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 12,
     fontWeight: "700",
+  },
+  errorText: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
   },
   footerText: {
     marginTop: 14,

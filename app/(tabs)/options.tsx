@@ -19,13 +19,17 @@ import {
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { getAppCopy } from "@/constants/app-copy";
 import {
+    AccountRole,
     AppLanguage,
     DEFAULT_APP_PREFERENCES,
     getAppPreferences,
+    SubscriptionPlan,
     updateAppPreferences,
 } from "@/constants/app-preferences";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
+import { firebaseAuth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 export default function OptionsScreen() {
   const router = useRouter();
@@ -44,7 +48,14 @@ export default function OptionsScreen() {
   );
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [isSavingContact, setIsSavingContact] = useState(false);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [isLoadingPrefs, setIsLoadingPrefs] = useState(true);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan>(
+    DEFAULT_APP_PREFERENCES.subscriptionPlan,
+  );
+  const [accountRole, setAccountRole] = useState<AccountRole>(
+    DEFAULT_APP_PREFERENCES.accountRole,
+  );
   const { width } = useWindowDimensions();
   const titleSize = Math.max(22, Math.min(28, width * 0.075));
   const entranceOpacity = useMemo(() => new Animated.Value(0), []);
@@ -57,6 +68,8 @@ export default function OptionsScreen() {
       setLanguage(preferences.language);
       setTrustedContactPhone(preferences.trustedContactPhone);
       setUseTrustedContact(preferences.useTrustedContact);
+      setSubscriptionPlan(preferences.subscriptionPlan);
+      setAccountRole(preferences.accountRole);
       setIsLoadingPrefs(false);
     };
 
@@ -89,6 +102,8 @@ export default function OptionsScreen() {
     setTrustedContactPhone(nextPrefs.trustedContactPhone);
     setUseTrustedContact(nextPrefs.useTrustedContact);
     setLanguage(nextPrefs.language);
+    setSubscriptionPlan(nextPrefs.subscriptionPlan);
+    setAccountRole(nextPrefs.accountRole);
     setIsSavingContact(false);
   };
 
@@ -105,8 +120,50 @@ export default function OptionsScreen() {
     setTrustedContactPhone(nextPrefs.trustedContactPhone);
     setUseTrustedContact(nextPrefs.useTrustedContact);
     setLanguage(nextPrefs.language);
+    setSubscriptionPlan(nextPrefs.subscriptionPlan);
+    setAccountRole(nextPrefs.accountRole);
     setIsSavingContact(false);
   };
+
+  const handleTogglePlan = async (nextPlan: SubscriptionPlan) => {
+    if (isSavingPlan || nextPlan === subscriptionPlan) {
+      return;
+    }
+
+    setIsSavingPlan(true);
+    const nextPrefs = await updateAppPreferences({
+      subscriptionPlan: nextPlan,
+    });
+    setSubscriptionPlan(nextPrefs.subscriptionPlan);
+    setLanguage(nextPrefs.language);
+    setTrustedContactPhone(nextPrefs.trustedContactPhone);
+    setUseTrustedContact(nextPrefs.useTrustedContact);
+    setAccountRole(nextPrefs.accountRole);
+    setIsSavingPlan(false);
+  };
+
+  const planTitle =
+    language === "es"
+      ? subscriptionPlan === "premium"
+        ? "Plan Premium"
+        : "Plan Gratis"
+      : subscriptionPlan === "premium"
+        ? "Premium Plan"
+        : "Free Plan";
+
+  const planSubtitle =
+    language === "es"
+      ? "Seguridad y alertas vitales siempre incluidas. Premium solo desbloquea diagnostico avanzado de IA y analitica tecnica."
+      : "Critical safety alerts are always included. Premium unlocks advanced AI diagnostics and technical analytics.";
+
+  const roleLabel =
+    language === "es"
+      ? accountRole === "technician"
+        ? "Tecnico"
+        : "Usuario"
+      : accountRole === "technician"
+        ? "Technician"
+        : "User";
 
   useEffect(() => {
     if (reduceMotionEnabled) {
@@ -128,6 +185,20 @@ export default function OptionsScreen() {
       }),
     ]).start();
   }, [entranceOpacity, entranceTranslateY, reduceMotionEnabled]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(firebaseAuth);
+      await updateAppPreferences({
+        trustedContactPhone: "",
+        useTrustedContact: false,
+        subscriptionPlan: "free",
+        accountRole: "user",
+      });
+    } finally {
+      router.replace("/(auth)/login");
+    }
+  };
 
   return (
     <SafeAreaView
@@ -197,7 +268,7 @@ export default function OptionsScreen() {
               <Text
                 style={[styles.profileEmail, { color: colors.textSecondary }]}
               >
-                demo@rescuenow.app
+                demo@rescuenow.app · {roleLabel}
               </Text>
             </View>
             <View
@@ -208,6 +279,93 @@ export default function OptionsScreen() {
             >
               <Text style={styles.profileBadgeText}>{copy.activeBadge}</Text>
             </View>
+          </View>
+
+          <View
+            style={[
+              styles.settingsCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <Text style={[styles.settingsTitle, { color: colors.textPrimary }]}>
+              {planTitle}
+            </Text>
+            <Text
+              style={[styles.settingsSubtitle, { color: colors.textSecondary }]}
+            >
+              {planSubtitle}
+            </Text>
+
+            <View style={styles.contactButtonsRow}>
+              <Pressable
+                onPress={() => {
+                  void handleTogglePlan("free");
+                }}
+                style={({ pressed }) => [
+                  styles.contactButton,
+                  {
+                    backgroundColor:
+                      subscriptionPlan === "free"
+                        ? colors.primary
+                        : colors.mapBackground,
+                    opacity: pressed || isSavingPlan ? 0.82 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.contactButtonText,
+                    {
+                      color:
+                        subscriptionPlan === "free"
+                          ? "#FFFFFF"
+                          : colors.textPrimary,
+                    },
+                  ]}
+                >
+                  {language === "es" ? "Modo Gratis" : "Free Mode"}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  void handleTogglePlan("premium");
+                }}
+                style={({ pressed }) => [
+                  styles.contactButton,
+                  {
+                    backgroundColor:
+                      subscriptionPlan === "premium"
+                        ? colors.accent
+                        : colors.mapBackground,
+                    opacity: pressed || isSavingPlan ? 0.82 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.contactButtonText,
+                    {
+                      color:
+                        subscriptionPlan === "premium"
+                          ? colors.onPrimary
+                          : colors.textPrimary,
+                    },
+                  ]}
+                >
+                  {language === "es" ? "Activar Premium" : "Enable Premium"}
+                </Text>
+              </Pressable>
+            </View>
+
+            {isSavingPlan ? (
+              <Text style={[styles.saveHint, { color: colors.textSecondary }]}>
+                {copy.saving}
+              </Text>
+            ) : null}
           </View>
 
           <View
@@ -432,7 +590,9 @@ export default function OptionsScreen() {
           })}
 
           <Pressable
-            onPress={() => router.replace("/(auth)/login")}
+            onPress={() => {
+              void handleLogout();
+            }}
             style={({ pressed }) => [
               styles.logoutButton,
               {
