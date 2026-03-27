@@ -1,3 +1,4 @@
+import { useActiveTheme } from "@/hooks/use-active-theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -31,9 +32,8 @@ const SERVICE_ACCENT: Record<ServiceCategory, string> = {
 
 export default function ServicesScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors =
-    colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const activeTheme = useActiveTheme();
+  const colors = HOME_THEME_COLORS[activeTheme];
   const { reduceMotionEnabled } = useAccessibilityPreferences();
   const language = useAppLanguage();
   const { width } = useWindowDimensions();
@@ -205,7 +205,7 @@ export default function ServicesScreen() {
                     ]}
                   >
                     <Ionicons
-                      name={option.icon}
+                      name={option.icon as keyof typeof Ionicons.glyphMap}
                       size={18}
                       color={SERVICE_ACCENT[option.id as ServiceCategory]}
                     />

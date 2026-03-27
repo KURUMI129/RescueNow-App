@@ -4,57 +4,57 @@ export type AuthThemeColors = {
   cardBorder: string;
   textPrimary: string;
   textSecondary: string;
+  primary: string;
+  onPrimary: string;
   inputBackground: string;
   inputBorder: string;
   inputPlaceholder: string;
-  primary: string;
-  primaryDisabled: string;
-  onPrimary: string;
-  roleCardBackground: string;
-  roleCardBorder: string;
-  roleCardSelectedBackground: string;
   roleIconBackground: string;
   roleIconSelectedBackground: string;
   iconBadgeBackground: string;
+  danger: string;
+  accent: string;
+};
+
+// Opción 1 "Carmesí Neón" (Modo Oscuro Vibrante)
+const darkTheme: AuthThemeColors = {
+  background: "#171717",
+  surface: "#262626",
+  cardBorder: "rgba(255, 255, 255, 0.1)",
+  textPrimary: "#FFFFFF",
+  textSecondary: "#A3A3A3",
+  primary: "#FF1E47",
+  onPrimary: "#FFFFFF",
+  inputBackground: "rgba(0, 0, 0, 0.3)",
+  inputBorder: "rgba(255, 255, 255, 0.15)",
+  inputPlaceholder: "#737373",
+  roleIconBackground: "#404040",
+  roleIconSelectedBackground: "#FF1E47",
+  iconBadgeBackground: "rgba(255, 30, 71, 0.2)",
+  danger: "#EF4444",
+  accent: "#FFB800",
+};
+
+// Opción 3 "Alerta Inmediata" (Modo Claro Vibrante)
+const lightTheme: AuthThemeColors = {
+  background: "#FAFAFA",
+  surface: "#FFFFFF",
+  cardBorder: "rgba(0, 0, 0, 0.08)",
+  textPrimary: "#0F172A",
+  textSecondary: "#64748B",
+  primary: "#E10032",
+  onPrimary: "#FFFFFF",
+  inputBackground: "#F1F5F9",
+  inputBorder: "rgba(0, 0, 0, 0.1)",
+  inputPlaceholder: "#94A3B8",
+  roleIconBackground: "#E2E8F0",
+  roleIconSelectedBackground: "#E10032",
+  iconBadgeBackground: "rgba(225, 0, 50, 0.15)",
+  danger: "#DC2626",
+  accent: "#FFB800",
 };
 
 export const AUTH_THEME_COLORS: Record<"light" | "dark", AuthThemeColors> = {
-  light: {
-    background: "#FFFFFF",
-    surface: "#FFFFFF",
-    cardBorder: "#C9D6E8",
-    textPrimary: "#1F242B",
-    textSecondary: "#465568",
-    inputBackground: "#F5F9FF",
-    inputBorder: "#C9D6E8",
-    inputPlaceholder: "#6E829F",
-    primary: "#0047AB",
-    primaryDisabled: "#8BAFDA",
-    onPrimary: "#FFFFFF",
-    roleCardBackground: "#FFFFFF",
-    roleCardBorder: "#D8E2F0",
-    roleCardSelectedBackground: "#EAF2FF",
-    roleIconBackground: "#DDEBFF",
-    roleIconSelectedBackground: "#0047AB",
-    iconBadgeBackground: "#EAF2FF",
-  },
-  dark: {
-    background: "#FFFFFF",
-    surface: "#FFFFFF",
-    cardBorder: "#C9D6E8",
-    textPrimary: "#1F242B",
-    textSecondary: "#465568",
-    inputBackground: "#F5F9FF",
-    inputBorder: "#C9D6E8",
-    inputPlaceholder: "#6E829F",
-    primary: "#0047AB",
-    primaryDisabled: "#8BAFDA",
-    onPrimary: "#FFFFFF",
-    roleCardBackground: "#FFFFFF",
-    roleCardBorder: "#D8E2F0",
-    roleCardSelectedBackground: "#EAF2FF",
-    roleIconBackground: "#DDEBFF",
-    roleIconSelectedBackground: "#0047AB",
-    iconBadgeBackground: "#EAF2FF",
-  },
+  light: lightTheme,
+  dark: darkTheme,
 };

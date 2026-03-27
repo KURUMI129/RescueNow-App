@@ -1,6 +1,9 @@
+import { useActiveTheme } from "@/hooks/use-active-theme";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+    Animated,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -10,11 +13,9 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    useColorScheme,
 } from "react-native";
 
 import { AuthHeader } from "@/components/auth/auth-header";
-import { RoleOptionCard, UserRole } from "@/components/auth/role-option-card";
 import { getAppCopy } from "@/constants/app-copy";
 import { AppLanguage, updateAppPreferences } from "@/constants/app-preferences";
 import { AUTH_THEME_COLORS } from "@/constants/auth-theme";
@@ -25,12 +26,10 @@ import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors =
-    colorScheme === "dark" ? AUTH_THEME_COLORS.dark : AUTH_THEME_COLORS.light;
+  const activeTheme = useActiveTheme();
+  const colors = AUTH_THEME_COLORS[activeTheme];
   const language = useAppLanguage();
 
-  const [role, setRole] = useState<UserRole>("user");
   const [fullName, setFullName] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [email, setEmail] = useState<string>("");
@@ -44,17 +43,28 @@ export default function RegisterScreen() {
   const passwordsMatch =
     password.trim().length > 0 && password === confirmPassword;
 
-  // Valida datos base del formulario sin cambiar logica de negocio aun.
+  // Valida datos base del formulario
   const canSubmit = useMemo(() => {
     return (
       fullName.trim().length > 3 &&
-      phone.trim().length >= 8 &&
       email.trim().length > 4 &&
       password.trim().length > 5 &&
       confirmPassword.trim().length > 5 &&
       passwordsMatch
     );
-  }, [confirmPassword, email, fullName, password, passwordsMatch, phone]);
+  }, [confirmPassword, email, fullName, password, passwordsMatch]);
+
+  const fadeAnim1 = useRef(new Animated.Value(0)).current;
+  const fadeAnim2 = useRef(new Animated.Value(0)).current;
+  const fadeAnim3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.stagger(200, [
+      Animated.spring(fadeAnim1, { toValue: 1, friction: 7, tension: 35, useNativeDriver: true }),
+      Animated.spring(fadeAnim2, { toValue: 1, friction: 7, tension: 35, useNativeDriver: true }),
+      Animated.spring(fadeAnim3, { toValue: 1, friction: 7, tension: 35, useNativeDriver: true }),
+    ]).start();
+  }, [fadeAnim1, fadeAnim2, fadeAnim3]);
 
   const handleRegister = async () => {
     if (!canSubmit || isSubmitting) {
@@ -74,6 +84,8 @@ export default function RegisterScreen() {
       if (fullName.trim().length > 0) {
         await updateProfile(credentials.user, { displayName: fullName.trim() });
       }
+
+      const role = "user";
 
       await setDoc(doc(firestoreDb, "users", credentials.user.uid), {
         uid: credentials.user.uid,
@@ -128,170 +140,143 @@ export default function RegisterScreen() {
               },
             ]}
           >
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {t.sectionTitle}
-            </Text>
-            <Text
-              style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
-            >
-              {t.sectionSubtitle}
-            </Text>
-
-            <RoleOptionCard
-              role="user"
-              title={t.userTitle}
-              description={t.userDesc}
-              selected={role === "user"}
-              colors={colors}
-              onPress={setRole}
-            />
-            <RoleOptionCard
-              role="technician"
-              title={t.technicianTitle}
-              description={t.technicianDesc}
-              selected={role === "technician"}
-              colors={colors}
-              onPress={setRole}
-            />
-
-            <Text style={[styles.label, { color: colors.textPrimary }]}>
-              {t.fullName}
-            </Text>
-            <TextInput
-              placeholder={t.fullNamePlaceholder}
-              placeholderTextColor={colors.inputPlaceholder}
-              style={[
-                styles.input,
-                {
-                  color: colors.textPrimary,
-                  borderColor: colors.inputBorder,
-                  backgroundColor: colors.inputBackground,
-                },
-              ]}
-              value={fullName}
-              onChangeText={setFullName}
-            />
-
-            <Text style={[styles.label, { color: colors.textPrimary }]}>
-              {t.phone}
-            </Text>
-            <TextInput
-              keyboardType="phone-pad"
-              placeholder={t.phonePlaceholder}
-              placeholderTextColor={colors.inputPlaceholder}
-              style={[
-                styles.input,
-                {
-                  color: colors.textPrimary,
-                  borderColor: colors.inputBorder,
-                  backgroundColor: colors.inputBackground,
-                },
-              ]}
-              value={phone}
-              onChangeText={setPhone}
-            />
-
-            <Text style={[styles.label, { color: colors.textPrimary }]}>
-              {t.email}
-            </Text>
-            <TextInput
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholder={t.emailPlaceholder}
-              placeholderTextColor={colors.inputPlaceholder}
-              style={[
-                styles.input,
-                {
-                  color: colors.textPrimary,
-                  borderColor: colors.inputBorder,
-                  backgroundColor: colors.inputBackground,
-                },
-              ]}
-              value={email}
-              onChangeText={setEmail}
-            />
-
-            <Text style={[styles.label, { color: colors.textPrimary }]}>
-              {t.password}
-            </Text>
-            <TextInput
-              secureTextEntry
-              placeholder={t.passwordPlaceholder}
-              placeholderTextColor={colors.inputPlaceholder}
-              style={[
-                styles.input,
-                {
-                  color: colors.textPrimary,
-                  borderColor: colors.inputBorder,
-                  backgroundColor: colors.inputBackground,
-                },
-              ]}
-              value={password}
-              onChangeText={setPassword}
-            />
-
-            <Text style={[styles.label, { color: colors.textPrimary }]}>
-              {t.confirmPassword}
-            </Text>
-            <TextInput
-              secureTextEntry
-              placeholder={t.confirmPasswordPlaceholder}
-              placeholderTextColor={colors.inputPlaceholder}
-              style={[
-                styles.input,
-                {
-                  color: colors.textPrimary,
-                  borderColor: colors.inputBorder,
-                  backgroundColor: colors.inputBackground,
-                },
-              ]}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-            />
-
-            {confirmPassword.trim().length > 0 && !passwordsMatch ? (
-              <Text style={[styles.errorText, { color: "#dc2626" }]}>
-                {t.passwordMismatch}
+            <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: fadeAnim1.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                {language === "es" ? "Crea tu Cuenta" : "Create Account"}
               </Text>
-            ) : null}
-
-            <TouchableOpacity
-              accessibilityRole="button"
-              activeOpacity={0.9}
-              disabled={!canSubmit || isSubmitting}
-              onPress={() => {
-                void handleRegister();
-              }}
-              style={[
-                styles.submitButton,
-                {
-                  backgroundColor: canSubmit
-                    ? colors.primary
-                    : colors.primaryDisabled,
-                },
-              ]}
-            >
               <Text
-                style={[styles.submitButtonText, { color: colors.onPrimary }]}
+                style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
               >
-                {t.submit}
+                {t.sectionSubtitle}
               </Text>
-            </TouchableOpacity>
+            </Animated.View>
 
-            {authError ? (
-              <Text style={[styles.errorText, { color: colors.danger }]}>
-                {authError}
+            <Animated.View style={{ opacity: fadeAnim2, transform: [{ translateY: fadeAnim2.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>
+                {t.fullName}
               </Text>
-            ) : null}
+              
+              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <MaterialCommunityIcons name="account-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  placeholder={t.fullNamePlaceholder}
+                  placeholderTextColor={colors.inputPlaceholder}
+                  style={[styles.modernInput, { color: colors.textPrimary }]}
+                  value={fullName}
+                  onChangeText={setFullName}
+                />
+              </View>
 
-            <TouchableOpacity
-              onPress={() => router.push("/(auth)/login")}
-              style={styles.linkButton}
-            >
-              <Text style={[styles.linkText, { color: colors.primary }]}>
-                {t.loginLink}
+              {/* Mantenemos teléfono opcional */}
+              <Text style={[styles.label, { color: colors.textPrimary }]}>
+                {t.phone} (Opcional)
               </Text>
-            </TouchableOpacity>
+              
+              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <MaterialCommunityIcons name="phone-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  keyboardType="phone-pad"
+                  placeholder={t.phonePlaceholder}
+                  placeholderTextColor={colors.inputPlaceholder}
+                  style={[styles.modernInput, { color: colors.textPrimary }]}
+                  value={phone}
+                  onChangeText={setPhone}
+                />
+              </View>
+
+              <Text style={[styles.label, { color: colors.textPrimary }]}>
+                {t.email}
+              </Text>
+              
+              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  placeholder={t.emailPlaceholder}
+                  placeholderTextColor={colors.inputPlaceholder}
+                  style={[styles.modernInput, { color: colors.textPrimary }]}
+                  value={email}
+                  onChangeText={setEmail}
+                />
+              </View>
+
+              <Text style={[styles.label, { color: colors.textPrimary }]}>
+                {t.password}
+              </Text>
+              
+              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <MaterialCommunityIcons name="lock-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  secureTextEntry
+                  placeholder={t.passwordPlaceholder}
+                  placeholderTextColor={colors.inputPlaceholder}
+                  style={[styles.modernInput, { color: colors.textPrimary }]}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+              </View>
+
+              <Text style={[styles.label, { color: colors.textPrimary }]}>
+                {t.confirmPassword}
+              </Text>
+              
+              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <MaterialCommunityIcons name="lock-check-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  secureTextEntry
+                  placeholder={t.confirmPasswordPlaceholder}
+                  placeholderTextColor={colors.inputPlaceholder}
+                  style={[styles.modernInput, { color: colors.textPrimary }]}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+              </View>
+            </Animated.View>
+
+            <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+
+              {confirmPassword.trim().length > 0 && !passwordsMatch ? (
+                <Text style={[styles.errorText, { color: colors.danger, marginTop: 8 }]}>
+                  {t.passwordMismatch}
+                </Text>
+              ) : null}
+
+              <TouchableOpacity
+                accessibilityRole="button"
+                activeOpacity={0.8}
+                disabled={!canSubmit || isSubmitting}
+                onPress={() => {
+                  void handleRegister();
+                }}
+                style={[
+                  styles.submitButton,
+                  (!canSubmit || isSubmitting) && styles.submitButtonDisabled,
+                  { backgroundColor: colors.accent, shadowColor: colors.accent, shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+                ]}
+              >
+                <Text
+                  style={[styles.submitButtonText, { color: '#000000' }]}
+                >
+                  {t.submit}
+                </Text>
+              </TouchableOpacity>
+
+              {authError ? (
+                <Text style={[styles.errorText, { color: colors.danger, marginTop: 12, textAlign: "center" }]}>
+                  {authError}
+                </Text>
+              ) : null}
+
+              <TouchableOpacity
+                onPress={() => router.push("/(auth)/login")}
+                style={styles.linkButton}
+              >
+                <Text style={[styles.linkText, { color: colors.textSecondary }]}>
+                  {language === "es" ? "¿Ya tienes cuenta?" : "Already have an account?"} <Text style={{ color: colors.primary, fontWeight: "700" }}>{t.loginLink}</Text>
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -300,73 +285,43 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  flexContainer: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 18,
-    paddingVertical: 20,
-    justifyContent: "center",
-  },
+  safeArea: { flex: 1 },
+  flexContainer: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 18, paddingVertical: 20, justifyContent: "center" },
   card: {
     width: "100%",
-    borderRadius: 16,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderWidth: 1,
+    shadowColor: "#000000",
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  sectionTitle: { fontSize: 28, fontWeight: "900", letterSpacing: 0.5 },
+  sectionSubtitle: { fontSize: 13, lineHeight: 19, marginTop: 4, marginBottom: 20 },
+  label: { fontWeight: "800", fontSize: 13, marginTop: 16, marginBottom: 10, letterSpacing: 0.3 },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 18,
     paddingHorizontal: 16,
-    paddingVertical: 18,
-    borderWidth: 1,
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    minHeight: 56,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 6,
-    marginBottom: 12,
-  },
-  label: {
-    fontWeight: "600",
-    fontSize: 13,
-    marginTop: 8,
-    marginBottom: 6,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-  },
-  errorText: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  submitButton: {
-    marginTop: 16,
-    borderRadius: 14,
-    paddingVertical: 13,
-    alignItems: "center",
-  },
-  submitButtonText: {
-    fontWeight: "700",
+  inputIcon: { marginRight: 12 },
+  modernInput: {
+    flex: 1,
     fontSize: 15,
+    fontWeight: '600',
+    paddingVertical: 14,
   },
-  linkButton: {
-    marginTop: 12,
-    alignItems: "center",
-  },
-  linkText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
+  errorText: { marginTop: 6, fontSize: 13, fontWeight: "700" },
+  submitButton: { marginTop: 28, borderRadius: 18, paddingVertical: 18, alignItems: "center" },
+  submitButtonDisabled: { opacity: 0.5 },
+  submitButtonText: { fontWeight: "800", fontSize: 16, letterSpacing: 0.5 },
+  linkButton: { marginTop: 20, alignItems: "center", paddingVertical: 12 },
+  linkText: { fontSize: 14, fontWeight: "500" },
 });

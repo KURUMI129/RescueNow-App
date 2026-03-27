@@ -1,3 +1,4 @@
+import { useActiveTheme } from "@/hooks/use-active-theme";
 import {
   DarkTheme,
   DefaultTheme,
@@ -17,35 +18,22 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const language = useAppLanguage();
-  const colors =
-    colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const activeTheme = useActiveTheme();
+  const colors = HOME_THEME_COLORS[activeTheme];
   const navigationCopy = getAppCopy(language).navigation;
-  const navigationTheme =
-    colorScheme === "dark"
-      ? {
-          ...DarkTheme,
-          colors: {
-            ...DarkTheme.colors,
-            primary: colors.primary,
-            background: colors.background,
-            card: colors.surface,
-            text: colors.textPrimary,
-            border: colors.cardBorder,
-          },
-        }
-      : {
-          ...DefaultTheme,
-          colors: {
-            ...DefaultTheme.colors,
-            primary: colors.primary,
-            background: colors.background,
-            card: colors.surface,
-            text: colors.textPrimary,
-            border: colors.cardBorder,
-          },
-        };
+  
+  const navigationTheme = {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.cardBorder,
+    },
+  };
 
   return (
     <ThemeProvider value={navigationTheme}>

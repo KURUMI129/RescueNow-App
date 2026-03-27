@@ -1,3 +1,4 @@
+import { useActiveTheme } from "@/hooks/use-active-theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo } from "react";
 import {
@@ -18,9 +19,8 @@ import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferenc
 import { useAppLanguage } from "@/hooks/use-app-language";
 
 export default function TrackingScreen() {
-  const colorScheme = useColorScheme();
-  const colors =
-    colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const activeTheme = useActiveTheme();
+  const colors = HOME_THEME_COLORS[activeTheme];
   const { reduceMotionEnabled } = useAccessibilityPreferences();
   const language = useAppLanguage();
   const { width } = useWindowDimensions();

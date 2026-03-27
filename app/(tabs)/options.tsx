@@ -1,6 +1,7 @@
-import { Ionicons } from "@expo/vector-icons";
+import { useActiveTheme } from "@/hooks/use-active-theme";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Animated,
@@ -11,8 +12,6 @@ import {
     Switch,
     Text,
     TextInput,
-    useColorScheme,
-    useWindowDimensions,
     View,
 } from "react-native";
 
@@ -24,6 +23,7 @@ import {
     DEFAULT_APP_PREFERENCES,
     getAppPreferences,
     SubscriptionPlan,
+    ThemeMode,
     updateAppPreferences,
 } from "@/constants/app-preferences";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
@@ -33,137 +33,96 @@ import { signOut } from "firebase/auth";
 
 export default function OptionsScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors =
-    colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const activeTheme = useActiveTheme();
+  const colors = HOME_THEME_COLORS[activeTheme];
   const { reduceMotionEnabled } = useAccessibilityPreferences();
-  const [language, setLanguage] = useState<AppLanguage>(
-    DEFAULT_APP_PREFERENCES.language,
-  );
-  const [trustedContactPhone, setTrustedContactPhone] = useState(
-    DEFAULT_APP_PREFERENCES.trustedContactPhone,
-  );
-  const [useTrustedContact, setUseTrustedContact] = useState(
-    DEFAULT_APP_PREFERENCES.useTrustedContact,
-  );
-  const [isSavingLanguage, setIsSavingLanguage] = useState(false);
+  
+  const [language, setLanguage] = useState<AppLanguage>(DEFAULT_APP_PREFERENCES.language);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(DEFAULT_APP_PREFERENCES.themeMode);
+  
+  const [trustedContactPhone, setTrustedContactPhone] = useState(DEFAULT_APP_PREFERENCES.trustedContactPhone);
+  const [trustedContactName, setTrustedContactName] = useState(DEFAULT_APP_PREFERENCES.trustedContactName);
+  const [useTrustedContact, setUseTrustedContact] = useState(DEFAULT_APP_PREFERENCES.useTrustedContact);
+  
+  const [isSavingTheme, setIsSavingTheme] = useState(false);
   const [isSavingContact, setIsSavingContact] = useState(false);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [isLoadingPrefs, setIsLoadingPrefs] = useState(true);
-  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan>(
-    DEFAULT_APP_PREFERENCES.subscriptionPlan,
-  );
-  const [accountRole, setAccountRole] = useState<AccountRole>(
-    DEFAULT_APP_PREFERENCES.accountRole,
-  );
-  const { width } = useWindowDimensions();
-  const titleSize = Math.max(22, Math.min(28, width * 0.075));
+  
+  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan>(DEFAULT_APP_PREFERENCES.subscriptionPlan);
+  const [accountRole, setAccountRole] = useState<AccountRole>(DEFAULT_APP_PREFERENCES.accountRole);
+
   const entranceOpacity = useMemo(() => new Animated.Value(0), []);
   const entranceTranslateY = useMemo(() => new Animated.Value(12), []);
+  
+  // Premium Starburst / Radar Animation
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const loadPreferences = async () => {
       setIsLoadingPrefs(true);
       const preferences = await getAppPreferences();
       setLanguage(preferences.language);
+      setThemeMode(preferences.themeMode);
       setTrustedContactPhone(preferences.trustedContactPhone);
+      setTrustedContactName(preferences.trustedContactName);
       setUseTrustedContact(preferences.useTrustedContact);
       setSubscriptionPlan(preferences.subscriptionPlan);
       setAccountRole(preferences.accountRole);
       setIsLoadingPrefs(false);
     };
-
     void loadPreferences();
   }, []);
 
-  const copy = getAppCopy(language).tabs.options;
-
-  const handleLanguageChange = async (nextLanguage: AppLanguage) => {
-    if (nextLanguage === language || isSavingLanguage) {
-      return;
+  useEffect(() => {
+    if (subscriptionPlan === "premium" && !reduceMotionEnabled) {
+      Animated.loop(
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(pulseAnim, { toValue: 1.25, duration: 1500, useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true })
+          ]),
+          Animated.timing(rotateAnim, { toValue: 1, duration: 10000, useNativeDriver: true })
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+      rotateAnim.setValue(0);
     }
+  }, [subscriptionPlan, reduceMotionEnabled, pulseAnim, rotateAnim]);
 
-    setLanguage(nextLanguage);
-    setIsSavingLanguage(true);
-    await updateAppPreferences({ language: nextLanguage });
-    setIsSavingLanguage(false);
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"]
+  });
+
+  const handleThemeChange = async (nextTheme: ThemeMode) => {
+    if (nextTheme === themeMode || isSavingTheme) return;
+    setThemeMode(nextTheme);
+    setIsSavingTheme(true);
+    await updateAppPreferences({ themeMode: nextTheme });
+    setIsSavingTheme(false);
   };
 
   const handleSaveContact = async () => {
-    if (isSavingContact) {
-      return;
-    }
-
+    if (isSavingContact) return;
     setIsSavingContact(true);
-    const nextPrefs = await updateAppPreferences({
-      trustedContactPhone,
-      useTrustedContact,
-    });
+    const nextPrefs = await updateAppPreferences({ trustedContactPhone, trustedContactName, useTrustedContact });
     setTrustedContactPhone(nextPrefs.trustedContactPhone);
+    setTrustedContactName(nextPrefs.trustedContactName);
     setUseTrustedContact(nextPrefs.useTrustedContact);
-    setLanguage(nextPrefs.language);
-    setSubscriptionPlan(nextPrefs.subscriptionPlan);
-    setAccountRole(nextPrefs.accountRole);
     setIsSavingContact(false);
   };
 
-  const handleClearContact = async () => {
-    if (isSavingContact) {
-      return;
-    }
-
-    setIsSavingContact(true);
-    const nextPrefs = await updateAppPreferences({
-      trustedContactPhone: "",
-      useTrustedContact: false,
-    });
-    setTrustedContactPhone(nextPrefs.trustedContactPhone);
-    setUseTrustedContact(nextPrefs.useTrustedContact);
-    setLanguage(nextPrefs.language);
-    setSubscriptionPlan(nextPrefs.subscriptionPlan);
-    setAccountRole(nextPrefs.accountRole);
-    setIsSavingContact(false);
-  };
-
-  const handleTogglePlan = async (nextPlan: SubscriptionPlan) => {
-    if (isSavingPlan || nextPlan === subscriptionPlan) {
-      return;
-    }
-
+  const handleTogglePlan = async () => {
+    if (isSavingPlan) return;
     setIsSavingPlan(true);
-    const nextPrefs = await updateAppPreferences({
-      subscriptionPlan: nextPlan,
-    });
+    const nextPlan = subscriptionPlan === "premium" ? "free" : "premium";
+    const nextPrefs = await updateAppPreferences({ subscriptionPlan: nextPlan });
     setSubscriptionPlan(nextPrefs.subscriptionPlan);
-    setLanguage(nextPrefs.language);
-    setTrustedContactPhone(nextPrefs.trustedContactPhone);
-    setUseTrustedContact(nextPrefs.useTrustedContact);
-    setAccountRole(nextPrefs.accountRole);
     setIsSavingPlan(false);
   };
-
-  const planTitle =
-    language === "es"
-      ? subscriptionPlan === "premium"
-        ? "Plan Premium"
-        : "Plan Gratis"
-      : subscriptionPlan === "premium"
-        ? "Premium Plan"
-        : "Free Plan";
-
-  const planSubtitle =
-    language === "es"
-      ? "Seguridad y alertas vitales siempre incluidas. Premium solo desbloquea diagnostico avanzado de IA y analitica tecnica."
-      : "Critical safety alerts are always included. Premium unlocks advanced AI diagnostics and technical analytics.";
-
-  const roleLabel =
-    language === "es"
-      ? accountRole === "technician"
-        ? "Tecnico"
-        : "Usuario"
-      : accountRole === "technician"
-        ? "Technician"
-        : "User";
 
   useEffect(() => {
     if (reduceMotionEnabled) {
@@ -171,439 +130,160 @@ export default function OptionsScreen() {
       entranceTranslateY.setValue(0);
       return;
     }
-
     Animated.parallel([
-      Animated.timing(entranceOpacity, {
-        toValue: 1,
-        duration: 340,
-        useNativeDriver: true,
-      }),
-      Animated.timing(entranceTranslateY, {
-        toValue: 0,
-        duration: 340,
-        useNativeDriver: true,
-      }),
+      Animated.timing(entranceOpacity, { toValue: 1, duration: 340, useNativeDriver: true }),
+      Animated.timing(entranceTranslateY, { toValue: 0, duration: 340, useNativeDriver: true }),
     ]).start();
   }, [entranceOpacity, entranceTranslateY, reduceMotionEnabled]);
 
   const handleLogout = async () => {
     try {
       await signOut(firebaseAuth);
-      await updateAppPreferences({
-        trustedContactPhone: "",
-        useTrustedContact: false,
-        subscriptionPlan: "free",
-        accountRole: "user",
-      });
+      await updateAppPreferences({ trustedContactPhone: "", useTrustedContact: false, subscriptionPlan: "free", accountRole: "user" });
     } finally {
       router.replace("/(auth)/login");
     }
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
-    >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View
-          style={[
-            styles.entranceLayer,
-            {
-              opacity: entranceOpacity,
-              transform: [{ translateY: entranceTranslateY }],
-            },
-          ]}
-        >
-          <Text style={[styles.topLabel, { color: colors.textSecondary }]}>
-            {copy.topLabel}
-          </Text>
-          <Text
-            style={[
-              styles.title,
-              { color: colors.textPrimary, fontSize: titleSize },
-            ]}
-          >
-            {copy.title}
-          </Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <View style={[styles.headerBar, { borderBottomColor: colors.cardBorder }]}>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Mi Perfil</Text>
+      </View>
 
-          {isLoadingPrefs ? (
-            <View
-              style={[
-                styles.loadingPrefsCard,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.cardBorder,
-                },
-              ]}
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Animated.View style={{ opacity: entranceOpacity, transform: [{ translateY: entranceTranslateY }] }}>
+          
+          {/* 1. SECCIÓN DE PERFIL CENTRADO (Google Style) */}
+          <View style={styles.profileSection}>
+            <View style={styles.avatarWrapper}>
+              {subscriptionPlan === "premium" && (
+                <>
+                  <Animated.View style={[
+                    styles.premiumPulseRing,
+                    { 
+                      backgroundColor: colors.accent,
+                      transform: [{ scale: pulseAnim }],
+                      opacity: pulseAnim.interpolate({ inputRange: [1, 1.25], outputRange: [0.4, 0] })
+                    }
+                  ]} />
+                  <Animated.View style={[
+                    styles.premiumMultiColorRing,
+                    { transform: [{ rotate: spin }] }
+                  ]} />
+                </>
+              )}
+              <View style={[styles.avatarInner, { backgroundColor: colors.mapBackground }]}>
+                 <BrandLogo width={56} height={56} />
+              </View>
+            </View>
+            <Text style={[styles.profileName, { color: colors.textPrimary }]}>Andrés Garza</Text>
+            <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>demo@rescuenow.app</Text>
+            
+            <View style={[styles.profileBadge, { backgroundColor: subscriptionPlan === "premium" ? colors.accent : colors.mapBackground }]}>
+               <Text style={[styles.profileBadgeText, { color: subscriptionPlan === "premium" ? "#000" : colors.textPrimary }]}>
+                 {subscriptionPlan === "premium" ? "🌟 Miembro Premium" : "🌟 Usuario Estándar"}
+               </Text>
+            </View>
+            
+            <Pressable 
+              style={styles.editProfileBtn}
+              onPress={() => router.push("/(tabs)/edit-profile")}
             >
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text
-                style={[
-                  styles.loadingPrefsText,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                {copy.loading}
-              </Text>
-            </View>
-          ) : null}
-
-          <View
-            style={[
-              styles.profileCard,
-              {
-                backgroundColor: colors.mapBackground,
-                borderColor: colors.cardBorder,
-              },
-            ]}
-          >
-            <BrandLogo width={52} height={46} />
-            <View style={styles.profileTextWrap}>
-              <Text style={[styles.profileName, { color: colors.textPrimary }]}>
-                {copy.profileName}
-              </Text>
-              <Text
-                style={[styles.profileEmail, { color: colors.textSecondary }]}
-              >
-                demo@rescuenow.app · {roleLabel}
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.profileBadge,
-                { backgroundColor: colors.tracking },
-              ]}
-            >
-              <Text style={styles.profileBadgeText}>{copy.activeBadge}</Text>
-            </View>
+              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>Editar Perfil</Text>
+            </Pressable>
           </View>
 
-          <View
-            style={[
-              styles.settingsCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.cardBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.settingsTitle, { color: colors.textPrimary }]}>
-              {planTitle}
-            </Text>
-            <Text
-              style={[styles.settingsSubtitle, { color: colors.textSecondary }]}
-            >
-              {planSubtitle}
-            </Text>
-
-            <View style={styles.contactButtonsRow}>
-              <Pressable
-                onPress={() => {
-                  void handleTogglePlan("free");
-                }}
-                style={({ pressed }) => [
-                  styles.contactButton,
-                  {
-                    backgroundColor:
-                      subscriptionPlan === "free"
-                        ? colors.primary
-                        : colors.mapBackground,
-                    opacity: pressed || isSavingPlan ? 0.82 : 1,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.contactButtonText,
-                    {
-                      color:
-                        subscriptionPlan === "free"
-                          ? "#FFFFFF"
-                          : colors.textPrimary,
-                    },
-                  ]}
-                >
-                  {language === "es" ? "Modo Gratis" : "Free Mode"}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  void handleTogglePlan("premium");
-                }}
-                style={({ pressed }) => [
-                  styles.contactButton,
-                  {
-                    backgroundColor:
-                      subscriptionPlan === "premium"
-                        ? colors.accent
-                        : colors.mapBackground,
-                    opacity: pressed || isSavingPlan ? 0.82 : 1,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.contactButtonText,
-                    {
-                      color:
-                        subscriptionPlan === "premium"
-                          ? colors.onPrimary
-                          : colors.textPrimary,
-                    },
-                  ]}
-                >
-                  {language === "es" ? "Activar Premium" : "Enable Premium"}
-                </Text>
-              </Pressable>
+          {/* 2. SECCIÓN VIP / SUSCRIPCIÓN */}
+          <View style={[styles.cardGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+            <View style={styles.cardHeader}>
+              <MaterialCommunityIcons name="crown" size={20} color={colors.accent} />
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Planes y Suscripción</Text>
             </View>
-
-            {isSavingPlan ? (
-              <Text style={[styles.saveHint, { color: colors.textSecondary }]}>
-                {copy.saving}
+            
+            <View style={styles.planContent}>
+              <Text style={[styles.planSub, { color: colors.textSecondary }]}>
+                {subscriptionPlan === "premium" 
+                  ? "Tienes acceso a diagnósticos IA avanzados." 
+                  : "Mejora para habilitar funciones exclusivas como diagnósticos Inteligentes."}
               </Text>
-            ) : null}
-          </View>
-
-          <View
-            style={[
-              styles.settingsCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.cardBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.settingsTitle, { color: colors.textPrimary }]}>
-              {copy.languageTitle}
-            </Text>
-            <Text
-              style={[styles.settingsSubtitle, { color: colors.textSecondary }]}
-            >
-              {copy.languageSubtitle}
-            </Text>
-
-            <View style={styles.languageRow}>
-              <Pressable
-                onPress={() => {
-                  void handleLanguageChange("es");
-                }}
-                style={[
-                  styles.languagePill,
-                  {
-                    backgroundColor:
-                      language === "es" ? colors.primary : colors.mapBackground,
-                    borderColor:
-                      language === "es" ? colors.primary : colors.cardBorder,
-                  },
-                ]}
+              
+              <Pressable 
+                onPress={handleTogglePlan}
+                style={[styles.upgradeBtn, { backgroundColor: subscriptionPlan === "premium" ? colors.mapBackground : colors.primary }]}
               >
-                <Text
-                  style={[
-                    styles.languagePillText,
-                    {
-                      color:
-                        language === "es"
-                          ? colors.onPrimary
-                          : colors.textPrimary,
-                    },
-                  ]}
-                >
-                  {copy.spanish}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  void handleLanguageChange("en");
-                }}
-                style={[
-                  styles.languagePill,
-                  {
-                    backgroundColor:
-                      language === "en" ? colors.primary : colors.mapBackground,
-                    borderColor:
-                      language === "en" ? colors.primary : colors.cardBorder,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.languagePillText,
-                    {
-                      color:
-                        language === "en"
-                          ? colors.onPrimary
-                          : colors.textPrimary,
-                    },
-                  ]}
-                >
-                  {copy.english}
-                </Text>
-              </Pressable>
-            </View>
-
-            {isSavingLanguage ? (
-              <Text style={[styles.saveHint, { color: colors.textSecondary }]}>
-                {copy.saving}
-              </Text>
-            ) : null}
-          </View>
-
-          <View
-            style={[
-              styles.settingsCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.cardBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.settingsTitle, { color: colors.textPrimary }]}>
-              {copy.emergencyContactTitle}
-            </Text>
-            <Text
-              style={[styles.settingsSubtitle, { color: colors.textSecondary }]}
-            >
-              {copy.emergencyContactSubtitle}
-            </Text>
-
-            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>
-              {copy.trustedInputLabel}
-            </Text>
-            <TextInput
-              value={trustedContactPhone}
-              onChangeText={setTrustedContactPhone}
-              keyboardType="phone-pad"
-              placeholder={copy.trustedInputPlaceholder}
-              placeholderTextColor={colors.textSecondary}
-              style={[
-                styles.phoneInput,
-                {
-                  color: colors.textPrimary,
-                  borderColor: colors.cardBorder,
-                  backgroundColor: colors.mapBackground,
-                },
-              ]}
-            />
-
-            <View style={styles.switchRow}>
-              <Text style={[styles.switchLabel, { color: colors.textPrimary }]}>
-                {copy.directSwitchLabel}
-              </Text>
-              <Switch
-                value={useTrustedContact}
-                onValueChange={setUseTrustedContact}
-                trackColor={{ false: colors.cardBorder, true: colors.primary }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-
-            <View style={styles.contactButtonsRow}>
-              <Pressable
-                onPress={() => {
-                  void handleSaveContact();
-                }}
-                style={({ pressed }) => [
-                  styles.contactButton,
-                  {
-                    backgroundColor: colors.primary,
-                    opacity: pressed || isSavingContact ? 0.82 : 1,
-                  },
-                ]}
-              >
-                <Text style={styles.contactButtonText}>
-                  {isSavingContact ? copy.saving : copy.saveContact}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  void handleClearContact();
-                }}
-                style={({ pressed }) => [
-                  styles.contactButton,
-                  {
-                    backgroundColor: colors.danger,
-                    opacity: pressed || isSavingContact ? 0.82 : 1,
-                  },
-                ]}
-              >
-                <Text style={styles.contactButtonText}>
-                  {copy.clearContact}
+                <Text style={{ color: subscriptionPlan === "premium" ? colors.textPrimary : '#fff', fontWeight: '800' }}>
+                  {subscriptionPlan === "premium" ? "Bajar a Gratis" : "Actualizar a Premium"}
                 </Text>
               </Pressable>
             </View>
           </View>
 
-          {copy.userOptions.map((item) => {
-            const iconColor =
-              item.accent === "accent" ? colors.accent : colors.primary;
+          {/* 3. SECCIÓN DE AJUSTES GLOBALES */}
+          <View style={[styles.cardGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="settings-sharp" size={18} color={colors.textSecondary} />
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Ajustes Generales</Text>
+            </View>
+            
+            {/* TEMA */}
+            <View style={styles.settingRow}>
+              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Apariencia</Text>
+              <View style={styles.pillsRow}>
+                <Pressable onPress={() => handleThemeChange("light")} style={[styles.pillBtn, themeMode === "light" && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                  <Text style={[styles.pillText, themeMode === "light" ? { color: "#fff" } : { color: colors.textSecondary }]}>Claro</Text>
+                </Pressable>
+                <Pressable onPress={() => handleThemeChange("dark")} style={[styles.pillBtn, themeMode === "dark" && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                  <Text style={[styles.pillText, themeMode === "dark" ? { color: "#fff" } : { color: colors.textSecondary }]}>Oscuro</Text>
+                </Pressable>
+                <Pressable onPress={() => handleThemeChange("time")} style={[styles.pillBtn, themeMode === "time" && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                  <Text style={[styles.pillText, themeMode === "time" ? { color: "#fff" } : { color: colors.textSecondary }]}>Auto</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
 
-            return (
-              <Pressable
-                key={item.id}
-                style={({ pressed }) => [
-                  styles.optionCard,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.cardBorder,
-                    opacity: pressed ? 0.86 : 1,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.optionIcon,
-                    { backgroundColor: colors.mapBackground },
-                  ]}
-                >
-                  <Ionicons name={item.icon} size={18} color={iconColor} />
-                </View>
-
-                <View style={styles.optionTextWrap}>
-                  <Text
-                    style={[styles.optionTitle, { color: colors.textPrimary }]}
-                  >
-                    {item.title}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.optionSubtitle,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {item.subtitle}
-                  </Text>
-                </View>
-
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color={colors.textSecondary}
+          {/* 4. SECCIÓN CONTACTO DE CONFIANZA */}
+          <View style={[styles.cardGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="shield-checkmark" size={18} color={colors.success} />
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Contacto de Emergencia</Text>
+            </View>
+            <View style={styles.settingRowStack}>
+                <Text style={{fontSize: 12, fontWeight: '700', marginBottom: 6, color: colors.textSecondary}}>Nombre del Familiar:</Text>
+               <TextInput
+                  value={trustedContactName}
+                  onChangeText={setTrustedContactName}
+                  placeholder="Ej: Mamá, Papá..."
+                  placeholderTextColor={colors.textSecondary}
+                  style={[styles.phoneInput, { color: colors.textPrimary, borderColor: colors.cardBorder, backgroundColor: colors.mapBackground, marginBottom: 12 }]}
                 />
-              </Pressable>
-            );
-          })}
+                
+                <Text style={{fontSize: 12, fontWeight: '700', marginBottom: 6, color: colors.textSecondary}}>Número de Teléfono:</Text>
+               <TextInput
+                  value={trustedContactPhone}
+                  onChangeText={setTrustedContactPhone}
+                  keyboardType="phone-pad"
+                  placeholder="Ej: +52 55 1234 5678"
+                  placeholderTextColor={colors.textSecondary}
+                  style={[styles.phoneInput, { color: colors.textPrimary, borderColor: colors.cardBorder, backgroundColor: colors.mapBackground }]}
+                />
+                <View style={[styles.switchRow, { marginTop: 12 }]}>
+                  <Text style={[styles.settingLabel, { flex: 1, color: colors.textPrimary }]}>Alertar automáticamente en S.O.S.</Text>
+                  <Switch value={useTrustedContact} onValueChange={setUseTrustedContact} trackColor={{ false: colors.cardBorder, true: colors.primary }} thumbColor="#FFFFFF" />
+                </View>
+                <Pressable onPress={handleSaveContact} style={[styles.upgradeBtn, { backgroundColor: colors.cardBorder, marginTop: 16 }]}>
+                  <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{isSavingContact ? "Guardando..." : "Guardar Contacto"}</Text>
+                </Pressable>
+            </View>
+          </View>
 
-          <Pressable
-            onPress={() => {
-              void handleLogout();
-            }}
-            style={({ pressed }) => [
-              styles.logoutButton,
-              {
-                backgroundColor: colors.danger,
-                opacity: pressed ? 0.88 : 1,
-              },
-            ]}
-          >
+          {/* 5. CERRAR SESIÓN */}
+          <Pressable onPress={handleLogout} style={[styles.logoutButton, { backgroundColor: colors.danger }]}>
             <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={styles.logoutText}>{copy.logout}</Text>
+            <Text style={styles.logoutText}>Cerrar Sesión</Text>
           </Pressable>
+
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
@@ -611,195 +291,44 @@ export default function OptionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
+  safeArea: { flex: 1 },
+  headerBar: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1 },
+  headerTitle: { fontSize: 24, fontWeight: "900" },
+  content: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 },
+  profileSection: { alignItems: 'center', marginBottom: 32 },
+  avatarWrapper: { width: 100, height: 100, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  premiumPulseRing: { position: 'absolute', width: 90, height: 90, borderRadius: 45 },
+  premiumMultiColorRing: { 
+    position: 'absolute', 
+    width: 106, 
+    height: 106, 
+    borderRadius: 53, 
+    borderWidth: 3.5, 
+    borderTopColor: '#FF1E47', 
+    borderRightColor: '#FFB800', 
+    borderBottomColor: '#3B82F6', 
+    borderLeftColor: '#8B5CF6' 
   },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 24,
-  },
-  entranceLayer: {
-    gap: 0,
-  },
-  topLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  loadingPrefsCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  loadingPrefsText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  title: {
-    marginTop: 2,
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-  profileCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  profileTextWrap: {
-    flex: 1,
-    marginLeft: 10,
-    marginRight: 8,
-  },
-  profileName: {
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  profileEmail: {
-    marginTop: 2,
-    fontSize: 12,
-  },
-  profileBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  profileBadgeText: {
-    color: "#003A3D",
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  settingsCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 10,
-  },
-  settingsTitle: {
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  settingsSubtitle: {
-    marginTop: 3,
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: 10,
-  },
-  languageRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  languagePill: {
-    flex: 1,
-    minHeight: 40,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  languagePillText: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  saveHint: {
-    marginTop: 8,
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    marginBottom: 6,
-  },
-  phoneInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    minHeight: 44,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    marginBottom: 10,
-    fontWeight: "600",
-  },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-    marginBottom: 10,
-  },
-  switchLabel: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: "700",
-    lineHeight: 17,
-  },
-  contactButtonsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  contactButton: {
-    flex: 1,
-    borderRadius: 10,
-    minHeight: 42,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  contactButtonText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  optionCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 13,
-    marginBottom: 8,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  optionIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  optionTextWrap: {
-    flex: 1,
-    marginLeft: 10,
-    marginRight: 8,
-  },
-  optionTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  optionSubtitle: {
-    marginTop: 2,
-    fontSize: 12,
-  },
-  logoutButton: {
-    marginTop: 14,
-    borderRadius: 14,
-    minHeight: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  logoutText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "800",
-  },
+  avatarInner: { width: 90, height: 90, borderRadius: 45, alignItems: 'center', justifyContent: 'center', shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 10, zIndex: 10 },
+  profileName: { fontSize: 20, fontWeight: '900', marginBottom: 2 },
+  profileEmail: { fontSize: 13, marginBottom: 12 },
+  profileBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginBottom: 16 },
+  profileBadgeText: { fontSize: 11, fontWeight: '800' },
+  editProfileBtn: { paddingVertical: 6, paddingHorizontal: 16 },
+  cardGroup: { borderWidth: 1, borderRadius: 20, marginBottom: 20, overflow: 'hidden' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(150,150,150,0.1)' },
+  cardTitle: { fontSize: 16, fontWeight: '800', marginLeft: 8 },
+  planContent: { padding: 16 },
+  planSub: { fontSize: 13, lineHeight: 18, marginBottom: 16 },
+  upgradeBtn: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 16 },
+  settingRowStack: { paddingHorizontal: 16, paddingVertical: 16 },
+  settingLabel: { fontSize: 14, fontWeight: '700' },
+  pillsRow: { flexDirection: 'row', gap: 6 },
+  pillBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: 'transparent' },
+  pillText: { fontSize: 12, fontWeight: '800' },
+  phoneInput: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 15, fontWeight: '600' },
+  switchRow: { flexDirection: 'row', alignItems: 'center' },
+  logoutButton: { marginTop: 10, borderRadius: 16, minHeight: 52, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
+  logoutText: { color: "#fff", fontSize: 15, fontWeight: "800" }
 });

@@ -13,7 +13,8 @@ export default function TabLayout() {
   }
 
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/login" />;
+    // => BYPASS TEMPORAL: Impide rebote hacia el login en fase de diseño
+    // return <Redirect href="/(auth)/login" />;
   }
 
   return (
@@ -59,6 +60,13 @@ export default function TabLayout() {
         name="options"
         options={{
           title: navigationCopy.optionsTab,
+        }}
+      />
+      <Tabs.Screen
+        name="chatbot"
+        options={{
+          href: null,
+          title: "RescueAI",
         }}
       />
     </Tabs>

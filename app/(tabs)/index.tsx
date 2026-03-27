@@ -1,727 +1,546 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import * as Location from "expo-location";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
-    Modal,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { PanicButton } from "@/components/home/panic-button";
+import { BrandLogo } from "@/components/brand/brand-logo";
+import { getAppPreferences, updateAppPreferences } from "@/constants/app-preferences";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
+import { useActiveTheme } from "@/hooks/use-active-theme";
+import { useAppLanguage } from "@/hooks/use-app-language";
+import { useUserLocation } from "@/hooks/use-user-location";
 
-type PoiFilter = "fuel" | "mechanic" | "tow" | "hospital";
+// TODO: Copilot - Inserta aquí el JSON de tu mapa oscuro
+const RESCUE_DARK_MAP_STYLE: any[] = []; 
 
-type PoiMarker = {
+type ServiceOption = {
   id: string;
-  latitude: number;
-  longitude: number;
-  title: string;
-  filter: PoiFilter;
-  source: "real" | "fallback";
+  titleEs: string;
+  titleEn: string;
+  descEs: string;
+  descEn: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  colorHex: string;
 };
 
-const RESCUE_DARK_MAP_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#111111" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#111111" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#6B7280" }] },
-  {
-    featureType: "administrative",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#1F2937" }],
-  },
-  {
-    featureType: "poi",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#4B5563" }],
-  },
-  {
-    featureType: "poi.park",
-    elementType: "geometry",
-    stylers: [{ color: "#141414" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#222222" }],
-  },
-  {
-    featureType: "road.arterial",
-    elementType: "geometry",
-    stylers: [{ color: "#2A2A2A" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry",
-    stylers: [{ color: "#2F2F2F" }],
-  },
-  {
-    featureType: "transit",
-    elementType: "geometry",
-    stylers: [{ color: "#1A1A1A" }],
-  },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#0B0F14" }],
-  },
+// 6 Servicios Base
+const SERVICES: ServiceOption[] = [
+  { id: "accident", titleEs: "Accidente", titleEn: "Accident", descEs: "Choque o volcadura severa", descEn: "Severe crash or rollover", icon: "car-emergency", colorHex: "#DC2626" },
+  { id: "tow", titleEs: "Grúa", titleEn: "Tow", descEs: "Vehículo inmovilizado", descEn: "Immobilized vehicle", icon: "tow-truck", colorHex: "#FFB800" },
+  { id: "mechanic", titleEs: "Mecánico", titleEn: "Mechanic", descEs: "Falla de motor o batería", descEn: "Engine or battery failure", icon: "wrench", colorHex: "#3B82F6" },
+  { id: "gas", titleEs: "Gasolina", titleEn: "Gas", descEs: "Sin combustible", descEn: "Out of fuel", icon: "gas-station", colorHex: "#10B981" },
+  { id: "tire", titleEs: "Llantera", titleEn: "Tire", descEs: "Ponchadura o presión baja", descEn: "Puncture or low pressure", icon: "tire", colorHex: "#F97316" },
+  { id: "locksmith", titleEs: "Cerrajero", titleEn: "Locksmith", descEs: "Llaves atascadas", descEn: "Lost or stuck keys", icon: "key", colorHex: "#8B5CF6" },
 ];
 
-const FILTER_CHIPS: Array<{
-  id: PoiFilter;
-  label: string;
-  emoji: string;
-  markerColor: string;
-}> = [
-  { id: "fuel", label: "Gasolineras", emoji: "⛽", markerColor: "#EAB308" },
-  {
-    id: "mechanic",
-    label: "Mecánicos",
-    emoji: "🔧",
-    markerColor: "#3B82F6",
-  },
-  { id: "tow", label: "Grúas", emoji: "🏗️", markerColor: "#DC2626" },
-  {
-    id: "hospital",
-    label: "Hospitales",
-    emoji: "🏥",
-    markerColor: "#22C55E",
-  },
-];
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const FALLBACK_REGION: Region = {
-  latitude: 19.7008,
-  longitude: -101.1844,
-  latitudeDelta: 0.06,
-  longitudeDelta: 0.06,
-};
-
-const OVERPASS_ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-  "https://lz4.overpass-api.de/api/interpreter",
-];
-
-const POI_CACHE_TTL_MS = 45_000;
-const AUTO_REFRESH_MS = 30_000;
-const MAP_MOVE_REFRESH_THRESHOLD_METERS = 500;
-
-function distanceMeters(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-) {
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const earthRadiusMeters = 6371000;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadiusMeters * c;
-}
-
-function buildOverpassQuery(
-  filter: PoiFilter,
-  latitude: number,
-  longitude: number,
-) {
-  const around = 6000;
-
-  if (filter === "fuel") {
-    return `[out:json][timeout:20];(nwr["amenity"="fuel"](around:${around},${latitude},${longitude}););out center 40;`;
-  }
-
-  if (filter === "mechanic") {
-    return `[out:json][timeout:20];(nwr["shop"="car_repair"](around:${around},${latitude},${longitude});nwr["craft"="mechanic"](around:${around},${latitude},${longitude}););out center 40;`;
-  }
-
-  if (filter === "tow") {
-    return `[out:json][timeout:20];(nwr["name"~"grua|grúa|tow|towing",i](around:${around},${latitude},${longitude});nwr["service"~"tow|towing",i](around:${around},${latitude},${longitude}););out center 40;`;
-  }
-
-  return `[out:json][timeout:20];(nwr["amenity"="hospital"](around:${around},${latitude},${longitude}););out center 40;`;
-}
-
-function buildFallbackPois(
-  filter: PoiFilter,
-  latitude: number,
-  longitude: number,
-): PoiMarker[] {
-  const offsetByFilter: Record<
-    PoiFilter,
-    Array<{ lat: number; lng: number; title: string }>
-  > = {
-    fuel: [
-      { lat: 0.0034, lng: -0.004, title: "Gasolinera cercana" },
-      { lat: -0.0029, lng: 0.0038, title: "Servicio 24h" },
-    ],
-    mechanic: [
-      { lat: 0.0048, lng: 0.0023, title: "Taller Express" },
-      { lat: -0.0038, lng: -0.0031, title: "Mecánico Móvil" },
-    ],
-    tow: [
-      { lat: 0.0021, lng: 0.0046, title: "Base de Grúas" },
-      { lat: -0.0044, lng: 0.0019, title: "Grúa de Rescate" },
-    ],
-    hospital: [
-      { lat: 0.0051, lng: -0.0018, title: "Hospital General" },
-      { lat: -0.0024, lng: -0.0042, title: "Clínica de Urgencias" },
-    ],
-  };
-
-  return offsetByFilter[filter].map((point, index) => ({
-    id: `fallback-${filter}-${index}`,
-    latitude: latitude + point.lat,
-    longitude: longitude + point.lng,
-    title: point.title,
-    filter,
-    source: "fallback",
-  }));
-}
-
-function getMarkerColor(filter: PoiFilter): string {
-  const chip = FILTER_CHIPS.find((item) => item.id === filter);
-  return chip?.markerColor ?? "#EAB308";
-}
-
-function getCacheKey(
-  filter: PoiFilter,
-  latitude: number,
-  longitude: number,
-): string {
-  const latBucket = latitude.toFixed(3);
-  const lngBucket = longitude.toFixed(3);
-  return `${filter}:${latBucket}:${lngBucket}`;
-}
-
-async function fetchOverpassWithFallback(query: string) {
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    try {
-      const response = await fetch(
-        `${endpoint}?data=${encodeURIComponent(query)}`,
-      );
-
-      if (response.ok) {
-        return response;
-      }
-    } catch {
-      // Continue with the next free endpoint.
-    }
-  }
-
-  throw new Error("overpass-all-endpoints-failed");
-}
+// Medidas Bottom Sheet
+const SHEET_MIN_HEIGHT = 160; 
+const SHEET_MAX_HEIGHT = SCREEN_HEIGHT * 0.65;
+const SHEET_SNAP_THRESHOLD = SCREEN_HEIGHT * 0.4;
 
 export default function HomeScreen() {
-  const mapRef = useRef<MapView | null>(null);
-  const colors = HOME_THEME_COLORS.dark;
-  const requestIdRef = useRef(0);
-  const debounceFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastQueryCenterRef = useRef<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const poiCacheRef = useRef(
-    new Map<string, { timestamp: number; data: PoiMarker[] }>(),
-  );
-  const watchSubscriptionRef = useRef<Location.LocationSubscription | null>(
-    null,
-  );
-  const [region, setRegion] = useState<Region>(FALLBACK_REGION);
-  const [selectedFilter, setSelectedFilter] = useState<PoiFilter>("fuel");
-  const [poiMarkers, setPoiMarkers] = useState<PoiMarker[]>([]);
-  const [isLoadingPois, setIsLoadingPois] = useState(false);
-  const [locationStateText, setLocationStateText] = useState(
-    "Buscando ubicación...",
-  );
-  const [isPanicVisible, setIsPanicVisible] = useState(false);
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const activeTheme = useActiveTheme();
+  const colors = HOME_THEME_COLORS[activeTheme];
+  const language = useAppLanguage();
+  
+  const { location, locationAllowed, askLocationPermission } = useUserLocation();
+  const [selectedService, setSelectedService] = useState<string | null>(null);
 
-  const fetchPois = useCallback(
-    async (filter: PoiFilter, latitude: number, longitude: number) => {
-      setIsLoadingPois(true);
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
-      const cacheKey = getCacheKey(filter, latitude, longitude);
-      const now = Date.now();
-      const cached = poiCacheRef.current.get(cacheKey);
+  // Bottom Sheet Físicas
+  const sheetAnim = useRef(new Animated.Value(SHEET_MIN_HEIGHT)).current;
+  const isExpandedRef = useRef(false);
 
-      if (cached && now - cached.timestamp < POI_CACHE_TTL_MS) {
-        setPoiMarkers(cached.data);
-        setIsLoadingPois(false);
-        setLocationStateText(
-          "Ubicación lista · Datos recientes (OSM/Overpass)",
-        );
-        lastQueryCenterRef.current = { latitude, longitude };
-        return;
-      }
+  // State para Modales y Emergencia
+  const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  
+  // SOS Mechanic states
+  const [showSOSModal, setShowSOSModal] = useState(false);
+  const [sosCountdown, setSosCountdown] = useState(10);
+  const [showMedicalID, setShowMedicalID] = useState(false);
+  
+  // Medical Data para Offline
+  const [medicalData, setMedicalData] = useState({ bloodType: "", allergies: "", conditions: "", contact: "" });
 
-      try {
-        const query = buildOverpassQuery(filter, latitude, longitude);
-        const response = await fetchOverpassWithFallback(query);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-        const payload = (await response.json()) as {
-          elements?: Array<{
-            id: number;
-            lat?: number;
-            lon?: number;
-            center?: { lat: number; lon: number };
-            tags?: Record<string, string>;
-          }>;
-        };
-
-        const realPois = (payload.elements ?? [])
-          .map((element) => {
-            const lat = element.lat ?? element.center?.lat;
-            const lon = element.lon ?? element.center?.lon;
-
-            if (typeof lat !== "number" || typeof lon !== "number") {
-              return null;
-            }
-
-            return {
-              id: `real-${filter}-${element.id}`,
-              latitude: lat,
-              longitude: lon,
-              title: element.tags?.name?.trim() || "Punto de interés",
-              filter,
-              source: "real" as const,
-            };
-          })
-          .filter((item): item is PoiMarker => item !== null)
-          .slice(0, 30);
-
-        if (requestId !== requestIdRef.current) {
-          return;
-        }
-
-        if (realPois.length > 0) {
-          setPoiMarkers(realPois);
-          poiCacheRef.current.set(cacheKey, { timestamp: now, data: realPois });
-          setLocationStateText(
-            "Ubicación lista · POIs en tiempo real (gratis)",
-          );
-          lastQueryCenterRef.current = { latitude, longitude };
-          return;
-        }
-
-        const fallbackPois = buildFallbackPois(filter, latitude, longitude);
-        setPoiMarkers(fallbackPois);
-        poiCacheRef.current.set(cacheKey, {
-          timestamp: now,
-          data: fallbackPois,
-        });
-        setLocationStateText(
-          "Sin resultados cercanos · Mostrando puntos de apoyo",
-        );
-        lastQueryCenterRef.current = { latitude, longitude };
-      } catch {
-        if (requestId !== requestIdRef.current) {
-          return;
-        }
-
-        const fallbackPois = buildFallbackPois(filter, latitude, longitude);
-        setPoiMarkers(fallbackPois);
-        poiCacheRef.current.set(cacheKey, {
-          timestamp: now,
-          data: fallbackPois,
-        });
-        setLocationStateText("Sin internet · Mostrando puntos de apoyo");
-        lastQueryCenterRef.current = { latitude, longitude };
-      } finally {
-        if (requestId === requestIdRef.current) {
-          setIsLoadingPois(false);
-        }
-      }
-    },
-    [],
-  );
-
-  const centerMapToUser = useCallback((nextRegion: Region) => {
-    setRegion(nextRegion);
-    mapRef.current?.animateToRegion(nextRegion, 450);
-  }, []);
-
+  // Inicializar Preferencias y Prompts
   useEffect(() => {
-    let isMounted = true;
+    void askLocationPermission();
 
-    const setupLocation = async () => {
-      const permission = await Location.requestForegroundPermissionsAsync();
-
-      if (permission.status !== "granted") {
-        setLocationStateText("Permiso denegado · Activa ubicación");
-        const { latitude, longitude } = FALLBACK_REGION;
-        await fetchPois(selectedFilter, latitude, longitude);
-        return;
+    const checkPreferences = async () => {
+      const prefs = await getAppPreferences();
+      if (!prefs.hasPromptedTheme) {
+        setShowThemeModal(true);
+      } else if (!prefs.hasPromptedContact) {
+        setShowContactModal(true);
       }
-
-      const currentPosition = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+      
+      setMedicalData({
+         bloodType: prefs.bloodType || "No especificado",
+         allergies: prefs.allergies || "No especificadas",
+         conditions: prefs.medicalConditions || "No especificadas",
+         contact: prefs.trustedContactName ? `${prefs.trustedContactName} (${prefs.trustedContactPhone})` : "No registrado"
       });
+    };
+    void checkPreferences();
+  }, [askLocationPermission]);
 
-      if (!isMounted) {
-        return;
+  // TODO: Copilot Backend & Sensors - Detección Automática de Choques / Caídas
+  // Para usuarios de motos: Integrar `expo-sensors` (Accelerometer o Gyroscope).
+  // Suscribirse a los sensores en segundo plano y, si detecta una sacudida extrema 
+  // (e.g. Aceleración > 4G o 40m/s² de golpe), disparar automáticamente `setShowSOSModal(true)`
+  // Aquí mismo en un useEffect.
+
+  // SOS Countdown Mechanism
+  useEffect(() => {
+    if (showSOSModal) {
+      setSosCountdown(10);
+      countdownIntervalRef.current = setInterval(() => {
+        setSosCountdown((prev) => {
+          if (prev <= 1) {
+             clearInterval(countdownIntervalRef.current!);
+             triggerEmergency();
+             return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    }
+    return () => {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    }
+  }, [showSOSModal]);
+
+  const triggerEmergency = () => {
+    setShowSOSModal(false);
+    
+    // TODO: Copilot Backend - Aquí integrar la lógica para:
+    // 1. Enviar SMS con expo-sms al Contacto de Confianza (location.coords)
+    // 2. Disparar API de Firebase para notificar a Centro de Control / 911
+    // 3. Registrar en base de datos local (SQLite o AsyncStorage) el incidente offline.
+    
+    setShowMedicalID(true);
+  };
+
+  // Pulse animation for FAB
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ]),
+    ).start();
+  }, [pulseAnim]);
+
+  // PanResponder para Bottom Sheet
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Solo atrapar el gesto si el arrastre es vertical significativo
+        return Math.abs(gestureState.dy) > 10;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const startHeight = isExpandedRef.current ? SHEET_MAX_HEIGHT : SHEET_MIN_HEIGHT;
+        let newHeight = startHeight - gestureState.dy;
+
+        // Limites
+        if (newHeight < SHEET_MIN_HEIGHT) newHeight = SHEET_MIN_HEIGHT;
+        if (newHeight > SHEET_MAX_HEIGHT) newHeight = SHEET_MAX_HEIGHT;
+
+        sheetAnim.setValue(newHeight);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const startHeight = isExpandedRef.current ? SHEET_MAX_HEIGHT : SHEET_MIN_HEIGHT;
+        const releaseHeight = startHeight - gestureState.dy;
+
+        const shouldExpand = releaseHeight > SHEET_SNAP_THRESHOLD;
+        
+        isExpandedRef.current = shouldExpand;
+        Animated.spring(sheetAnim, {
+          toValue: shouldExpand ? SHEET_MAX_HEIGHT : SHEET_MIN_HEIGHT,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false, // height requires false
+        }).start();
+      },
+    })
+  ).current;
+
+  // Manejar selección de servicio
+  const toggleService = (id: string) => {
+    if (selectedService === id) {
+      setSelectedService(null);
+    } else {
+      setSelectedService(id);
+      // Contraer automáticamente si está expandido
+      if (isExpandedRef.current) {
+        isExpandedRef.current = false;
+        Animated.spring(sheetAnim, {
+          toValue: SHEET_MIN_HEIGHT,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false,
+        }).start();
       }
+    }
+  };
 
-      const nextRegion: Region = {
-        latitude: currentPosition.coords.latitude,
-        longitude: currentPosition.coords.longitude,
-        latitudeDelta: 0.028,
-        longitudeDelta: 0.028,
+  const mapRegion: Region = location
+    ? {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }
+    : {
+        latitude: 19.4326,
+        longitude: -99.1332,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
       };
 
-      centerMapToUser(nextRegion);
-      await fetchPois(
-        selectedFilter,
-        currentPosition.coords.latitude,
-        currentPosition.coords.longitude,
-      );
-
-      watchSubscriptionRef.current = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 12000,
-          distanceInterval: 20,
-        },
-        (position) => {
-          const updatedRegion: Region = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            latitudeDelta: 0.028,
-            longitudeDelta: 0.028,
-          };
-
-          setRegion(updatedRegion);
-        },
-      );
-    };
-
-    setupLocation().catch(() => {
-      setLocationStateText("Error al obtener ubicación");
-      const { latitude, longitude } = FALLBACK_REGION;
-      void fetchPois(selectedFilter, latitude, longitude);
-    });
-
-    return () => {
-      isMounted = false;
-      watchSubscriptionRef.current?.remove();
-      watchSubscriptionRef.current = null;
-    };
-  }, [centerMapToUser, fetchPois]);
-
-  useEffect(() => {
-    void fetchPois(selectedFilter, region.latitude, region.longitude);
-  }, [fetchPois, region.latitude, region.longitude, selectedFilter]);
-
-  useEffect(() => {
-    const refreshTimer = setInterval(() => {
-      void fetchPois(selectedFilter, region.latitude, region.longitude);
-    }, AUTO_REFRESH_MS);
-
-    return () => {
-      clearInterval(refreshTimer);
-    };
-  }, [fetchPois, region.latitude, region.longitude, selectedFilter]);
-
-  useEffect(() => {
-    return () => {
-      if (debounceFetchRef.current) {
-        clearTimeout(debounceFetchRef.current);
-      }
-    };
-  }, []);
-
-  const visibleMarkers = useMemo(
-    () => poiMarkers.filter((poi) => poi.filter === selectedFilter),
-    [poiMarkers, selectedFilter],
-  );
-
-  const handleEmergencyTypeSelect = useCallback(
-    (type: "accident" | "mechanical" | "fuel") => {
-      if (type === "fuel") {
-        setSelectedFilter("fuel");
-        return;
-      }
-
-      if (type === "mechanical") {
-        setSelectedFilter("mechanic");
-        return;
-      }
-
-      setSelectedFilter("tow");
-    },
-    [],
-  );
-
-  const handleRegionChangeComplete = useCallback(
-    (nextRegion: Region) => {
-      setRegion(nextRegion);
-
-      const lastQueryCenter = lastQueryCenterRef.current;
-      if (!lastQueryCenter) {
-        return;
-      }
-
-      const movedMeters = distanceMeters(
-        lastQueryCenter.latitude,
-        lastQueryCenter.longitude,
-        nextRegion.latitude,
-        nextRegion.longitude,
-      );
-
-      if (movedMeters < MAP_MOVE_REFRESH_THRESHOLD_METERS) {
-        return;
-      }
-
-      if (debounceFetchRef.current) {
-        clearTimeout(debounceFetchRef.current);
-      }
-
-      debounceFetchRef.current = setTimeout(() => {
-        void fetchPois(
-          selectedFilter,
-          nextRegion.latitude,
-          nextRegion.longitude,
-        );
-      }, 700);
-    },
-    [fetchPois, selectedFilter],
-  );
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      
+      {/* MAPA ABSOLUTO */}
       <MapView
-        ref={mapRef}
-        style={styles.map}
-        customMapStyle={RESCUE_DARK_MAP_STYLE}
-        initialRegion={region}
-        onRegionChangeComplete={handleRegionChangeComplete}
-        showsUserLocation
+        style={StyleSheet.absoluteFillObject}
+        region={mapRegion}
+        showsUserLocation={locationAllowed}
+        followsUserLocation={locationAllowed}
         showsMyLocationButton={false}
-        loadingEnabled
+        customMapStyle={activeTheme === "dark" ? RESCUE_DARK_MAP_STYLE : undefined}
       >
-        {visibleMarkers.map((marker) => (
-          <Marker
-            key={marker.id}
-            coordinate={{
-              latitude: marker.latitude,
-              longitude: marker.longitude,
-            }}
-            title={marker.title}
-            description={
-              marker.source === "real"
-                ? "Dato en tiempo real"
-                : "Punto sugerido sin conexión"
-            }
-            pinColor={getMarkerColor(marker.filter)}
-          />
-        ))}
+        {/* // TODO: Copilot - Renderizar Markers aquí */}
       </MapView>
 
-      <View style={styles.headerFloat}>
-        <Text style={styles.brandTitle}>RescueNow</Text>
-        <Text style={styles.locationStatus}>
-          {isLoadingPois ? "Actualizando POIs..." : locationStateText}
-        </Text>
+      {/* HEADER FLOTANTE */}
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]} pointerEvents="box-none">
+        <View style={[styles.headerBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+              {language === "es" ? "Ubicación Actual" : "Current Location"}
+            </Text>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+              {location ? `Satélites Conectados` : "Buscando satélites..."}
+            </Text>
+          </View>
+          <Pressable style={styles.profileBtn} onPress={() => router.push("/(tabs)/options")}>
+             <BrandLogo width={36} height={36} />
+          </Pressable>
+        </View>
       </View>
 
-      <View style={styles.bottomLayer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsContent}
+      {/* FAB: RESCUE AI (Chatbot) */}
+      <Animated.View style={[
+          styles.aiFabContainer, 
+          { bottom: Animated.add(sheetAnim, 24) }
+        ]}
+      >
+        <Pressable 
+          style={[styles.aiFab, { backgroundColor: colors.surface, borderColor: colors.cardBorder, shadowColor: colors.accent }]} 
+          onPress={() => router.push("/(tabs)/chatbot")}
         >
-          {FILTER_CHIPS.map((chip) => {
-            const isSelected = selectedFilter === chip.id;
+          <MaterialCommunityIcons name="robot-outline" size={28} color={colors.accent} />
+        </Pressable>
+      </Animated.View>
+
+      {/* FAB (SOS Button) - SEPARATED VIEWS FIX */}
+      <Animated.View style={[
+          styles.fabContainer, 
+          { 
+            bottom: Animated.add(sheetAnim, 24) // JS Driven
+          }
+        ]}
+      >
+        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+          <Pressable 
+            onPress={() => setShowSOSModal(true)}
+            style={[styles.sosFab, { shadowColor: '#DC2626', elevation: 12 }]} 
+          >
+            <MaterialCommunityIcons name="alert" size={34} color="#FFFFFF" />
+          </Pressable>
+        </Animated.View>
+      </Animated.View>
+
+      {/* BOTTOM SHEET INTERACTIVO */}
+      <Animated.View 
+        style={[
+          styles.bottomSheet, 
+          { 
+            height: sheetAnim, 
+            backgroundColor: colors.surface, 
+            borderColor: colors.cardBorder, 
+            paddingBottom: Math.max(insets.bottom, 20) 
+          }
+        ]}
+      >
+        {/* Manija de Arrastre */}
+        <View style={styles.dragHandleWrapper} {...panResponder.panHandlers}>
+          <View style={[styles.dragHandle, { backgroundColor: colors.cardBorder }]} />
+        </View>
+
+        <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+          {language === "es" ? "¿Qué asistencia necesitas?" : "What assistance do you need?"}
+        </Text>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.gridMode}
+        >
+          {SERVICES.map((service) => {
+            const isSelected = selectedService === service.id;
+            const bgColor = isSelected ? `${service.colorHex}15` : 'transparent';
+            const borderColor = isSelected ? service.colorHex : colors.cardBorder;
+            const shadowForce = isSelected ? { shadowColor: service.colorHex, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 } : {};
 
             return (
               <Pressable
-                key={chip.id}
-                onPress={() => setSelectedFilter(chip.id)}
+                key={service.id}
+                onPress={() => toggleService(service.id)}
                 style={[
-                  styles.chip,
-                  isSelected ? styles.chipSelected : styles.chipUnselected,
+                  styles.serviceGridCard,
+                  { backgroundColor: bgColor, borderColor },
+                  shadowForce
                 ]}
               >
-                <Text style={styles.chipText}>
-                  {chip.emoji} {chip.label}
+                <MaterialCommunityIcons 
+                  name={service.icon} 
+                  size={32} 
+                  color={isSelected ? service.colorHex : colors.textSecondary} 
+                  style={{ marginBottom: 10 }}
+                />
+                <Text style={[styles.serviceTitle, { color: colors.textPrimary }]}>
+                  {language === "es" ? service.titleEs : service.titleEn}
+                </Text>
+                <Text style={[styles.serviceDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                  {language === "es" ? service.descEs : service.descEn}
                 </Text>
               </Pressable>
             );
           })}
         </ScrollView>
+      </Animated.View>
 
-        <Pressable
-          style={styles.sosFab}
-          onPress={() => setIsPanicVisible(true)}
-        >
-          <MaterialCommunityIcons
-            name="alarm-lightning"
-            size={26}
-            color="#FFFFFF"
-          />
-        </Pressable>
-      </View>
+      {/* CUSTOM THEME MODAL */}
+      <Modal transparent visible={showThemeModal} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+            <View style={[styles.modalIconWrap, { backgroundColor: colors.mapBackground }]}>
+              <Ionicons name="color-palette-outline" size={36} color={colors.primary} />
+            </View>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              {language === "es" ? "Tema Recomendado" : "Recommended Theme"}
+            </Text>
+            <Text style={[styles.modalDesc, { color: colors.textSecondary }]}>
+              {language === "es" 
+                ? "RescueNow utiliza colores vibrantes de día y oscuros de noche para proteger tu vista. ¿Deseas usar esta recomendación o prefieres el tema de tu teléfono?"
+                : "RescueNow uses vibrant colors during the day and dark colors at night to reduce eye strain. Would you like to use this recommendation or your device's theme?"
+              }
+            </Text>
+            
+            <View style={styles.modalButtons}>
+              <Pressable 
+                onPress={() => {
+                  void updateAppPreferences({ themeMode: "time", hasPromptedTheme: true });
+                  setShowThemeModal(false);
+                }}
+                style={[styles.modalBtnPrimary, { backgroundColor: colors.primary }]}
+              >
+                <Text style={styles.modalBtnPrimaryText}>
+                  {language === "es" ? "Usar recomendación de la aplicación" : "Use app recommendation"}
+                </Text>
+              </Pressable>
 
-      <Modal
-        transparent
-        visible={isPanicVisible}
-        animationType="slide"
-        onRequestClose={() => setIsPanicVisible(false)}
-      >
-        <View style={styles.panicBackdrop}>
-          <Pressable
-            style={styles.panicBackdropTouch}
-            onPress={() => setIsPanicVisible(false)}
-          />
-
-          <View style={styles.panicSheet}>
-            <View style={styles.panicSheetHandle} />
-            <PanicButton
-              colors={colors}
-              onPress={() => setIsPanicVisible(false)}
-              onEmergencyTypeSelect={handleEmergencyTypeSelect}
-            />
-            <Pressable
-              style={styles.closePanicButton}
-              onPress={() => setIsPanicVisible(false)}
-            >
-              <Text style={styles.closePanicText}>Cerrar</Text>
-            </Pressable>
+              <Pressable 
+                onPress={() => {
+                  void updateAppPreferences({ themeMode: "system", hasPromptedTheme: true });
+                  setShowThemeModal(false);
+                }}
+                style={[styles.modalBtnSecondary, { borderColor: colors.cardBorder }]}
+              >
+                <Text style={[styles.modalBtnSecondaryText, { color: colors.textPrimary }]}>
+                  {language === "es" ? "Usar el tema del teléfono" : "Use device theme"}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+      {/* CUSTOM CONTACT PROMPT MODAL */}
+      <Modal transparent visible={showContactModal} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+            <View style={[styles.modalIconWrap, { backgroundColor: colors.mapBackground }]}>
+              <Ionicons name="shield-checkmark" size={36} color={colors.success} />
+            </View>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+               Contacto de Confianza
+            </Text>
+            <Text style={[styles.modalDesc, { color: colors.textSecondary }]}>
+               Te sugerimos añadir un número de teléfono de emergencia y establecer tus datos médicos (Tipo de Sangre, Alergias) desde tu Perfil para usar el sistema S.O.S.
+            </Text>
+            
+            <View style={styles.modalButtons}>
+              <Pressable 
+                onPress={() => {
+                  void updateAppPreferences({ hasPromptedContact: true });
+                  setShowContactModal(false);
+                  router.push("/(tabs)/options");
+                }}
+                style={[styles.modalBtnPrimary, { backgroundColor: colors.primary }]}
+              >
+                <Text style={styles.modalBtnPrimaryText}>Ir a Configurar</Text>
+              </Pressable>
+
+              <Pressable 
+                onPress={() => {
+                  void updateAppPreferences({ hasPromptedContact: false });
+                  setShowContactModal(false);
+                }}
+                style={[styles.modalBtnSecondary, { borderColor: colors.cardBorder }]}
+              >
+                <Text style={[styles.modalBtnSecondaryText, { color: colors.textPrimary }]}>
+                  Recordarme más tarde
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* SOS COUNTDOWN MODAL */}
+      <Modal transparent visible={showSOSModal} animationType="fade">
+        <View style={styles.sosModalOverlay}>
+           <Text style={styles.sosAlertTitle}>¡EMERGENCIA INICIADA!</Text>
+           <Text style={styles.sosAlertDesc}>En breve se mandará un mensaje y tu ubicación exacta al contado predeterminado y a los sistemas de emergencia.</Text>
+
+           <View style={styles.countdownContainer}>
+             <Text style={styles.countdownNumber}>{sosCountdown}</Text>
+             <Text style={styles.countdownLabel}>segundos</Text>
+           </View>
+
+           <Pressable 
+              onPress={() => setShowSOSModal(false)}
+              style={styles.sosCancelBtn}
+           >
+              <Text style={styles.sosCancelText}>CANCELAR ALERTA</Text>
+           </Pressable>
+        </View>
+      </Modal>
+
+      {/* MEDICAL ID FULLSCREEN OVERLAY (OFFLINE SAFE) */}
+      <Modal transparent visible={showMedicalID} animationType="fade">
+        <View style={[styles.medicalOverlay, { backgroundColor: colors.background }]}>
+           <View style={[styles.medicalHeader, { backgroundColor: colors.danger }]}>
+             <MaterialCommunityIcons name="medical-bag" size={48} color="#FFF" style={{marginBottom: 8}} />
+             <Text style={styles.medicalHeaderTitle}>FICHA MÉDICA S.O.S</Text>
+             <Text style={styles.medicalHeaderSubtitle}>Esta persona ha solicitado ayuda de emergencia.</Text>
+           </View>
+           
+           <ScrollView contentContainerStyle={styles.medicalScroll} showsVerticalScrollIndicator={false}>
+             <View style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+                <Text style={[styles.medicalLabel, { color: colors.textSecondary }]}>TIPO DE SANGRE</Text>
+                <Text style={[styles.medicalValue, { color: colors.danger, fontSize: 32 }]}>{medicalData.bloodType}</Text>
+             </View>
+
+             <View style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+                <Text style={[styles.medicalLabel, { color: colors.textSecondary }]}>ALERGIAS</Text>
+                <Text style={[styles.medicalValue, { color: colors.textPrimary }]}>{medicalData.allergies}</Text>
+             </View>
+
+             <View style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+                <Text style={[styles.medicalLabel, { color: colors.textSecondary }]}>CONDICIONES MÉDICAS</Text>
+                <Text style={[styles.medicalValue, { color: colors.textPrimary, lineHeight: 24 }]}>{medicalData.conditions}</Text>
+             </View>
+
+             <View style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+                <Text style={[styles.medicalLabel, { color: colors.textSecondary }]}>CONTACTO DE EMERGENCIA</Text>
+                <Text style={[styles.medicalValue, { color: colors.textPrimary }]}>{medicalData.contact}</Text>
+             </View>
+
+             <View style={{ height: 100 }} />
+           </ScrollView>
+
+           <Pressable style={styles.medicalDismissBtn} onPress={() => setShowMedicalID(false)}>
+             <Text style={styles.medicalDismissText}>X CERRAR FICHA MÉDICA</Text>
+           </Pressable>
+        </View>
+      </Modal>
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#121212",
-  },
-  map: {
-    flex: 1,
-  },
-  headerFloat: {
-    position: "absolute",
-    top: 14,
-    left: 14,
-    right: 14,
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: "rgba(30, 30, 30, 0.72)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-  },
-  brandTitle: {
-    color: "#FFFFFF",
-    fontSize: 21,
-    fontWeight: "900",
-    letterSpacing: 0.3,
-  },
-  locationStatus: {
-    marginTop: 4,
-    color: "#D1D5DB",
-    fontWeight: "600",
-    fontSize: 12,
-  },
-  bottomLayer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 18,
-    paddingHorizontal: 14,
-  },
-  chipsContent: {
-    paddingRight: 84,
-    gap: 8,
-  },
-  chip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  chipSelected: {
-    backgroundColor: "#EAB308",
-    borderColor: "#EAB308",
-  },
-  chipUnselected: {
-    backgroundColor: "rgba(20, 20, 20, 0.9)",
-    borderColor: "rgba(255, 255, 255, 0.16)",
-  },
-  chipText: {
-    color: "#F8FAFC",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  sosFab: {
-    position: "absolute",
-    right: 14,
-    bottom: 4,
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#DC2626",
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.25)",
-    shadowColor: "#000000",
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
-  },
-  panicBackdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.58)",
-  },
-  panicBackdropTouch: {
-    flex: 1,
-  },
-  panicSheet: {
-    backgroundColor: "#121212",
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderColor: "rgba(234, 179, 8, 0.24)",
-    paddingHorizontal: 14,
-    paddingBottom: 20,
-    paddingTop: 10,
-  },
-  panicSheetHandle: {
-    alignSelf: "center",
-    width: 44,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: "#424242",
-    marginBottom: 8,
-  },
-  closePanicButton: {
-    marginTop: 6,
-    alignSelf: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 22,
-  },
-  closePanicText: {
-    color: "#EAB308",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  container: { flex: 1 },
+  header: { position: 'absolute', top: 0, width: '100%', paddingHorizontal: 16, zIndex: 10 },
+  headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderRadius: 24, borderWidth: 1, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
+  headerLeft: { flex: 1, paddingRight: 12 },
+  headerSubtitle: { fontSize: 12, fontWeight: '700', marginBottom: 4 },
+  headerTitle: { fontSize: 16, fontWeight: '800' },
+  profileBtn: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000000' },
+  aiFabContainer: { position: 'absolute', left: 20, zIndex: 30 },
+  aiFab: { width: 56, height: 56, borderRadius: 28, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
+  fabContainer: { position: 'absolute', right: 20, zIndex: 30 },
+  sosFab: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.6, shadowRadius: 16 },
+  bottomSheet: { position: 'absolute', bottom: 0, width: '100%', borderTopLeftRadius: 36, borderTopRightRadius: 36, borderWidth: 1, borderBottomWidth: 0, zIndex: 20, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 20, shadowOffset: { width: 0, height: -5 } },
+  dragHandleWrapper: { width: '100%', alignItems: 'center', paddingVertical: 14 },
+  dragHandle: { width: 48, height: 5, borderRadius: 3, opacity: 0.8 },
+  sheetTitle: { fontSize: 20, fontWeight: '900', paddingHorizontal: 24, marginBottom: 16, letterSpacing: 0.2 },
+  gridMode: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, paddingBottom: 24, justifyContent: 'space-between' },
+  serviceGridCard: { width: '48%', borderRadius: 24, borderWidth: 1.5, alignItems: 'flex-start', padding: 18, marginBottom: 16 },
+  serviceTitle: { fontSize: 15, fontWeight: '800', marginBottom: 6 },
+  serviceDesc: { fontSize: 12, fontWeight: '600', lineHeight: 16 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalContent: { width: '100%', borderRadius: 32, padding: 28, borderWidth: 1, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 15 },
+  modalIconWrap: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
+  modalDesc: { fontSize: 14, textAlign: 'center', lineHeight: 22, fontWeight: '500', marginBottom: 28 },
+  modalButtons: { width: '100%', gap: 12 },
+  modalBtnPrimary: { width: '100%', paddingVertical: 18, borderRadius: 16, alignItems: 'center' },
+  modalBtnPrimaryText: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
+  modalBtnSecondary: { width: '100%', paddingVertical: 16, borderRadius: 16, alignItems: 'center', borderWidth: 1.5 },
+  modalBtnSecondaryText: { fontSize: 14, fontWeight: '700' },
+  
+  sosModalOverlay: { flex: 1, backgroundColor: 'rgba(20, 0, 0, 0.95)', justifyContent: 'center', alignItems: 'center', padding: 32 },
+  sosAlertTitle: { color: '#DC2626', fontSize: 28, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
+  sosAlertDesc: { color: '#FFFFFF', fontSize: 16, textAlign: 'center', opacity: 0.9, lineHeight: 24, marginBottom: 40 },
+  countdownContainer: { width: 220, height: 220, borderRadius: 110, borderWidth: 8, borderColor: '#DC2626', justifyContent: 'center', alignItems: 'center', marginBottom: 48, backgroundColor: 'rgba(220, 38, 38, 0.15)' },
+  countdownNumber: { color: '#FFFFFF', fontSize: 80, fontWeight: '900' },
+  countdownLabel: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', opacity: 0.8 },
+  sosCancelBtn: { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FFFFFF', borderRadius: 24, paddingVertical: 18, paddingHorizontal: 40, width: '100%', alignItems: 'center' },
+  sosCancelText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 1 },
+
+  medicalOverlay: { flex: 1 },
+  medicalHeader: { alignItems: 'center', justifyContent: 'center', paddingTop: 64, paddingBottom: 32, paddingHorizontal: 24, borderBottomWidth: 4, borderBottomColor: '#991B1B' },
+  medicalHeaderTitle: { color: '#FFF', fontSize: 28, fontWeight: '900', textAlign: 'center', letterSpacing: 0.5 },
+  medicalHeaderSubtitle: { color: '#FFF', fontSize: 15, fontWeight: '500', textAlign: 'center', opacity: 0.9, marginTop: 8 },
+  medicalScroll: { padding: 24, paddingBottom: 100 },
+  medicalCard: { padding: 20, borderRadius: 20, borderWidth: 1, marginBottom: 16 },
+  medicalLabel: { fontSize: 12, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5 },
+  medicalValue: { fontSize: 18, fontWeight: '700' },
+  medicalDismissBtn: { position: 'absolute', bottom: 40, alignSelf: 'center', backgroundColor: '#000', paddingVertical: 16, paddingHorizontal: 32, borderRadius: 30, borderWidth: 1, borderColor: '#333', shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 10 },
+  medicalDismissText: { color: '#FFF', fontSize: 14, fontWeight: '800' }
 });

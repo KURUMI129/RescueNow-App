@@ -1,3 +1,5 @@
+import { useActiveTheme } from "@/hooks/use-active-theme";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -10,7 +12,6 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    useColorScheme,
 } from "react-native";
 
 import { AuthHeader } from "@/components/auth/auth-header";
@@ -21,9 +22,8 @@ import { useAppLanguage } from "@/hooks/use-app-language";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors =
-    colorScheme === "dark" ? AUTH_THEME_COLORS.dark : AUTH_THEME_COLORS.light;
+  const activeTheme = useActiveTheme();
+  const colors = AUTH_THEME_COLORS[activeTheme];
   const language = useAppLanguage();
 
   const [email, setEmail] = useState<string>("");
@@ -78,27 +78,24 @@ export default function ForgotPasswordScreen() {
             <Text style={[styles.label, { color: colors.textPrimary }]}>
               {t.email}
             </Text>
-            <TextInput
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholder={t.emailPlaceholder}
-              placeholderTextColor={colors.inputPlaceholder}
-              style={[
-                styles.input,
-                {
-                  color: colors.textPrimary,
-                  borderColor: colors.inputBorder,
-                  backgroundColor: colors.inputBackground,
-                },
-              ]}
-              value={email}
-              onChangeText={(value) => {
-                setEmail(value);
-                if (sent) {
-                  setSent(false);
-                }
-              }}
-            />
+            
+            <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+              <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholder={t.emailPlaceholder}
+                placeholderTextColor={colors.inputPlaceholder}
+                style={[styles.modernInput, { color: colors.textPrimary }]}
+                value={email}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  if (sent) {
+                    setSent(false);
+                  }
+                }}
+              />
+            </View>
 
             {sent ? (
               <Text
@@ -118,7 +115,7 @@ export default function ForgotPasswordScreen() {
                 {
                   backgroundColor: canSubmit
                     ? colors.primary
-                    : colors.primaryDisabled,
+                    : colors.cardBorder,
                 },
               ]}
             >
@@ -159,15 +156,15 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
     borderWidth: 1,
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
+    shadowColor: "#000000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    elevation: 4,
   },
   sectionTitle: {
     fontSize: 24,
@@ -180,16 +177,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   label: {
-    fontWeight: "600",
+    fontWeight: "800",
     fontSize: 13,
-    marginTop: 8,
-    marginBottom: 6,
+    marginTop: 16,
+    marginBottom: 10,
+    letterSpacing: 0.3,
   },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    minHeight: 56,
+  },
+  inputIcon: { marginRight: 12 },
+  modernInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    paddingVertical: 14,
   },
   successText: {
     marginTop: 8,
@@ -197,9 +204,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   submitButton: {
-    marginTop: 16,
-    borderRadius: 14,
-    paddingVertical: 13,
+    marginTop: 28,
+    borderRadius: 18,
+    paddingVertical: 18,
     alignItems: "center",
   },
   submitButtonText: {
@@ -207,7 +214,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   linkButton: {
-    marginTop: 12,
+    marginTop: 16,
     alignItems: "center",
   },
   linkText: {

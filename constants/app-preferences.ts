@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export type AppLanguage = "es" | "en";
 export type SubscriptionPlan = "free" | "premium";
 export type AccountRole = "user" | "technician";
+export type ThemeMode = "system" | "time" | "light" | "dark";
 
 export type AppPreferences = {
   language: AppLanguage;
@@ -10,6 +11,13 @@ export type AppPreferences = {
   useTrustedContact: boolean;
   subscriptionPlan: SubscriptionPlan;
   accountRole: AccountRole;
+  themeMode: ThemeMode;
+  hasPromptedTheme: boolean;
+  hasPromptedContact: boolean;
+  trustedContactName: string;
+  bloodType: string;
+  allergies: string;
+  medicalConditions: string;
 };
 
 const APP_PREFERENCES_KEY = "@rescuenow/app-preferences";
@@ -21,6 +29,13 @@ const DEFAULT_APP_PREFERENCES: AppPreferences = {
   useTrustedContact: false,
   subscriptionPlan: "free",
   accountRole: "user",
+  themeMode: "time",
+  hasPromptedTheme: false,
+  hasPromptedContact: false,
+  trustedContactName: "",
+  bloodType: "",
+  allergies: "",
+  medicalConditions: "",
 };
 
 let inMemoryPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
@@ -44,6 +59,19 @@ function sanitizePreferences(
   const useTrustedContact = Boolean(
     rawPreferences?.useTrustedContact && trustedContactPhone.length >= 7,
   );
+  
+  const rawThemeMode = rawPreferences?.themeMode;
+  const themeMode: ThemeMode = 
+    rawThemeMode === "light" || rawThemeMode === "dark" || rawThemeMode === "system"
+      ? rawThemeMode
+      : "time";
+
+  const hasPromptedTheme = Boolean(rawPreferences?.hasPromptedTheme);
+  const hasPromptedContact = Boolean(rawPreferences?.hasPromptedContact);
+  const trustedContactName = rawPreferences?.trustedContactName ?? "";
+  const bloodType = rawPreferences?.bloodType ?? "";
+  const allergies = rawPreferences?.allergies ?? "";
+  const medicalConditions = rawPreferences?.medicalConditions ?? "";
 
   return {
     language,
@@ -51,6 +79,13 @@ function sanitizePreferences(
     useTrustedContact,
     subscriptionPlan,
     accountRole,
+    themeMode,
+    hasPromptedTheme,
+    hasPromptedContact,
+    trustedContactName,
+    bloodType,
+    allergies,
+    medicalConditions,
   };
 }
 

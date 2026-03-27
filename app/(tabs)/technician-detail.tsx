@@ -1,3 +1,4 @@
+import { useActiveTheme } from "@/hooks/use-active-theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -69,9 +70,8 @@ export default function TechnicianDetailScreen() {
     category?: string;
     issue?: string;
   }>();
-  const colorScheme = useColorScheme();
-  const colors =
-    colorScheme === "dark" ? HOME_THEME_COLORS.dark : HOME_THEME_COLORS.light;
+  const activeTheme = useActiveTheme();
+  const colors = HOME_THEME_COLORS[activeTheme];
   const { reduceMotionEnabled } = useAccessibilityPreferences();
   const language = useAppLanguage();
 
