@@ -108,6 +108,10 @@ export default function OptionsScreen() {
   const handleSaveContact = async () => {
     if (isSavingContact) return;
     setIsSavingContact(true);
+    
+    // TODO: Copilot Backend - Opcional: Además de guardar localmente en updateAppPreferences,
+    // podrías usar setDoc(..., { merge: true }) aquí para respaldar el número en Firestore.
+    
     const nextPrefs = await updateAppPreferences({ trustedContactPhone, trustedContactName, useTrustedContact });
     setTrustedContactPhone(nextPrefs.trustedContactPhone);
     setTrustedContactName(nextPrefs.trustedContactName);
@@ -187,12 +191,29 @@ export default function OptionsScreen() {
             </View>
             
             <Pressable 
-              style={styles.editProfileBtn}
+              style={[styles.editProfileBtn, { backgroundColor: 'rgba(0,180,216,0.1)' }]}
               onPress={() => router.push("/(tabs)/edit-profile")}
             >
-              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>Editar Perfil</Text>
+              <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 14 }}>✏️ Editar Perfil Completo</Text>
             </Pressable>
           </View>
+
+          {/* ACCESO RÁPIDO A FICHA MÉDICA */}
+          <Pressable 
+            style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: '#FF3B30', borderWidth: 1 }]}
+            onPress={() => router.push("/(tabs)/medical-id")}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.medicalIconWrap, { backgroundColor: 'rgba(255, 59, 48, 0.1)' }]}>
+                <Ionicons name="medical" size={24} color="#FF3B30" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 16 }}>
+                <Text style={[styles.medicalCardTitle, { color: colors.textPrimary }]}>Ficha Médica S.O.S</Text>
+                <Text style={[styles.medicalCardSubtitle, { color: colors.textSecondary }]}>Tipo de sangre, alergias y condiciones</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </View>
+          </Pressable>
 
           {/* 2. SECCIÓN VIP / SUSCRIPCIÓN */}
           <View style={[styles.cardGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
@@ -317,6 +338,10 @@ const styles = StyleSheet.create({
   editProfileBtn: { paddingVertical: 6, paddingHorizontal: 16 },
   cardGroup: { borderWidth: 1, borderRadius: 20, marginBottom: 20, overflow: 'hidden' },
   cardHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(150,150,150,0.1)' },
+  medicalCard: { marginHorizontal: 0, marginBottom: 24, borderRadius: 20, padding: 16, elevation: 3 },
+  medicalIconWrap: { width: 48, height: 48, borderRadius: 24, justifyContent: "center", alignItems: "center" },
+  medicalCardTitle: { fontSize: 16, fontWeight: "800", marginBottom: 2 },
+  medicalCardSubtitle: { fontSize: 13 },
   cardTitle: { fontSize: 16, fontWeight: '800', marginLeft: 8 },
   planContent: { padding: 16 },
   planSub: { fontSize: 13, lineHeight: 18, marginBottom: 16 },

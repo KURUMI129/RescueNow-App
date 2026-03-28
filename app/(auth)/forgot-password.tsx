@@ -38,7 +38,11 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
-    // Placeholder para llamada al backend de recuperacion.
+    // TODO: Copilot Backend - Aquí integrar sendPasswordResetEmail
+    // 1. Usar firebaseAuth y enviar el email ingresado.
+    // 2. Manejar estado de "Enviando..."
+    // 3. Capturar catch y mostrar throw si el correo no existe.
+    
     setSent(true);
   };
 

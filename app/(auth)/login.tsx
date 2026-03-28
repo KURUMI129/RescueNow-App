@@ -53,7 +53,13 @@ export default function LoginScreen() {
   }, [fadeAnim1, fadeAnim2, fadeAnim3]);
 
   const handleLogin = async () => {
-    // BYPASS INMEDIATO - Sin interactuar con isSubmitting para evitar bloqueos
+    // TODO: Copilot Backend - Integración de Firebase Auth
+    // 1. Validar email y password.
+    // 2. signInWithEmailAndPassword(firebaseAuth, email, password)
+    // 3. Capturar Errores (setAuthError) y manejar loaders (setIsSubmitting)
+    // 4. Si es exitoso, router.replace("/(tabs)");
+    
+    // BYPASS INMEDIATO (Eliminar al conectar Firebase)
     return router.push("/(tabs)");
   };
 
