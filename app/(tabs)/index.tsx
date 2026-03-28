@@ -434,7 +434,7 @@ export default function HomeScreen() {
       <Modal transparent visible={showSOSModal} animationType="fade">
         <View style={styles.sosModalOverlay}>
            <Text style={styles.sosAlertTitle}>¡EMERGENCIA INICIADA!</Text>
-           <Text style={styles.sosAlertDesc}>En breve se mandará un mensaje y tu ubicación exacta al contado predeterminado y a los sistemas de emergencia.</Text>
+           <Text style={styles.sosAlertDesc}>En breve se mandará un mensaje y tu ubicación exacta al contacto predeterminado y a los sistemas de emergencia.</Text>
 
            <View style={styles.countdownContainer}>
              <Text style={styles.countdownNumber}>{sosCountdown}</Text>

@@ -179,7 +179,7 @@ const APP_COPY = {
         drawerServices: "Servicios",
         drawerTracking: "Seguimiento",
         drawerSettings: "Ajustes",
-        drawerLogout: "Cerrar sesion",
+        drawerLogout: "Cerrar sesión",
         centerMap: "Centrar mapa",
         locating: "Ubicando...",
         locationError: "No se pudo obtener tu ubicación en este momento.",

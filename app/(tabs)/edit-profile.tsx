@@ -38,7 +38,7 @@ export default function EditProfileScreen() {
     // Simular actualización del perfil básico (Firebase)
     
     // TODO: Copilot Backend - Guardado en Firebase
-    // 1. Usar updateProfile(firebaseAuth.currentUser) para actulizar displayName.
+    // 1. Usar updateProfile(firebaseAuth.currentUser) para actualizar displayName.
     // 2. Usar setDoc(doc(firestoreDb...)) con merge:true para guardar teléfono y otros campos extras.
     
     setTimeout(() => {
