@@ -1,16 +1,15 @@
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo } from "react";
+import React from "react";
 import {
-    Animated,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    useColorScheme,
-    useWindowDimensions,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { getAppCopy } from "@/constants/app-copy";
 import { AppLanguage } from "@/constants/app-preferences";
@@ -24,32 +23,11 @@ export default function TrackingScreen() {
   const { reduceMotionEnabled } = useAccessibilityPreferences();
   const language = useAppLanguage();
   const { width } = useWindowDimensions();
-  const titleSize = Math.max(22, Math.min(28, width * 0.075));
-  const entranceOpacity = useMemo(() => new Animated.Value(0), []);
-  const entranceTranslateY = useMemo(() => new Animated.Value(12), []);
+  const titleSize = Math.max(22, Math.min(28, width * 0.075));
 
   const t = getAppCopy(language as AppLanguage).tabs.tracking;
 
-  useEffect(() => {
-    if (reduceMotionEnabled) {
-      entranceOpacity.setValue(1);
-      entranceTranslateY.setValue(0);
-      return;
-    }
 
-    Animated.parallel([
-      Animated.timing(entranceOpacity, {
-        toValue: 1,
-        duration: 360,
-        useNativeDriver: true,
-      }),
-      Animated.timing(entranceTranslateY, {
-        toValue: 0,
-        duration: 360,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [entranceOpacity, entranceTranslateY, reduceMotionEnabled]);
 
   return (
     <SafeAreaView
@@ -60,13 +38,8 @@ export default function TrackingScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View
-          style={[
-            styles.entranceLayer,
-            {
-              opacity: entranceOpacity,
-              transform: [{ translateY: entranceTranslateY }],
-            },
-          ]}
+          entering={FadeInDown.delay(100).springify()}
+          style={styles.entranceLayer}
         >
           <Text style={[styles.topTitle, { color: colors.textSecondary }]}>
             {t.topTitle}
@@ -85,7 +58,6 @@ export default function TrackingScreen() {
               styles.etaCard,
               {
                 backgroundColor: colors.surface,
-                borderColor: colors.cardBorder,
               },
             ]}
           >
@@ -110,7 +82,6 @@ export default function TrackingScreen() {
               styles.mapCard,
               {
                 backgroundColor: colors.mapBackground,
-                borderColor: colors.cardBorder,
               },
             ]}
           >
@@ -151,12 +122,12 @@ export default function TrackingScreen() {
             {t.section}
           </Text>
 
+          <Animated.View entering={FadeInDown.delay(300).springify()}>
           <View
             style={[
               styles.jobCard,
               {
                 backgroundColor: colors.surface,
-                borderColor: colors.cardBorder,
               },
             ]}
           >
@@ -173,7 +144,6 @@ export default function TrackingScreen() {
               styles.stepsCard,
               {
                 backgroundColor: colors.surface,
-                borderColor: colors.cardBorder,
               },
             ]}
           >
@@ -220,6 +190,7 @@ export default function TrackingScreen() {
               </View>
             </View>
           </View>
+          </Animated.View>
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
@@ -249,9 +220,13 @@ const styles = StyleSheet.create({
   },
   etaCard: {
     marginTop: 14,
-    borderWidth: 1,
     borderRadius: 16,
     padding: 14,
+    shadowColor: '#0B1120',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   etaLabel: {
     fontSize: 12,
@@ -280,7 +255,6 @@ const styles = StyleSheet.create({
   },
   mapCard: {
     marginTop: 12,
-    borderWidth: 1,
     borderRadius: 16,
     height: 180,
     position: "relative",
@@ -304,7 +278,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
   },
   pinTech: {
     position: "absolute",
@@ -315,7 +288,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
   },
   sectionTitle: {
     marginTop: 14,
@@ -324,11 +296,15 @@ const styles = StyleSheet.create({
   },
   jobCard: {
     marginTop: 10,
-    borderWidth: 1,
     borderRadius: 14,
     padding: 12,
     flexDirection: "row",
     justifyContent: "space-between",
+    shadowColor: '#0B1120',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   jobText: {
     fontSize: 13,
@@ -336,10 +312,14 @@ const styles = StyleSheet.create({
   },
   stepsCard: {
     marginTop: 10,
-    borderWidth: 1,
     borderRadius: 16,
     padding: 12,
     gap: 10,
+    shadowColor: '#0B1120',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   stepRow: {
     flexDirection: "row",

@@ -2,6 +2,8 @@ import { useActiveTheme } from "@/hooks/use-active-theme";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase";
 import {
     KeyboardAvoidingView,
     Platform,
@@ -13,6 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { AuthHeader } from "@/components/auth/auth-header";
 import { getAppCopy } from "@/constants/app-copy";
@@ -28,22 +31,36 @@ export default function ForgotPasswordScreen() {
 
   const [email, setEmail] = useState<string>("");
   const [sent, setSent] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recoverError, setRecoverError] = useState("");
 
   const t = getAppCopy(language as AppLanguage).auth.forgotPassword;
 
   const canSubmit = email.trim().length > 4;
 
-  const handleRecover = () => {
+  const handleRecover = async () => {
     if (!canSubmit) {
       return;
     }
 
-    // TODO: Copilot Backend - Aquí integrar sendPasswordResetEmail
-    // 1. Usar firebaseAuth y enviar el email ingresado.
-    // 2. Manejar estado de "Enviando..."
-    // 3. Capturar catch y mostrar throw si el correo no existe.
-    
-    setSent(true);
+    setIsSubmitting(true);
+    setRecoverError("");
+
+    try {
+      await sendPasswordResetEmail(firebaseAuth, email.trim());
+      setSent(true);
+    } catch (error: any) {
+      const code = error?.code ?? "";
+      if (code === "auth/user-not-found") {
+        setRecoverError(language === "es" ? "No existe una cuenta con ese correo." : "No account found with that email.");
+      } else if (code === "auth/too-many-requests") {
+        setRecoverError(language === "es" ? "Demasiados intentos. Intenta más tarde." : "Too many attempts.");
+      } else {
+        setRecoverError(language === "es" ? "Error al enviar correo." : "Error sending email.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -70,74 +87,85 @@ export default function ForgotPasswordScreen() {
               },
             ]}
           >
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {t.sectionTitle}
-            </Text>
-            <Text
-              style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
-            >
-              {t.sectionSubtitle}
-            </Text>
-
-            <Text style={[styles.label, { color: colors.textPrimary }]}>
-              {t.email}
-            </Text>
-            
-            <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-              <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                autoCapitalize="none"
-                keyboardType="email-address"
-                placeholder={t.emailPlaceholder}
-                placeholderTextColor={colors.inputPlaceholder}
-                style={[styles.modernInput, { color: colors.textPrimary }]}
-                value={email}
-                onChangeText={(value) => {
-                  setEmail(value);
-                  if (sent) {
-                    setSent(false);
-                  }
-                }}
-              />
-            </View>
-
-            {sent ? (
+            <Animated.View entering={FadeInDown.delay(100).springify()}>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                {t.sectionTitle}
+              </Text>
               <Text
-                style={[styles.successText, { color: colors.textSecondary }]}
+                style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
               >
-                {t.sentMessage}
+                {t.sectionSubtitle}
               </Text>
-            ) : null}
+            </Animated.View>
 
-            <TouchableOpacity
-              accessibilityRole="button"
-              activeOpacity={0.9}
-              disabled={!canSubmit}
-              onPress={handleRecover}
-              style={[
-                styles.submitButton,
-                {
-                  backgroundColor: canSubmit
-                    ? colors.primary
-                    : colors.cardBorder,
-                },
-              ]}
-            >
-              <Text
-                style={[styles.submitButtonText, { color: colors.onPrimary }]}
+            <Animated.View entering={FadeInDown.delay(200).springify()}>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>
+                {t.email}
+              </Text>
+              
+              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+                <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  placeholder={t.emailPlaceholder}
+                  placeholderTextColor={colors.inputPlaceholder}
+                  style={[styles.modernInput, { color: colors.textPrimary }]}
+                  value={email}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    if (sent) {
+                      setSent(false);
+                    }
+                  }}
+                />
+              </View>
+
+              {sent ? (
+                <Text
+                  style={[styles.successText, { color: colors.textSecondary }]}
+                >
+                  {t.sentMessage}
+                </Text>
+              ) : null}
+              {recoverError ? (
+                <Text style={[styles.successText, { color: '#E11D48' }]}>
+                  {recoverError}
+                </Text>
+              ) : null}
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(300).springify()}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                activeOpacity={0.8}
+                disabled={!canSubmit || isSubmitting}
+                onPress={handleRecover}
+                style={[
+                  styles.submitButton,
+                  {
+                    backgroundColor: canSubmit
+                      ? colors.primary
+                      : colors.cardBorder,
+                  },
+                ]}
               >
-                {t.sendLink}
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={[styles.submitButtonText, { color: colors.onPrimary }]}
+                >
+                  {t.sendLink}
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => router.push("/(auth)/login")}
-              style={styles.linkButton}
-            >
-              <Text style={[styles.linkText, { color: colors.primary }]}>
-                {t.backToLogin}
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push("/(auth)/login")}
+                style={styles.linkButton}
+              >
+                <Text style={[styles.linkText, { color: colors.primary }]}>
+                  {t.backToLogin}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

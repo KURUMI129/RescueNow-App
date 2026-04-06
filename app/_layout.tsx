@@ -12,6 +12,7 @@ import { getAppCopy } from "@/constants/app-copy";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { AuthProvider } from "@/lib/auth-context";
 
 export const unstable_settings = {
   anchor: "(auth)",
@@ -36,18 +37,20 @@ export default function RootLayout() {
   };
 
   return (
-    <ThemeProvider value={navigationTheme}>
-      <Stack>
-        <Stack.Screen
-          name="(auth)"
-          options={{ headerShown: false, statusBarHidden: true }}
-        />
-        <Stack.Screen
-          name="(tabs)"
-          options={{ headerShown: false, statusBarHidden: true }}
-        />
-      </Stack>
-      <StatusBar hidden animated={false} />
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider value={navigationTheme}>
+        <Stack>
+          <Stack.Screen
+            name="(auth)"
+            options={{ headerShown: false, statusBarHidden: true }}
+          />
+          <Stack.Screen
+            name="(tabs)"
+            options={{ headerShown: false, statusBarHidden: true }}
+          />
+        </Stack>
+        <StatusBar hidden animated={false} />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

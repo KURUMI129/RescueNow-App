@@ -2,9 +2,11 @@ import { useActiveTheme } from "@/hooks/use-active-theme";
 import { getAppPreferences, updateAppPreferences } from "@/constants/app-preferences";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { firestoreDb } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
 import {
-  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,6 +17,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 
 export default function MedicalIdScreen() {
@@ -28,60 +36,67 @@ export default function MedicalIdScreen() {
   
   const [isSaving, setIsSaving] = useState(false);
   
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  // Heartbeat pulse animation (Reanimated native thread)
+  const pulseScale = useSharedValue(1);
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.15,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        })
-      ])
-    ).start();
+    pulseScale.value = withRepeat(
+      withTiming(1.15, { duration: 400 }),
+      -1,
+      true,
+    );
 
     void getAppPreferences().then(prefs => {
       setBloodType(prefs.bloodType);
       setAllergies(prefs.allergies);
       setMedicalConditions(prefs.medicalConditions);
     });
-  }, []);
+  }, [pulseScale]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
+
+  const { user } = useAuth();
 
   const handleSave = async () => {
     setIsSaving(true);
-    // Guardar en AppPreferences locales
-    await updateAppPreferences({
-      bloodType,
-      allergies,
-      medicalConditions
-    });
-    
-    // TODO: Copilot Backend - Guardado en Firebase
-    // La app prototipo solo guarda en local (AsyncStorage), para el final:
-    // 1. Asegúrate de tener la Firebase App inicializada
-    // 2. Si manejas un Users Collection en Firestore, ejecuta lo siguiente:
-    // setDoc(doc(firestoreDb, "users", firebaseAuth.currentUser.uid), { 
-    //   bloodType: bloodType, 
-    //   allergies: allergies, 
-    //   medicalConditions: medicalConditions 
-    // }, { merge: true })
-    
-    setTimeout(() => {
-      setIsSaving(false);
+
+    try {
+      // 1. Always save locally (AsyncStorage) — this never fails
+      await updateAppPreferences({
+        bloodType,
+        allergies,
+        medicalConditions,
+      });
+
+      // 2. Try syncing to Firestore (best-effort — may fail if rules aren't configured)
+      if (user) {
+        try {
+          await setDoc(doc(firestoreDb, "medical-profiles", user.uid), {
+            bloodType,
+            allergies,
+            medicalConditions,
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        } catch (firestoreError) {
+          // Firestore failed (permissions/offline) — data is still saved locally
+          console.warn("Firestore sync failed (data saved locally):", firestoreError);
+        }
+      }
+
       router.back();
-    }, 1200);
+    } catch (e) {
+      console.error("Error saving medical ID:", e);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       {/* HEADER EXCLUSIVO MÉDICO */}
-      <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
+      <View style={[styles.header, { borderBottomColor: 'transparent' }]}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </Pressable>
@@ -96,9 +111,9 @@ export default function MedicalIdScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
           <View style={styles.headerDisplay}>
-            <View style={[styles.iconWrap, { backgroundColor: 'rgba(255, 59, 48, 0.1)' }]}>
-              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                <MaterialCommunityIcons name="heart-pulse" size={48} color="#FF3B30" />
+             <View style={[styles.iconWrap, { backgroundColor: 'rgba(225, 29, 72, 0.08)' }]}>
+              <Animated.View style={pulseStyle}>
+                <MaterialCommunityIcons name="heart-pulse" size={48} color="#E11D48" />
               </Animated.View>
             </View>
             <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
@@ -106,12 +121,12 @@ export default function MedicalIdScreen() {
             </Text>
           </View>
 
-          <View style={[styles.formContainer, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+          <View style={[styles.formContainer, { backgroundColor: colors.surface }]}>
             
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Grupo Sanguíneo</Text>
               <View style={[styles.inputWrapper, { backgroundColor: colors.mapBackground, borderColor: colors.cardBorder }]}>
-                <MaterialCommunityIcons name="water-outline" size={20} color="#FF3B30" style={styles.inputIcon} />
+                 <MaterialCommunityIcons name="water-outline" size={20} color="#E11D48" style={styles.inputIcon} />
                 <TextInput
                   value={bloodType}
                   onChangeText={setBloodType}
@@ -139,7 +154,7 @@ export default function MedicalIdScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Condiciones o Medicamentos Regulares</Text>
-              <View style={[styles.inputWrapper, { backgroundColor: colors.mapBackground, borderColor: colors.cardBorder, minHeight: 100, alignItems: 'flex-start', paddingVertical: 12 }]}>
+               <View style={[styles.inputWrapper, { backgroundColor: colors.mapBackground, minHeight: 100, alignItems: 'flex-start', paddingVertical: 12 }]}>
                 <MaterialCommunityIcons name="medical-bag" size={20} color={colors.textSecondary} style={[styles.inputIcon, { marginTop: 4 }]} />
                 <TextInput
                   value={medicalConditions}
@@ -158,7 +173,7 @@ export default function MedicalIdScreen() {
           <Pressable 
             onPress={handleSave}
             disabled={isSaving}
-            style={[styles.saveButton, { backgroundColor: isSaving ? colors.cardBorder : '#FF3B30' }]}
+             style={[styles.saveButton, { backgroundColor: isSaving ? colors.cardBorder : '#E11D48' }]}
           >
             {isSaving ? (
               <Text style={[styles.saveButtonText, { color: colors.textPrimary }]}>Guardando...</Text>
@@ -185,7 +200,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     paddingHorizontal: 20, 
     paddingVertical: 14, 
-    borderBottomWidth: 1 
   },
   backButton: { padding: 4, marginRight: 8 },
   headerTitle: { fontSize: 18, fontWeight: "800" },
@@ -209,11 +223,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   formContainer: {
-    borderWidth: 1,
     borderRadius: 20,
     padding: 20,
     paddingBottom: 8,
     marginBottom: 24,
+    shadowColor: '#0B1120',
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   inputGroup: {
     marginBottom: 20,
@@ -227,8 +245,7 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 14,
     paddingHorizontal: 14,
   },
   inputIcon: {
@@ -243,14 +260,14 @@ const styles = StyleSheet.create({
   saveButton: {
     width: "100%",
     paddingVertical: 18,
-    borderRadius: 20,
+    borderRadius: 16,
     alignItems: "center",
     marginBottom: 16,
+    shadowColor: '#E11D48',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
     elevation: 4,
-    shadowColor: "#FF3B30",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
   },
   saveButtonText: {
     fontWeight: "800",

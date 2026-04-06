@@ -3,7 +3,6 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    Animated,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -14,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { AuthHeader } from "@/components/auth/auth-header";
 import { getAppCopy } from "@/constants/app-copy";
@@ -54,17 +54,7 @@ export default function RegisterScreen() {
     );
   }, [confirmPassword, email, fullName, password, passwordsMatch]);
 
-  const fadeAnim1 = useRef(new Animated.Value(0)).current;
-  const fadeAnim2 = useRef(new Animated.Value(0)).current;
-  const fadeAnim3 = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.stagger(200, [
-      Animated.spring(fadeAnim1, { toValue: 1, friction: 7, tension: 35, useNativeDriver: true }),
-      Animated.spring(fadeAnim2, { toValue: 1, friction: 7, tension: 35, useNativeDriver: true }),
-      Animated.spring(fadeAnim3, { toValue: 1, friction: 7, tension: 35, useNativeDriver: true }),
-    ]).start();
-  }, [fadeAnim1, fadeAnim2, fadeAnim3]);
+  // Layout animations handled by react-native-reanimated
 
   const handleRegister = async () => {
     if (!canSubmit || isSubmitting) {
@@ -75,30 +65,38 @@ export default function RegisterScreen() {
     setAuthError("");
 
     try {
+      // 1. Create Firebase Auth account (this is the critical step)
       const credentials = await createUserWithEmailAndPassword(
         firebaseAuth,
         email.trim(),
         password,
       );
 
+      // 2. Set display name
       if (fullName.trim().length > 0) {
         await updateProfile(credentials.user, { displayName: fullName.trim() });
       }
 
+      // 3. Try saving user profile to Firestore (best-effort)
       const role = "user";
+      try {
+        await setDoc(doc(firestoreDb, "users", credentials.user.uid), {
+          uid: credentials.user.uid,
+          email: credentials.user.email ?? email.trim(),
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          role,
+          subscriptionPlan: "free",
+          language,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } catch (firestoreError) {
+        // Firestore permissions not configured yet — account still works
+        console.warn("Firestore profile sync failed (account created):", firestoreError);
+      }
 
-      await setDoc(doc(firestoreDb, "users", credentials.user.uid), {
-        uid: credentials.user.uid,
-        email: credentials.user.email ?? email.trim(),
-        fullName: fullName.trim(),
-        phone: phone.trim(),
-        role,
-        subscriptionPlan: "free",
-        language,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
+      // 4. Save local preferences
       await updateAppPreferences({
         accountRole: role,
         subscriptionPlan: "free",
@@ -140,7 +138,7 @@ export default function RegisterScreen() {
               },
             ]}
           >
-            <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: fadeAnim1.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+            <Animated.View entering={FadeInDown.delay(100).springify()}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
                 {language === "es" ? "Crea tu Cuenta" : "Create Account"}
               </Text>
@@ -151,7 +149,7 @@ export default function RegisterScreen() {
               </Text>
             </Animated.View>
 
-            <Animated.View style={{ opacity: fadeAnim2, transform: [{ translateY: fadeAnim2.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+            <Animated.View entering={FadeInDown.delay(200).springify()}>
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 {t.fullName}
               </Text>
@@ -234,7 +232,7 @@ export default function RegisterScreen() {
               </View>
             </Animated.View>
 
-            <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+            <Animated.View entering={FadeInDown.delay(300).springify()}>
 
               {confirmPassword.trim().length > 0 && !passwordsMatch ? (
                 <Text style={[styles.errorText, { color: colors.danger, marginTop: 8 }]}>

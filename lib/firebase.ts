@@ -1,6 +1,10 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, initializeAuth } from "firebase/auth";
+// @ts-ignore — Firebase v12 exports this from a sub-path
+import { getReactNativePersistence } from "firebase/auth";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -23,6 +27,22 @@ if (hasMissingConfig) {
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-export const firebaseApp = app;
-export const firebaseAuth = getAuth(app);
+// Use AsyncStorage for auth persistence on native, default on web
+export const firebaseAuth =
+  Platform.OS === "web"
+    ? getAuth(app)
+    : initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage),
+      });
+
 export const firestoreDb = getFirestore(app);
+
+// Enable offline persistence for Firestore (web only, native has it by default)
+if (Platform.OS === "web") {
+  enableIndexedDbPersistence(firestoreDb).catch((err) => {
+    console.warn("Firestore persistence error:", err.code);
+  });
+}
+
+export const firebaseApp = app;
+

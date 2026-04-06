@@ -45,8 +45,7 @@ export default function TabLayout() {
   }
 
   if (!isAuthenticated) {
-    // => BYPASS TEMPORAL: Impide rebote hacia el login en fase de diseño
-    // return <Redirect href="/(auth)/login" />;
+    return <Redirect href="/(auth)/login" />;
   }
 
   return (
@@ -112,6 +111,12 @@ export default function TabLayout() {
           options={{
             href: null,
             title: "RescueAI",
+          }}
+        />
+        <Tabs.Screen
+          name="emergency-call"
+          options={{
+            href: null,
           }}
         />
       </Tabs>

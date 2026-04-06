@@ -1,9 +1,8 @@
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
-    Animated,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -14,6 +13,10 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { firebaseAuth, firestoreDb } from "@/lib/firebase";
 
 import { AuthHeader } from "@/components/auth/auth-header";
 import { getAppCopy } from "@/constants/app-copy";
@@ -23,9 +26,6 @@ import {
 } from "@/constants/app-preferences";
 import { AUTH_THEME_COLORS } from "@/constants/auth-theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
-import { firebaseAuth, firestoreDb } from "@/lib/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -40,27 +40,53 @@ export default function LoginScreen() {
 
   const t = getAppCopy(language as AppLanguage).auth.login;
 
-  const fadeAnim1 = useRef(new Animated.Value(0)).current;
-  const fadeAnim2 = useRef(new Animated.Value(0)).current;
-  const fadeAnim3 = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.stagger(200, [
-      Animated.spring(fadeAnim1, { toValue: 1, friction: 7, tension: 35, useNativeDriver: true }),
-      Animated.spring(fadeAnim2, { toValue: 1, friction: 7, tension: 35, useNativeDriver: true }),
-      Animated.spring(fadeAnim3, { toValue: 1, friction: 7, tension: 35, useNativeDriver: true }),
-    ]).start();
-  }, [fadeAnim1, fadeAnim2, fadeAnim3]);
+  // Layout animations handled by react-native-reanimated
 
   const handleLogin = async () => {
-    // TODO: Copilot Backend - Integración de Firebase Auth
-    // 1. Validar email y password.
-    // 2. signInWithEmailAndPassword(firebaseAuth, email, password)
-    // 3. Capturar Errores (setAuthError) y manejar loaders (setIsSubmitting)
-    // 4. Si es exitoso, router.replace("/(tabs)");
-    
-    // BYPASS INMEDIATO (Eliminar al conectar Firebase)
-    return router.push("/(tabs)");
+    if (!email.trim() || !password.trim()) return;
+
+    setIsSubmitting(true);
+    setAuthError("");
+
+    try {
+      const credentials = await signInWithEmailAndPassword(
+        firebaseAuth,
+        email.trim(),
+        password,
+      );
+
+      // Sync Firestore profile → local preferences
+      try {
+        const userDoc = await getDoc(doc(firestoreDb, "users", credentials.user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          await updateAppPreferences({
+            subscriptionPlan: data.subscriptionPlan === "premium" ? "premium" : "free",
+            accountRole: data.role === "technician" ? "technician" : "user",
+            language: data.language === "en" ? "en" : "es",
+            trustedContactPhone: data.trustedContactPhone ?? "",
+            trustedContactName: data.trustedContactName ?? "",
+          });
+        }
+      } catch {
+        // Offline — local preferences remain as fallback
+      }
+
+      router.replace("/(tabs)");
+    } catch (error: any) {
+      const code = error?.code ?? "";
+      if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+        setAuthError(language === "es" ? "Correo o contraseña incorrectos." : "Invalid email or password.");
+      } else if (code === "auth/too-many-requests") {
+        setAuthError(language === "es" ? "Demasiados intentos. Intenta más tarde." : "Too many attempts. Try later.");
+      } else if (code === "auth/network-request-failed") {
+        setAuthError(language === "es" ? "Sin conexión a internet." : "No internet connection.");
+      } else {
+        setAuthError(language === "es" ? "Error al iniciar sesión." : "Login error.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -87,7 +113,7 @@ export default function LoginScreen() {
               },
             ]}
           >
-            <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: fadeAnim1.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+            <Animated.View entering={FadeInDown.delay(100).springify()}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
                 {language === "es" ? "Inicia Sesión" : "Sign In"}
               </Text>
@@ -98,7 +124,7 @@ export default function LoginScreen() {
               </Text>
             </Animated.View>
 
-            <Animated.View style={{ opacity: fadeAnim2, transform: [{ translateY: fadeAnim2.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+            <Animated.View entering={FadeInDown.delay(200).springify()}>
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 {language === "es" ? "Correo Electrónico o Teléfono" : "Email Address"}
               </Text>
@@ -144,7 +170,7 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </Animated.View>
 
-            <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+            <Animated.View entering={FadeInDown.delay(300).springify()}>
               <TouchableOpacity
                 accessibilityRole="button"
                 activeOpacity={0.8}

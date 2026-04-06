@@ -1,9 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated,
+  Animated as RNAnimated,
   Dimensions,
+  Linking,
   Modal,
   PanResponder,
   Pressable,
@@ -12,7 +13,15 @@ import {
   Text,
   View,
 } from "react-native";
-import MapView, { Marker, Region } from "react-native-maps";
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
+import MapView, { Callout, Marker, Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -21,6 +30,10 @@ import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useUserLocation } from "@/hooks/use-user-location";
+import { saveIncident } from "@/lib/emergency-service";
+import { useCrashDetection } from "@/hooks/use-crash-detection";
+import { useAuth } from "@/lib/auth-context";
+import { fetchNearbyPOIs, distanceKm, type POIResult } from "@/lib/overpass-service";
 
 // TODO: Copilot - Inserta aquí el JSON de tu mapa oscuro
 const RESCUE_DARK_MAP_STYLE: any[] = []; 
@@ -60,10 +73,26 @@ export default function HomeScreen() {
   const language = useAppLanguage();
   
   const { location, locationAllowed, askLocationPermission } = useUserLocation();
+  const { user } = useAuth();
   const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [poiMarkers, setPoiMarkers] = useState<POIResult[]>([]);
+  const [loadingPOIs, setLoadingPOIs] = useState(false);
+
+  // Map reference for centering
+  const mapRef = useRef<MapView>(null);
+
+  // Track if SOS was triggered by crash detection (different UI)
+  const [crashTriggered, setCrashTriggered] = useState(false);
+
+  // Crash detection — auto-triggers SOS for ALL users
+  const handleCrashDetected = useCallback(() => {
+    setCrashTriggered(true);
+    setShowSOSModal(true);
+  }, []);
+  useCrashDetection({ onCrashDetected: handleCrashDetected });
 
   // Bottom Sheet Físicas
-  const sheetAnim = useRef(new Animated.Value(SHEET_MIN_HEIGHT)).current;
+  const sheetAnim = useRef(new RNAnimated.Value(SHEET_MIN_HEIGHT)).current;
   const isExpandedRef = useRef(false);
 
   // State para Modales y Emergencia
@@ -102,11 +131,7 @@ export default function HomeScreen() {
     void checkPreferences();
   }, [askLocationPermission]);
 
-  // TODO: Copilot Backend & Sensors - Detección Automática de Choques / Caídas
-  // Para usuarios de motos: Integrar `expo-sensors` (Accelerometer o Gyroscope).
-  // Suscribirse a los sensores en segundo plano y, si detecta una sacudida extrema 
-  // (e.g. Aceleración > 4G o 40m/s² de golpe), disparar automáticamente `setShowSOSModal(true)`
-  // Aquí mismo en un useEffect.
+  // Crash detection is handled by useCrashDetection() hook above (Accelerometer > 4G)
 
   // SOS Countdown Mechanism
   useEffect(() => {
@@ -130,27 +155,62 @@ export default function HomeScreen() {
     }
   }, [showSOSModal]);
 
-  const triggerEmergency = () => {
+  const triggerEmergency = async () => {
     setShowSOSModal(false);
-    
-    // TODO: Copilot Backend - Aquí integrar la lógica para:
-    // 1. Enviar SMS con expo-sms al Contacto de Confianza (location.coords)
-    // 2. Disparar API de Firebase para notificar a Centro de Control / 911
-    // 3. Registrar en base de datos local (SQLite o AsyncStorage) el incidente offline.
-    
-    setShowMedicalID(true);
+    setCrashTriggered(false);
+
+    const emergencyLocation = location ? {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    } : { latitude: 0, longitude: 0 };
+
+    const prefs = await getAppPreferences();
+    const wasCrash = crashTriggered;
+
+    // 1. Save incident to Firestore (fire-and-forget — don't block navigation)
+    if (user) {
+      void saveIncident(
+        user.uid,
+        emergencyLocation,
+        wasCrash ? "crash_detection" : "manual",
+        {
+          bloodType: prefs.bloodType,
+          allergies: prefs.allergies,
+          medicalConditions: prefs.medicalConditions,
+        },
+        prefs.trustedContactPhone || undefined,
+      );
+    }
+
+    // 2. Navigate IMMEDIATELY to 911 call screen
+    //    The call screen will handle sending the message during the "dialing" phase
+    router.push({
+      pathname: "/(tabs)/emergency-call",
+      params: {
+        userName: user?.displayName ?? "Paciente",
+        latitude: emergencyLocation.latitude.toString(),
+        longitude: emergencyLocation.longitude.toString(),
+        bloodType: prefs.bloodType,
+        allergies: prefs.allergies,
+        medicalConditions: prefs.medicalConditions,
+        contactPhone: prefs.trustedContactPhone,
+        contactName: prefs.trustedContactName,
+      },
+    });
   };
 
-  // Pulse animation for FAB
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  // Pulse animation for FAB (Reanimated native thread)
+  const pulseScale = useSharedValue(1);
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.15, duration: 900, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
-      ]),
-    ).start();
-  }, [pulseAnim]);
+    pulseScale.value = withRepeat(
+      withTiming(1.15, { duration: 900 }),
+      -1,
+      true,
+    );
+  }, [pulseScale]);
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
 
   // PanResponder para Bottom Sheet
   const panResponder = useRef(
@@ -176,7 +236,7 @@ export default function HomeScreen() {
         const shouldExpand = releaseHeight > SHEET_SNAP_THRESHOLD;
         
         isExpandedRef.current = shouldExpand;
-        Animated.spring(sheetAnim, {
+        RNAnimated.spring(sheetAnim, {
           toValue: shouldExpand ? SHEET_MAX_HEIGHT : SHEET_MIN_HEIGHT,
           friction: 8,
           tension: 40,
@@ -195,13 +255,55 @@ export default function HomeScreen() {
       // Contraer automáticamente si está expandido
       if (isExpandedRef.current) {
         isExpandedRef.current = false;
-        Animated.spring(sheetAnim, {
+        RNAnimated.spring(sheetAnim, {
           toValue: SHEET_MIN_HEIGHT,
           friction: 8,
           tension: 40,
           useNativeDriver: false,
         }).start();
       }
+    }
+  };
+
+  // Fetch POI markers when service is selected
+  useEffect(() => {
+    if (!selectedService || selectedService === "accident" || !location) {
+      setPoiMarkers([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingPOIs(true);
+
+    fetchNearbyPOIs(
+      location.coords.latitude,
+      location.coords.longitude,
+      selectedService,
+      5000,
+    ).then((results) => {
+      if (!cancelled) {
+        setPoiMarkers(results);
+        setLoadingPOIs(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setPoiMarkers([]);
+        setLoadingPOIs(false);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [selectedService, location]);
+
+  // Center map on user location
+  const handleCenterOnUser = () => {
+    if (location && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 600);
     }
   };
 
@@ -224,19 +326,45 @@ export default function HomeScreen() {
       
       {/* MAPA ABSOLUTO */}
       <MapView
+        ref={mapRef}
         style={StyleSheet.absoluteFillObject}
         region={mapRegion}
         showsUserLocation={locationAllowed}
-        followsUserLocation={locationAllowed}
+        followsUserLocation={false}
         showsMyLocationButton={false}
         customMapStyle={activeTheme === "dark" ? RESCUE_DARK_MAP_STYLE : undefined}
       >
         {/* // TODO: Copilot - Renderizar Markers aquí */}
+        {poiMarkers.map((poi) => {
+          const svc = SERVICES.find((s) => s.id === selectedService);
+          const dist = location
+            ? distanceKm(location.coords.latitude, location.coords.longitude, poi.latitude, poi.longitude)
+            : null;
+          return (
+            <Marker
+              key={poi.id}
+              coordinate={{ latitude: poi.latitude, longitude: poi.longitude }}
+              pinColor={svc?.colorHex ?? "#E11D48"}
+            >
+              <Callout onPress={() => {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${poi.latitude},${poi.longitude}`;
+                Linking.openURL(url);
+              }}>
+                <View style={{ maxWidth: 200, padding: 4 }}>
+                  <Text style={{ fontWeight: "800", fontSize: 14 }}>{poi.name}</Text>
+                  {poi.address ? <Text style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{poi.address}</Text> : null}
+                  {dist !== null ? <Text style={{ fontSize: 11, color: "#999", marginTop: 2 }}>📍 {dist.toFixed(1)} km</Text> : null}
+                  <Text style={{ fontSize: 12, color: svc?.colorHex ?? "#0EA5E9", fontWeight: "700", marginTop: 4 }}>Navegar →</Text>
+                </View>
+              </Callout>
+            </Marker>
+          );
+        })}
       </MapView>
 
       {/* HEADER FLOTANTE */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]} pointerEvents="box-none">
-        <View style={[styles.headerBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+      <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]} pointerEvents="box-none">
+        <View style={[styles.headerBox, { backgroundColor: colors.surface }]}>
           <View style={styles.headerLeft}>
             <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
               {language === "es" ? "Ubicación Actual" : "Current Location"}
@@ -245,16 +373,16 @@ export default function HomeScreen() {
               {location ? `Satélites Conectados` : "Buscando satélites..."}
             </Text>
           </View>
-          <Pressable style={styles.profileBtn} onPress={() => router.push("/(tabs)/options")}>
+          <Pressable style={[styles.profileBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
              <BrandLogo width={36} height={36} />
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
 
       {/* FAB: RESCUE AI (Chatbot) */}
-      <Animated.View style={[
+      <RNAnimated.View style={[
           styles.aiFabContainer, 
-          { bottom: Animated.add(sheetAnim, 24) }
+          { bottom: RNAnimated.add(sheetAnim, 24) }
         ]}
       >
         <Pressable 
@@ -263,41 +391,54 @@ export default function HomeScreen() {
         >
           <MaterialCommunityIcons name="robot-outline" size={28} color={colors.accent} />
         </Pressable>
-      </Animated.View>
+      </RNAnimated.View>
 
-      {/* FAB (SOS Button) - SEPARATED VIEWS FIX */}
-      <Animated.View style={[
+      {/* BOTÓN: CENTRAR EN MI UBICACIÓN */}
+      <RNAnimated.View style={[
+          styles.centerBtnContainer, 
+          { bottom: RNAnimated.add(sheetAnim, 100) }
+        ]}
+      >
+        <Pressable 
+          style={[styles.centerBtn, { backgroundColor: colors.surface }]}
+          onPress={handleCenterOnUser}
+        >
+          <Ionicons name="locate" size={22} color={colors.primary} />
+        </Pressable>
+      </RNAnimated.View>
+
+      {/* FAB (SOS Button) - MOVES WITH BOTTOM SHEET */}
+      <RNAnimated.View style={[
           styles.fabContainer, 
           { 
-            bottom: Animated.add(sheetAnim, 24) // JS Driven
+            bottom: RNAnimated.add(sheetAnim, 24),
           }
         ]}
       >
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+        <Animated.View style={pulseStyle}>
           <Pressable 
             onPress={() => setShowSOSModal(true)}
-            style={[styles.sosFab, { shadowColor: '#DC2626', elevation: 12 }]} 
+            style={[styles.sosFab, { shadowColor: '#E11D48', elevation: 12 }]} 
           >
             <MaterialCommunityIcons name="alert" size={34} color="#FFFFFF" />
           </Pressable>
         </Animated.View>
-      </Animated.View>
+      </RNAnimated.View>
 
       {/* BOTTOM SHEET INTERACTIVO */}
-      <Animated.View 
+      <RNAnimated.View 
         style={[
           styles.bottomSheet, 
           { 
             height: sheetAnim, 
             backgroundColor: colors.surface, 
-            borderColor: colors.cardBorder, 
             paddingBottom: Math.max(insets.bottom, 20) 
           }
         ]}
       >
         {/* Manija de Arrastre */}
         <View style={styles.dragHandleWrapper} {...panResponder.panHandlers}>
-          <View style={[styles.dragHandle, { backgroundColor: colors.cardBorder }]} />
+          <View style={[styles.dragHandle, { backgroundColor: colors.textSecondary, opacity: 0.3 }]} />
         </View>
 
         <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
@@ -308,39 +449,43 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.gridMode}
         >
-          {SERVICES.map((service) => {
+          {SERVICES.map((service, idx) => {
             const isSelected = selectedService === service.id;
-            const bgColor = isSelected ? `${service.colorHex}15` : 'transparent';
-            const borderColor = isSelected ? service.colorHex : colors.cardBorder;
-            const shadowForce = isSelected ? { shadowColor: service.colorHex, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 } : {};
+            const bgColor = isSelected ? `${service.colorHex}15` : colors.background;
+            const shadowForce = isSelected ? { shadowColor: service.colorHex, shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6 } : {};
 
             return (
-              <Pressable
-                key={service.id}
-                onPress={() => toggleService(service.id)}
-                style={[
-                  styles.serviceGridCard,
-                  { backgroundColor: bgColor, borderColor },
-                  shadowForce
-                ]}
-              >
-                <MaterialCommunityIcons 
-                  name={service.icon} 
-                  size={32} 
-                  color={isSelected ? service.colorHex : colors.textSecondary} 
-                  style={{ marginBottom: 10 }}
-                />
-                <Text style={[styles.serviceTitle, { color: colors.textPrimary }]}>
-                  {language === "es" ? service.titleEs : service.titleEn}
-                </Text>
-                <Text style={[styles.serviceDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                  {language === "es" ? service.descEs : service.descEn}
-                </Text>
-              </Pressable>
+              <Animated.View key={service.id} entering={FadeInDown.delay(100 + idx * 60).springify()}>
+                <Pressable
+                  onPress={() => toggleService(service.id)}
+                  style={[
+                    styles.serviceListCard,
+                    { backgroundColor: bgColor, borderLeftColor: isSelected ? service.colorHex : 'transparent' },
+                    shadowForce
+                  ]}
+                >
+                  <View style={[styles.serviceIconWrap, { backgroundColor: `${service.colorHex}15` }]}>
+                    <MaterialCommunityIcons 
+                      name={service.icon} 
+                      size={24} 
+                      color={isSelected ? service.colorHex : colors.textSecondary} 
+                    />
+                  </View>
+                  <View style={styles.serviceTextWrap}>
+                    <Text style={[styles.serviceTitle, { color: colors.textPrimary }]}>
+                      {language === "es" ? service.titleEs : service.titleEn}
+                    </Text>
+                    <Text style={[styles.serviceDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {language === "es" ? service.descEs : service.descEn}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                </Pressable>
+              </Animated.View>
             );
           })}
         </ScrollView>
-      </Animated.View>
+      </RNAnimated.View>
 
       {/* CUSTOM THEME MODAL */}
       <Modal transparent visible={showThemeModal} animationType="fade">
@@ -430,8 +575,8 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      {/* SOS COUNTDOWN MODAL */}
-      <Modal transparent visible={showSOSModal} animationType="fade">
+      {/* SOS COUNTDOWN MODAL — MANUAL PRESS */}
+      <Modal transparent visible={showSOSModal && !crashTriggered} animationType="fade">
         <View style={styles.sosModalOverlay}>
            <Text style={styles.sosAlertTitle}>¡EMERGENCIA INICIADA!</Text>
            <Text style={styles.sosAlertDesc}>En breve se mandará un mensaje y tu ubicación exacta al contacto predeterminado y a los sistemas de emergencia.</Text>
@@ -447,6 +592,50 @@ export default function HomeScreen() {
            >
               <Text style={styles.sosCancelText}>CANCELAR ALERTA</Text>
            </Pressable>
+        </View>
+      </Modal>
+
+      {/* CRASH DETECTION FULLSCREEN */}
+      <Modal transparent visible={showSOSModal && crashTriggered} animationType="fade">
+        <View style={styles.crashFullscreen}>
+          <View style={styles.crashPulseRing3} />
+          <View style={styles.crashPulseRing2} />
+          <View style={styles.crashPulseRing1} />
+
+          <View style={styles.crashIconContainer}>
+            <MaterialCommunityIcons name="car-emergency" size={56} color="#FFFFFF" />
+          </View>
+
+          <Text style={styles.crashTitle}>{"¿ESTÁS BIEN?"}</Text>
+          <Text style={styles.crashSubtitle}>
+            {"Detectamos un posible accidente.\nSi no respondes, enviaremos ayuda automáticamente."}
+          </Text>
+
+          <View style={styles.crashCountdownCircle}>
+            <Text style={styles.crashCountdownNumber}>{sosCountdown}</Text>
+          </View>
+          <Text style={styles.crashCountdownLabel}>segundos para enviar alerta</Text>
+
+          <Pressable
+            onPress={() => {
+              setShowSOSModal(false);
+              setCrashTriggered(false);
+            }}
+            style={styles.crashOkButton}
+          >
+            <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
+            <Text style={styles.crashOkText}>ESTOY BIEN</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              setShowSOSModal(false);
+              setCrashTriggered(false);
+            }}
+            style={styles.crashCancelLink}
+          >
+            <Text style={styles.crashCancelText}>Fue una falsa alarma</Text>
+          </Pressable>
         </View>
       </Modal>
 
@@ -496,51 +685,165 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { position: 'absolute', top: 0, width: '100%', paddingHorizontal: 16, zIndex: 10 },
-  headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderRadius: 24, borderWidth: 1, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
+  headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20, shadowColor: "#0B1120", shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 6 },
   headerLeft: { flex: 1, paddingRight: 12 },
-  headerSubtitle: { fontSize: 12, fontWeight: '700', marginBottom: 4 },
+  headerSubtitle: { fontSize: 12, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' },
   headerTitle: { fontSize: 16, fontWeight: '800' },
-  profileBtn: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000000' },
+  profileBtn: { width: 44, height: 44, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   aiFabContainer: { position: 'absolute', left: 20, zIndex: 30 },
-  aiFab: { width: 56, height: 56, borderRadius: 28, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
+  aiFab: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#0EA5E9', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
   fabContainer: { position: 'absolute', right: 20, zIndex: 30 },
-  sosFab: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.6, shadowRadius: 16 },
-  bottomSheet: { position: 'absolute', bottom: 0, width: '100%', borderTopLeftRadius: 36, borderTopRightRadius: 36, borderWidth: 1, borderBottomWidth: 0, zIndex: 20, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 20, shadowOffset: { width: 0, height: -5 } },
+  sosFab: { width: 68, height: 68, borderRadius: 20, backgroundColor: '#E11D48', alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20 },
+  bottomSheet: { position: 'absolute', bottom: 0, width: '100%', borderTopLeftRadius: 28, borderTopRightRadius: 28, zIndex: 20, shadowColor: "#0B1120", shadowOpacity: 0.08, shadowRadius: 24, shadowOffset: { width: 0, height: -8 }, elevation: 12 },
   dragHandleWrapper: { width: '100%', alignItems: 'center', paddingVertical: 14 },
-  dragHandle: { width: 48, height: 5, borderRadius: 3, opacity: 0.8 },
+  dragHandle: { width: 40, height: 4, borderRadius: 2 },
   sheetTitle: { fontSize: 20, fontWeight: '900', paddingHorizontal: 24, marginBottom: 16, letterSpacing: 0.2 },
-  gridMode: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, paddingBottom: 24, justifyContent: 'space-between' },
-  serviceGridCard: { width: '48%', borderRadius: 24, borderWidth: 1.5, alignItems: 'flex-start', padding: 18, marginBottom: 16 },
-  serviceTitle: { fontSize: 15, fontWeight: '800', marginBottom: 6 },
+  gridMode: { paddingHorizontal: 20, paddingBottom: 24 },
+  serviceListCard: { borderLeftWidth: 3, borderRadius: 14, flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 14, marginBottom: 10 },
+  serviceIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14, flexShrink: 0 },
+  serviceTextWrap: { flex: 1, marginRight: 8, justifyContent: 'center' },
+  serviceTitle: { fontSize: 15, fontWeight: '800', marginBottom: 3 },
   serviceDesc: { fontSize: 12, fontWeight: '600', lineHeight: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  modalContent: { width: '100%', borderRadius: 32, padding: 28, borderWidth: 1, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 15 },
-  modalIconWrap: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  centerBtnContainer: { position: 'absolute', right: 20, zIndex: 25 },
+  centerBtn: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', shadowColor: '#0B1120', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(11, 17, 32, 0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalContent: { width: '100%', borderRadius: 24, padding: 28, alignItems: 'center', shadowColor: '#0B1120', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.1, shadowRadius: 32, elevation: 15 },
+  modalIconWrap: { width: 72, height: 72, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
   modalDesc: { fontSize: 14, textAlign: 'center', lineHeight: 22, fontWeight: '500', marginBottom: 28 },
   modalButtons: { width: '100%', gap: 12 },
-  modalBtnPrimary: { width: '100%', paddingVertical: 18, borderRadius: 16, alignItems: 'center' },
+  modalBtnPrimary: { width: '100%', paddingVertical: 18, borderRadius: 14, alignItems: 'center' },
   modalBtnPrimaryText: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
-  modalBtnSecondary: { width: '100%', paddingVertical: 16, borderRadius: 16, alignItems: 'center', borderWidth: 1.5 },
+  modalBtnSecondary: { width: '100%', paddingVertical: 16, borderRadius: 14, alignItems: 'center' },
   modalBtnSecondaryText: { fontSize: 14, fontWeight: '700' },
   
-  sosModalOverlay: { flex: 1, backgroundColor: 'rgba(20, 0, 0, 0.95)', justifyContent: 'center', alignItems: 'center', padding: 32 },
-  sosAlertTitle: { color: '#DC2626', fontSize: 28, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
-  sosAlertDesc: { color: '#FFFFFF', fontSize: 16, textAlign: 'center', opacity: 0.9, lineHeight: 24, marginBottom: 40 },
-  countdownContainer: { width: 220, height: 220, borderRadius: 110, borderWidth: 8, borderColor: '#DC2626', justifyContent: 'center', alignItems: 'center', marginBottom: 48, backgroundColor: 'rgba(220, 38, 38, 0.15)' },
-  countdownNumber: { color: '#FFFFFF', fontSize: 80, fontWeight: '900' },
-  countdownLabel: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', opacity: 0.8 },
-  sosCancelBtn: { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FFFFFF', borderRadius: 24, paddingVertical: 18, paddingHorizontal: 40, width: '100%', alignItems: 'center' },
-  sosCancelText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 1 },
+  // === Manual SOS Modal Styles ===
+  sosModalOverlay: { flex: 1, backgroundColor: 'rgba(11, 17, 32, 0.97)', justifyContent: 'center', alignItems: 'center', padding: 32 },
+  sosAlertTitle: { color: '#E11D48', fontSize: 28, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
+  sosAlertDesc: { color: '#F8FAFC', fontSize: 16, textAlign: 'center', opacity: 0.9, lineHeight: 24, marginBottom: 40 },
+  countdownContainer: { width: 220, height: 220, borderRadius: 110, borderWidth: 6, borderColor: '#E11D48', justifyContent: 'center', alignItems: 'center', marginBottom: 48, backgroundColor: 'rgba(225, 29, 72, 0.1)' },
+  countdownNumber: { color: '#F8FAFC', fontSize: 80, fontWeight: '900' },
+  countdownLabel: { color: '#F8FAFC', fontSize: 16, fontWeight: '600', opacity: 0.8 },
+  sosCancelBtn: { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#F8FAFC', borderRadius: 16, paddingVertical: 18, paddingHorizontal: 40, width: '100%', alignItems: 'center' },
+  sosCancelText: { color: '#F8FAFC', fontSize: 16, fontWeight: '800', letterSpacing: 1 },
+
+  // === Crash Detection Fullscreen Styles ===
+  crashFullscreen: {
+    flex: 1,
+    backgroundColor: '#7F1D1D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  crashPulseRing3: {
+    position: 'absolute',
+    width: 500,
+    height: 500,
+    borderRadius: 250,
+    backgroundColor: 'rgba(220, 38, 38, 0.08)',
+  },
+  crashPulseRing2: {
+    position: 'absolute',
+    width: 380,
+    height: 380,
+    borderRadius: 190,
+    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+  },
+  crashPulseRing1: {
+    position: 'absolute',
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: 'rgba(220, 38, 38, 0.18)',
+  },
+  crashIconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  crashTitle: {
+    color: '#FFFFFF',
+    fontSize: 42,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: 2,
+    marginBottom: 12,
+  },
+  crashSubtitle: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 36,
+    paddingHorizontal: 16,
+  },
+  crashCountdownCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 5,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 8,
+  },
+  crashCountdownNumber: {
+    color: '#FFFFFF',
+    fontSize: 72,
+    fontWeight: '900',
+  },
+  crashCountdownLabel: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 40,
+  },
+  crashOkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#16A34A',
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 48,
+    width: '100%',
+    shadowColor: '#16A34A',
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
+    marginBottom: 16,
+  },
+  crashOkText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  crashCancelLink: {
+    paddingVertical: 12,
+  },
+  crashCancelText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
 
   medicalOverlay: { flex: 1 },
-  medicalHeader: { alignItems: 'center', justifyContent: 'center', paddingTop: 64, paddingBottom: 32, paddingHorizontal: 24, borderBottomWidth: 4, borderBottomColor: '#991B1B' },
+  medicalHeader: { alignItems: 'center', justifyContent: 'center', paddingTop: 64, paddingBottom: 32, paddingHorizontal: 24 },
   medicalHeaderTitle: { color: '#FFF', fontSize: 28, fontWeight: '900', textAlign: 'center', letterSpacing: 0.5 },
   medicalHeaderSubtitle: { color: '#FFF', fontSize: 15, fontWeight: '500', textAlign: 'center', opacity: 0.9, marginTop: 8 },
   medicalScroll: { padding: 24, paddingBottom: 100 },
-  medicalCard: { padding: 20, borderRadius: 20, borderWidth: 1, marginBottom: 16 },
-  medicalLabel: { fontSize: 12, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5 },
+  medicalCard: { padding: 20, borderRadius: 16, marginBottom: 16 },
+  medicalLabel: { fontSize: 12, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5, textTransform: 'uppercase' },
   medicalValue: { fontSize: 18, fontWeight: '700' },
-  medicalDismissBtn: { position: 'absolute', bottom: 40, alignSelf: 'center', backgroundColor: '#000', paddingVertical: 16, paddingHorizontal: 32, borderRadius: 30, borderWidth: 1, borderColor: '#333', shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 10 },
-  medicalDismissText: { color: '#FFF', fontSize: 14, fontWeight: '800' }
+  medicalDismissBtn: { position: 'absolute', bottom: 40, alignSelf: 'center', backgroundColor: '#0B1120', paddingVertical: 16, paddingHorizontal: 32, borderRadius: 16, shadowColor: '#0B1120', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 10 },
+  medicalDismissText: { color: '#F8FAFC', fontSize: 14, fontWeight: '800' }
 });

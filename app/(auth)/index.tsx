@@ -78,17 +78,16 @@ export default function AuthIntroScreen() {
     };
   }, [blueLightOpacity, buttonsOpacity, logoScale, logoTranslateY, maxBlinkValue, redLightOpacity]);
 
-  // Handle transparent glassmorphism depending on theme
-  const glassBackground = isLightMode ? "rgba(255,255,255,0.7)" : "rgba(30,30,40,0.6)";
-  const glassBorder = isLightMode ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.15)";
-  const primaryTint = isLightMode ? "rgba(0, 180, 216, 0.15)" : "rgba(0, 180, 216, 0.3)";
+  // Solid button styles for visibility
+  const secondaryBg = isLightMode ? "rgba(15, 23, 42, 0.06)" : "rgba(255, 255, 255, 0.08)";
+  const secondaryBorder = isLightMode ? "rgba(15, 23, 42, 0.12)" : "rgba(255, 255, 255, 0.15)";
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
       {/* Luces de Sirena */}
-      <Animated.View style={[styles.sirenLight, { backgroundColor: "#FF0000", top: "20%", left: "-20%", opacity: redLightOpacity }]} />
-      <Animated.View style={[styles.sirenLight, { backgroundColor: "#0066FF", bottom: "30%", right: "-20%", opacity: blueLightOpacity }]} />
+      <Animated.View style={[styles.sirenLight, { backgroundColor: "#E11D48", top: "20%", left: "-20%", opacity: redLightOpacity }]} />
+      <Animated.View style={[styles.sirenLight, { backgroundColor: "#0EA5E9", bottom: "30%", right: "-20%", opacity: blueLightOpacity }]} />
 
       <View style={styles.content}>
         <Animated.View style={{ transform: [{ scale: logoScale }, { translateY: logoTranslateY }], alignItems: "center" }}>
@@ -101,21 +100,21 @@ export default function AuthIntroScreen() {
 
         <Animated.View style={[styles.buttonContainer, { opacity: buttonsOpacity }]}>
           <TouchableOpacity
-            style={[styles.glassButton, { backgroundColor: primaryTint, borderColor: colors.primary }]}
+            style={[styles.primaryButton]}
             activeOpacity={0.8}
             onPress={() => router.push("/(auth)/login")}
           >
-            <Text style={[styles.buttonText, { color: colors.primary }]}>
+            <Text style={[styles.primaryButtonText]}>
               {language === "es" ? "Iniciar Sesión" : "Login"}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.glassButton, { backgroundColor: glassBackground, borderColor: glassBorder }]}
+            style={[styles.secondaryButton, { backgroundColor: secondaryBg, borderColor: secondaryBorder }]}
             activeOpacity={0.8}
             onPress={() => router.push("/(auth)/register")}
           >
-            <Text style={[styles.buttonText, { color: colors.textPrimary }]}>
+            <Text style={[styles.secondaryButtonText, { color: colors.textPrimary }]}>
               {language === "es" ? "Crear Cuenta" : "Create Account"}
             </Text>
           </TouchableOpacity>
@@ -133,9 +132,9 @@ const styles = StyleSheet.create({
   },
   sirenLight: {
     position: "absolute",
-    width: 300,
-    height: 300,
-    borderRadius: 150,
+    width: 340,
+    height: 340,
+    borderRadius: 170,
   },
   content: {
     flex: 1,
@@ -145,7 +144,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   appName: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: "900",
     marginTop: 16,
     letterSpacing: -0.5,
@@ -154,22 +153,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     marginTop: 8,
+    letterSpacing: 0.3,
   },
   buttonContainer: {
     position: "absolute",
-    bottom: 50,
+    bottom: 56,
     width: "100%",
-    gap: 16,
+    gap: 14,
   },
-  glassButton: {
+  primaryButton: {
     width: "100%",
     paddingVertical: 18,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#E11D48",
+    shadowColor: "#E11D48",
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
-  buttonText: {
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    color: "#FFFFFF",
+  },
+  secondaryButton: {
+    width: "100%",
+    paddingVertical: 18,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+  },
+  secondaryButtonText: {
     fontSize: 16,
     fontWeight: "800",
     letterSpacing: 0.5,

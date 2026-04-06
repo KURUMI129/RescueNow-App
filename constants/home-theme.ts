@@ -19,47 +19,47 @@ export type HomeThemeColors = {
   success: string;
 };
 
-// Opción 1 "Carmesí Neón" (Modo Oscuro Vibrante)
+// Opción "Rescue Premium" (Modo Oscuro Pizarra/Navy)
 const darkTheme: HomeThemeColors = {
-  background: "#171717",
-  surface: "rgba(38, 38, 38, 0.8)", // Frosted glass support
-  cardBorder: "rgba(255, 255, 255, 0.1)",
-  textPrimary: "#FFFFFF",
-  textSecondary: "#A3A3A3",
-  primary: "#FF1E47",
+  background: "#0B1120", // Deep navy
+  surface: "rgba(30, 41, 59, 0.8)", // Slate 800 frosted glass support
+  cardBorder: "rgba(255, 255, 255, 0.08)",
+  textPrimary: "#F8FAFC",
+  textSecondary: "#94A3B8",
+  primary: "#E11D48", // Neon Crimson
   onPrimary: "#FFFFFF",
-  tabIconDefault: "#737373",
-  tabIconSelected: "#FF1E47",
-  rippleColor: "rgba(255, 30, 71, 0.2)",
+  tabIconDefault: "#64748B",
+  tabIconSelected: "#E11D48",
+  rippleColor: "rgba(225, 29, 72, 0.2)",
   danger: "#EF4444",
-  accent: "#FFB800",
-  mapBackground: "#171717",
-  tracking: "#FF1E47",
-  userPin: "#3B82F6",
-  technicianPin: "#FFB800",
+  accent: "#0EA5E9", // Medical Blue
+  mapBackground: "#0B1120",
+  tracking: "#E11D48",
+  userPin: "#0EA5E9",
+  technicianPin: "#F59E0B",
   mapGrid: "rgba(255, 255, 255, 0.03)",
   success: "#10B981",
 };
 
-// Opción 3 "Alerta Inmediata" (Modo Claro Vibrante)
+// Opción "Clínica Limpia" (Modo Claro Premium)
 const lightTheme: HomeThemeColors = {
-  background: "#FAFAFA",
+  background: "#F8FAFC", // Clean slate 50
   surface: "rgba(255, 255, 255, 0.85)", // Frosted glass support
-  cardBorder: "rgba(0, 0, 0, 0.08)",
+  cardBorder: "rgba(15, 23, 42, 0.06)",
   textPrimary: "#0F172A",
   textSecondary: "#64748B",
-  primary: "#E10032",
+  primary: "#E11D48",
   onPrimary: "#FFFFFF",
   tabIconDefault: "#94A3B8",
-  tabIconSelected: "#E10032",
-  rippleColor: "rgba(225, 0, 50, 0.15)",
+  tabIconSelected: "#E11D48",
+  rippleColor: "rgba(225, 29, 72, 0.15)",
   danger: "#DC2626",
-  accent: "#FFB800", // Yellow
-  mapBackground: "#FAFAFA",
-  tracking: "#E10032",
-  userPin: "#2563EB",
-  technicianPin: "#FFB800",
-  mapGrid: "rgba(0, 0, 0, 0.05)",
+  accent: "#0EA5E9", // Medical Blue
+  mapBackground: "#F8FAFC",
+  tracking: "#E11D48",
+  userPin: "#0EA5E9",
+  technicianPin: "#F59E0B",
+  mapGrid: "rgba(15, 23, 42, 0.04)",
   success: "#10B981",
 };
 

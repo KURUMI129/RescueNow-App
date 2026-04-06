@@ -2,19 +2,18 @@ import { useActiveTheme } from "@/hooks/use-active-theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-    Animated,
     Pressable,
     SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
-    useColorScheme,
     useWindowDimensions,
     View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { getAppCopy } from "@/constants/app-copy";
 import { AppLanguage } from "@/constants/app-preferences";
@@ -39,53 +38,10 @@ export default function ServicesScreen() {
   const { width } = useWindowDimensions();
   const titleSize = Math.max(22, Math.min(28, width * 0.075));
   const [issueDescription, setIssueDescription] = useState<string>("");
-  const entranceOpacity = useMemo(() => new Animated.Value(0), []);
-  const entranceTranslateY = useMemo(() => new Animated.Value(12), []);
-  const cardAnimValues = useMemo(
-    () => SERVICE_OPTIONS.map(() => new Animated.Value(0)),
-    [],
-  );
 
   const t = getAppCopy(language as AppLanguage).tabs.services;
 
-  useEffect(() => {
-    if (reduceMotionEnabled) {
-      entranceOpacity.setValue(1);
-      entranceTranslateY.setValue(0);
-      return;
-    }
 
-    Animated.parallel([
-      Animated.timing(entranceOpacity, {
-        toValue: 1,
-        duration: 360,
-        useNativeDriver: true,
-      }),
-      Animated.timing(entranceTranslateY, {
-        toValue: 0,
-        duration: 360,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [entranceOpacity, entranceTranslateY, reduceMotionEnabled]);
-
-  useEffect(() => {
-    if (reduceMotionEnabled) {
-      cardAnimValues.forEach((value) => value.setValue(1));
-      return;
-    }
-
-    Animated.stagger(
-      65,
-      cardAnimValues.map((value) =>
-        Animated.timing(value, {
-          toValue: 1,
-          duration: 260,
-          useNativeDriver: true,
-        }),
-      ),
-    ).start();
-  }, [cardAnimValues, reduceMotionEnabled]);
 
   const handleServicePress = (category: ServiceCategory) => {
     if (!reduceMotionEnabled) {
@@ -109,13 +65,8 @@ export default function ServicesScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View
-          style={[
-            styles.entranceLayer,
-            {
-              opacity: entranceOpacity,
-              transform: [{ translateY: entranceTranslateY }],
-            },
-          ]}
+          entering={FadeInDown.delay(100).springify()}
+          style={styles.entranceLayer}
         >
           <Text style={[styles.topLabel, { color: colors.textSecondary }]}>
             {t.step}
@@ -134,7 +85,6 @@ export default function ServicesScreen() {
               styles.statusCard,
               {
                 backgroundColor: colors.mapBackground,
-                borderColor: colors.cardBorder,
               },
             ]}
           >
@@ -157,7 +107,6 @@ export default function ServicesScreen() {
               styles.issueInput,
               {
                 color: colors.textPrimary,
-                borderColor: colors.cardBorder,
                 backgroundColor: colors.surface,
               },
             ]}
@@ -173,17 +122,7 @@ export default function ServicesScreen() {
             return (
               <Animated.View
                 key={option.id}
-                style={{
-                  opacity: cardAnimValues[index],
-                  transform: [
-                    {
-                      translateY: cardAnimValues[index].interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [10, 0],
-                      }),
-                    },
-                  ],
-                }}
+                entering={FadeInDown.delay(200 + index * 65).springify()}
               >
                 <Pressable
                   onPress={() =>
@@ -193,7 +132,7 @@ export default function ServicesScreen() {
                     styles.card,
                     {
                       backgroundColor: colors.surface,
-                      borderColor: SERVICE_ACCENT[option.id as ServiceCategory],
+                      borderLeftColor: SERVICE_ACCENT[option.id as ServiceCategory],
                       opacity: pressed ? 0.86 : 1,
                     },
                   ]}
@@ -271,7 +210,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   statusCard: {
-    borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -290,7 +228,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   issueInput: {
-    borderWidth: 1,
     borderRadius: 12,
     minHeight: 84,
     textAlignVertical: "top",
@@ -300,13 +237,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   card: {
-    borderWidth: 1,
+    borderLeftWidth: 3,
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 13,
     marginBottom: 8,
     flexDirection: "row",
     alignItems: "center",
+    shadowColor: '#0B1120',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   iconWrap: {
     width: 34,
