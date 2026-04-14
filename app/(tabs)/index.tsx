@@ -34,6 +34,7 @@ import { saveIncident } from "@/lib/emergency-service";
 import { useCrashDetection } from "@/hooks/use-crash-detection";
 import { useAuth } from "@/lib/auth-context";
 import { fetchNearbyPOIs, distanceKm, type POIResult } from "@/lib/overpass-service";
+import { AppEvents, EVENT_SELECT_SERVICE_FILTER } from "@/lib/app-events";
 
 // TODO: Copilot - Inserta aquí el JSON de tu mapa oscuro
 const RESCUE_DARK_MAP_STYLE: any[] = []; 
@@ -50,7 +51,7 @@ type ServiceOption = {
 
 // 6 Servicios Base
 const SERVICES: ServiceOption[] = [
-  { id: "accident", titleEs: "Accidente", titleEn: "Accident", descEs: "Choque o volcadura severa", descEn: "Severe crash or rollover", icon: "car-emergency", colorHex: "#DC2626" },
+  { id: "hospital", titleEs: "Hospitales", titleEn: "Hospitals", descEs: "Clínicas y hospitales cercanos", descEn: "Nearby clinics and hospitals", icon: "hospital-box", colorHex: "#DC2626" },
   { id: "tow", titleEs: "Grúa", titleEn: "Tow", descEs: "Vehículo inmovilizado", descEn: "Immobilized vehicle", icon: "tow-truck", colorHex: "#FFB800" },
   { id: "mechanic", titleEs: "Mecánico", titleEn: "Mechanic", descEs: "Falla de motor o batería", descEn: "Engine or battery failure", icon: "wrench", colorHex: "#3B82F6" },
   { id: "gas", titleEs: "Gasolina", titleEn: "Gas", descEs: "Sin combustible", descEn: "Out of fuel", icon: "gas-station", colorHex: "#10B981" },
@@ -75,6 +76,15 @@ export default function HomeScreen() {
   const { location, locationAllowed, askLocationPermission } = useUserLocation();
   const { user } = useAuth();
   const [selectedService, setSelectedService] = useState<string | null>(null);
+
+  // Listen for service filter events from services.tsx
+  useEffect(() => {
+    const unsubscribe = AppEvents.on(EVENT_SELECT_SERVICE_FILTER, (serviceId: string) => {
+      console.log(`[Home] Received filter event: ${serviceId}`);
+      setSelectedService(serviceId);
+    });
+    return unsubscribe;
+  }, []);
   const [poiMarkers, setPoiMarkers] = useState<POIResult[]>([]);
   const [loadingPOIs, setLoadingPOIs] = useState(false);
 
@@ -267,7 +277,7 @@ export default function HomeScreen() {
 
   // Fetch POI markers when service is selected
   useEffect(() => {
-    if (!selectedService || selectedService === "accident" || !location) {
+    if (!selectedService || !location) {
       setPoiMarkers([]);
       return;
     }

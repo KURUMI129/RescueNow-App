@@ -5,7 +5,14 @@
 
 import NetInfo from "@react-native-community/netinfo";
 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+
+// Models to try in order — if the first fails, try the next
+const GEMINI_MODELS = [
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-2.0-flash-lite",
+];
 
 type ChatMessage = {
   role: "user" | "model";
@@ -136,58 +143,78 @@ export async function sendChatMessage(
     return { text: getOfflineResponse(userMessage, subscriptionPlan) };
   }
 
-  // Online — use Gemini API
-  try {
-    const systemPrompt = subscriptionPlan === "premium" ? SYSTEM_PROMPT_PREMIUM : SYSTEM_PROMPT_FREE;
+  // Online — try Gemini API with model fallbacks
+  const systemPrompt = subscriptionPlan === "premium" ? SYSTEM_PROMPT_PREMIUM : SYSTEM_PROMPT_FREE;
 
-    const locationContext = location
-      ? `\nUbicación actual del usuario: lat ${location.latitude.toFixed(4)}, lng ${location.longitude.toFixed(4)}`
-      : "\nUbicación del usuario: no disponible";
+  const locationContext = location
+    ? `\nUbicación actual del usuario: lat ${location.latitude.toFixed(4)}, lng ${location.longitude.toFixed(4)}`
+    : "\nUbicación del usuario: no disponible";
 
-    const contents = [
-      {
-        role: "user" as const,
-        parts: [{ text: systemPrompt + locationContext }],
-      },
-      {
-        role: "model" as const,
-        parts: [{ text: "Entendido. Soy RescueAI, listo para ayudar. ¿En qué puedo asistirte?" }],
-      },
-      ...conversationHistory,
-      {
-        role: "user" as const,
-        parts: [{ text: userMessage }],
-      },
-    ];
+  const contents = [
+    {
+      role: "user" as const,
+      parts: [{ text: systemPrompt + locationContext }],
+    },
+    {
+      role: "model" as const,
+      parts: [{ text: "Entendido. Soy RescueAI, listo para ayudar. ¿En qué puedo asistirte?" }],
+    },
+    ...conversationHistory,
+    {
+      role: "user" as const,
+      parts: [{ text: userMessage }],
+    },
+  ];
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents,
-        generationConfig: {
-          temperature: subscriptionPlan === "premium" ? 0.8 : 0.7,
-          maxOutputTokens: subscriptionPlan === "premium" ? 800 : 400,
-          topP: 0.9,
-        },
-      }),
-    });
+  const body = JSON.stringify({
+    contents,
+    generationConfig: {
+      temperature: subscriptionPlan === "premium" ? 0.8 : 0.7,
+      maxOutputTokens: subscriptionPlan === "premium" ? 800 : 400,
+      topP: 0.9,
+    },
+  });
 
-    if (response.ok) {
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      if (text) {
-        return { text };
+  // Try each model in order until one works
+  for (const model of GEMINI_MODELS) {
+    try {
+      const url = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
+      console.log(`[Chatbot] Trying model: ${model}`);
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+        if (text) {
+          console.log(`[Chatbot] ✓ Success with model: ${model}`);
+          return { text };
+        }
+        console.warn(`[Chatbot] Model ${model} returned empty text`);
+      } else if (response.status === 429) {
+        // Quota exceeded — no point trying other models with same key
+        console.warn(`[Chatbot] API key quota exceeded (429). Using offline mode.`);
+        return {
+          text: getOfflineResponse(userMessage, subscriptionPlan) +
+            "\n\n⚠️ _Nota: El servicio de IA está temporalmente limitado. Usando respuestas predefinidas._"
+        };
+      } else {
+        let errorBody = "";
+        try { errorBody = await response.text(); } catch { /* ignore */ }
+        console.warn(`[Chatbot] Model ${model} failed: HTTP ${response.status} — ${errorBody.substring(0, 200)}`);
       }
+    } catch (e) {
+      console.warn(`[Chatbot] Model ${model} network error:`, e);
     }
-
-    // API returned non-ok — fall back
-    console.warn("[Chatbot] Gemini API returned non-ok status");
-    return { text: getOfflineResponse(userMessage, subscriptionPlan) };
-  } catch (e) {
-    console.warn("[Chatbot] Gemini API error, falling back to offline:", e);
-    return { text: getOfflineResponse(userMessage, subscriptionPlan) };
   }
+
+  // All models failed — use offline fallback
+  console.warn("[Chatbot] All Gemini models failed — using offline responses");
+  return { text: getOfflineResponse(userMessage, subscriptionPlan) };
 }
 
 // ====== OFFLINE KEYWORD MATCHER ======
