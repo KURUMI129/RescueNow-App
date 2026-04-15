@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated as RNAnimated,
   Dimensions,
   Image,
@@ -364,7 +365,7 @@ export default function HomeScreen() {
                 <View style={{ maxWidth: 200, padding: 4 }}>
                   <Text style={{ fontWeight: "800", fontSize: 14 }}>{poi.name}</Text>
                   {poi.address ? <Text style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{poi.address}</Text> : null}
-                  {dist !== null ? <Text style={{ fontSize: 11, color: "#999", marginTop: 2 }}>📍 {dist.toFixed(1)} km</Text> : null}
+                  {dist !== null ? <Text style={{ fontSize: 11, color: "#999", marginTop: 2 }}>{dist.toFixed(1)} km</Text> : null}
                   <Text style={{ fontSize: 12, color: svc?.colorHex ?? "#0EA5E9", fontWeight: "700", marginTop: 4 }}>Navegar →</Text>
                 </View>
               </Callout>
@@ -375,7 +376,7 @@ export default function HomeScreen() {
 
       {/* HEADER FLOTANTE */}
       <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]} pointerEvents="box-none">
-        <View style={[styles.headerBox, { backgroundColor: colors.surface }]}>
+        <View style={[styles.headerBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
           <View style={styles.headerLeft}>
             <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
               {language === "es" ? "Ubicación Actual" : "Current Location"}
@@ -460,9 +461,26 @@ export default function HomeScreen() {
           <View style={[styles.dragHandle, { backgroundColor: colors.textSecondary, opacity: 0.3 }]} />
         </View>
 
-        <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
-          {language === "es" ? "¿Qué asistencia necesitas?" : "What assistance do you need?"}
-        </Text>
+        <View style={styles.sheetTitleRow}>
+          <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+            {language === "es" ? "¿Qué asistencia necesitas?" : "What assistance do you need?"}
+          </Text>
+          {loadingPOIs && (
+            <View style={[styles.loadingPill, { backgroundColor: colors.surface }]}>
+              <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 6 }} />
+              <Text style={[styles.loadingPillText, { color: colors.textSecondary }]}>
+                {language === "es" ? "Buscando..." : "Searching..."}
+              </Text>
+            </View>
+          )}
+          {!loadingPOIs && selectedService && poiMarkers.length > 0 && (
+            <View style={[styles.loadingPill, { backgroundColor: `${colors.accent}15` }]}>
+              <Text style={[styles.loadingPillText, { color: colors.accent }]}>
+                {poiMarkers.length} {language === "es" ? "encontrados" : "found"}
+              </Text>
+            </View>
+          )}
+        </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -704,7 +722,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { position: 'absolute', top: 0, width: '100%', paddingHorizontal: 16, zIndex: 10 },
-  headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20, shadowColor: "#0B1120", shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 6 },
+  headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20, borderWidth: 1, shadowColor: "#0B1120", shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 6 },
   headerLeft: { flex: 1, paddingRight: 12 },
   headerSubtitle: { fontSize: 12, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' },
   headerTitle: { fontSize: 16, fontWeight: '800' },
@@ -719,7 +737,7 @@ const styles = StyleSheet.create({
   bottomSheet: { position: 'absolute', bottom: 0, width: '100%', borderTopLeftRadius: 28, borderTopRightRadius: 28, zIndex: 20, shadowColor: "#0B1120", shadowOpacity: 0.08, shadowRadius: 24, shadowOffset: { width: 0, height: -8 }, elevation: 12 },
   dragHandleWrapper: { width: '100%', alignItems: 'center', paddingVertical: 14 },
   dragHandle: { width: 40, height: 4, borderRadius: 2 },
-  sheetTitle: { fontSize: 20, fontWeight: '900', paddingHorizontal: 24, marginBottom: 16, letterSpacing: 0.2 },
+  sheetTitle: { fontSize: 20, fontWeight: '900', letterSpacing: 0.2, flex: 1 },
   gridMode: { paddingHorizontal: 20, paddingBottom: 24 },
   serviceListCard: { borderLeftWidth: 3, borderRadius: 14, flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 14, marginBottom: 10 },
   serviceIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14, flexShrink: 0 },
@@ -867,5 +885,8 @@ const styles = StyleSheet.create({
   medicalLabel: { fontSize: 12, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5, textTransform: 'uppercase' },
   medicalValue: { fontSize: 18, fontWeight: '700' },
   medicalDismissBtn: { position: 'absolute', bottom: 40, alignSelf: 'center', backgroundColor: '#0B1120', paddingVertical: 16, paddingHorizontal: 32, borderRadius: 16, shadowColor: '#0B1120', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 10 },
-  medicalDismissText: { color: '#F8FAFC', fontSize: 14, fontWeight: '800' }
+  medicalDismissText: { color: '#F8FAFC', fontSize: 14, fontWeight: '800' },
+  sheetTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 16 },
+  loadingPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  loadingPillText: { fontSize: 12, fontWeight: '700' },
 });

@@ -14,6 +14,7 @@ export type AuthThemeColors = {
   iconBadgeBackground: string;
   danger: string;
   accent: string;
+  success: string;
 };
 
 // Opción "Rescue Premium" (Modo Oscuro Pizarra/Navy)
@@ -33,6 +34,7 @@ const darkTheme: AuthThemeColors = {
   iconBadgeBackground: "rgba(225, 29, 72, 0.15)",
   danger: "#EF4444",
   accent: "#0EA5E9", // Medical Blue
+  success: "#10B981",
 };
 
 // Opción "Clínica Limpia" (Modo Claro Premium)
@@ -52,6 +54,7 @@ const lightTheme: AuthThemeColors = {
   iconBadgeBackground: "rgba(225, 29, 72, 0.1)",
   danger: "#DC2626",
   accent: "#0EA5E9",
+  success: "#059669",
 };
 
 export const AUTH_THEME_COLORS: Record<"light" | "dark", AuthThemeColors> = {

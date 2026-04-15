@@ -5,6 +5,7 @@ import { useState } from "react";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase";
 import {
+    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -122,16 +123,20 @@ export default function ForgotPasswordScreen() {
               </View>
 
               {sent ? (
-                <Text
-                  style={[styles.successText, { color: colors.textSecondary }]}
-                >
-                  {t.sentMessage}
-                </Text>
+                <View style={[styles.successBanner, { backgroundColor: `${colors.success}18`, borderColor: colors.success }]}>
+                  <MaterialCommunityIcons name="check-circle-outline" size={20} color={colors.success} style={{ marginRight: 10 }} />
+                  <Text style={[styles.successText, { color: colors.success, flex: 1 }]}>
+                    {t.sentMessage}
+                  </Text>
+                </View>
               ) : null}
               {recoverError ? (
-                <Text style={[styles.successText, { color: '#E11D48' }]}>
-                  {recoverError}
-                </Text>
+                <View style={[styles.successBanner, { backgroundColor: `${colors.danger}12`, borderColor: colors.danger }]}>
+                  <MaterialCommunityIcons name="alert-circle-outline" size={20} color={colors.danger} style={{ marginRight: 10 }} />
+                  <Text style={[styles.successText, { color: colors.danger, flex: 1 }]}>
+                    {recoverError}
+                  </Text>
+                </View>
               ) : null}
             </Animated.View>
 
@@ -143,18 +148,17 @@ export default function ForgotPasswordScreen() {
                 onPress={handleRecover}
                 style={[
                   styles.submitButton,
-                  {
-                    backgroundColor: canSubmit
-                      ? colors.primary
-                      : colors.cardBorder,
-                  },
+                  (!canSubmit || isSubmitting) && styles.submitButtonDisabled,
+                  { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
                 ]}
               >
-                <Text
-                  style={[styles.submitButtonText, { color: colors.onPrimary }]}
-                >
-                  {t.sendLink}
-                </Text>
+                {isSubmitting ? (
+                  <ActivityIndicator color={colors.onPrimary} size="small" />
+                ) : (
+                  <Text style={[styles.submitButtonText, { color: colors.onPrimary }]}>
+                    {t.sendLink}
+                  </Text>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -230,10 +234,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingVertical: 14,
   },
+  successBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
   successText: {
-    marginTop: 8,
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 18,
+    fontWeight: "600",
   },
   submitButton: {
     marginTop: 28,
@@ -241,6 +253,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: "center",
   },
+  submitButtonDisabled: { opacity: 0.5 },
   submitButtonText: {
     fontWeight: "700",
     fontSize: 15,

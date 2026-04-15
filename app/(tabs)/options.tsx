@@ -194,8 +194,8 @@ export default function OptionsScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeInDown.delay(100).springify()}>
           
-          {/* 1. SECCIÓN DE PERFIL CENTRADO (Google Style) */}
-          <View style={styles.profileSection}>
+          {/* 1. SECCIÓN DE PERFIL CENTRADO */}
+          <View style={[styles.profileHeroCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
             <View style={styles.avatarWrapper}>
               {subscriptionPlan === "premium" && (
                 <>
@@ -222,18 +222,25 @@ export default function OptionsScreen() {
             </View>
             <Text style={[styles.profileName, { color: colors.textPrimary }]}>{user?.displayName || "Usuario"}</Text>
             <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{user?.email || "Sin correo"}</Text>
-            
-            <View style={[styles.profileBadge, { backgroundColor: subscriptionPlan === "premium" ? colors.accent : colors.mapBackground }]}>
-               <Text style={[styles.profileBadgeText, { color: subscriptionPlan === "premium" ? "#000" : colors.textPrimary }]}>
-                 {subscriptionPlan === "premium" ? "🌟 Miembro Premium" : "🌟 Usuario Estándar"}
-               </Text>
+
+            <View style={[styles.profileBadge, { backgroundColor: subscriptionPlan === "premium" ? `${colors.accent}20` : colors.mapBackground, borderColor: subscriptionPlan === "premium" ? colors.accent : colors.cardBorder }]}>
+              <MaterialCommunityIcons
+                name={subscriptionPlan === "premium" ? "crown" : "account-circle-outline"}
+                size={13}
+                color={subscriptionPlan === "premium" ? colors.accent : colors.textSecondary}
+                style={{ marginRight: 5 }}
+              />
+              <Text style={[styles.profileBadgeText, { color: subscriptionPlan === "premium" ? colors.accent : colors.textSecondary }]}>
+                {subscriptionPlan === "premium" ? "Miembro Premium" : "Usuario Estándar"}
+              </Text>
             </View>
-            
-            <Pressable 
-              style={[styles.editProfileBtn, { backgroundColor: 'rgba(0,180,216,0.1)' }]}
+
+            <Pressable
+              style={[styles.editProfileBtn, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30` }]}
               onPress={() => router.push("/(tabs)/edit-profile")}
             >
-              <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 14 }}>✏️ Editar Perfil Completo</Text>
+              <MaterialCommunityIcons name="pencil-outline" size={15} color={colors.primary} style={{ marginRight: 6 }} />
+              <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 14 }}>Editar Perfil</Text>
             </Pressable>
           </View>
 
@@ -359,6 +366,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: "900", textAlign: 'center', flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 },
   profileSection: { alignItems: 'center', marginBottom: 32 },
+  profileHeroCard: { alignItems: 'center', borderRadius: 20, padding: 24, marginBottom: 20, borderWidth: 1, shadowColor: '#0B1120', shadowOpacity: 0.05, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
   avatarWrapper: { width: 100, height: 100, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   premiumPulseRing: { position: 'absolute', width: 90, height: 90, borderRadius: 45 },
   premiumMultiColorRing: { 
@@ -378,10 +386,10 @@ const styles = StyleSheet.create({
   avatarInitialsText: { color: '#FFFFFF', fontSize: 36, fontWeight: '900' },
   profileName: { fontSize: 20, fontWeight: '900', marginBottom: 2 },
   profileEmail: { fontSize: 13, marginBottom: 12 },
-  profileBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginBottom: 16 },
-  profileBadgeText: { fontSize: 11, fontWeight: '800' },
-  editProfileBtn: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 8 },
-  cardGroup: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', shadowColor: '#0B1120', shadowOpacity: 0.04, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  profileBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, marginBottom: 16 },
+  profileBadgeText: { fontSize: 12, fontWeight: '700' },
+  editProfileBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 18, borderRadius: 10, borderWidth: 1, marginTop: 4 },
+  cardGroup: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 1, shadowColor: '#0B1120', shadowOpacity: 0.04, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
   medicalCard: { marginHorizontal: 0, marginBottom: 24, borderRadius: 16, padding: 16, shadowColor: '#E11D48', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   medicalIconWrap: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center" },

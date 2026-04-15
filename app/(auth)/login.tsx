@@ -3,6 +3,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -35,6 +36,7 @@ export default function LoginScreen() {
 
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string>("");
 
@@ -128,8 +130,8 @@ export default function LoginScreen() {
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 {language === "es" ? "Correo Electrónico o Teléfono" : "Email Address"}
               </Text>
-              
-              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+
+              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                 <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   value={email}
@@ -145,17 +147,24 @@ export default function LoginScreen() {
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 {t.password}
               </Text>
-              
-              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+
+              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                 <MaterialCommunityIcons name="lock-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   value={password}
                   onChangeText={setPassword}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   placeholder={t.passwordPlaceholder}
                   placeholderTextColor={colors.inputPlaceholder}
                   style={[styles.modernInput, { color: colors.textPrimary }]}
                 />
+                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={styles.eyeBtn}>
+                  <MaterialCommunityIcons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
@@ -163,7 +172,7 @@ export default function LoginScreen() {
                 style={styles.forgotPasswordButton}
               >
                 <Text
-                  style={[styles.forgotPasswordText, { color: colors.textSecondary }]}
+                  style={[styles.forgotPasswordText, { color: colors.accent }]}
                 >
                   {t.forgot}
                 </Text>
@@ -181,14 +190,16 @@ export default function LoginScreen() {
                 style={[
                   styles.submitButton,
                   isSubmitting && styles.submitButtonDisabled,
-                  { backgroundColor: colors.accent, shadowColor: colors.accent, shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+                  { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
                 ]}
               >
-                <Text
-                  style={[styles.submitButtonText, { color: '#000000' }]}
-                >
-                  {t.submit}
-                </Text>
+                {isSubmitting ? (
+                  <ActivityIndicator color={colors.onPrimary} size="small" />
+                ) : (
+                  <Text style={[styles.submitButtonText, { color: colors.onPrimary }]}>
+                    {t.submit}
+                  </Text>
+                )}
               </TouchableOpacity>
 
               <View style={styles.biometricRow}>
@@ -265,5 +276,6 @@ const styles = StyleSheet.create({
   registerText: { fontSize: 14, fontWeight: "500" },
   biometricRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 24, gap: 16 },
   divider: { height: 1, flex: 1 },
-  biometricBtn: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" }
+  biometricBtn: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  eyeBtn: { padding: 4 },
 });

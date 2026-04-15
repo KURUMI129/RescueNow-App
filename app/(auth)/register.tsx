@@ -3,6 +3,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -35,6 +36,8 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState("");
 
@@ -154,7 +157,7 @@ export default function RegisterScreen() {
                 {t.fullName}
               </Text>
               
-              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                 <MaterialCommunityIcons name="account-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   placeholder={t.fullNamePlaceholder}
@@ -169,8 +172,8 @@ export default function RegisterScreen() {
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 {t.phone} (Opcional)
               </Text>
-              
-              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+
+              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                 <MaterialCommunityIcons name="phone-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   keyboardType="phone-pad"
@@ -185,8 +188,8 @@ export default function RegisterScreen() {
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 {t.email}
               </Text>
-              
-              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+
+              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                 <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   autoCapitalize="none"
@@ -202,33 +205,47 @@ export default function RegisterScreen() {
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 {t.password}
               </Text>
-              
-              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+
+              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                 <MaterialCommunityIcons name="lock-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   placeholder={t.passwordPlaceholder}
                   placeholderTextColor={colors.inputPlaceholder}
                   style={[styles.modernInput, { color: colors.textPrimary }]}
                   value={password}
                   onChangeText={setPassword}
                 />
+                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={styles.eyeBtn}>
+                  <MaterialCommunityIcons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
               </View>
 
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 {t.confirmPassword}
               </Text>
-              
-              <View style={[styles.inputWrapper, { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+
+              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                 <MaterialCommunityIcons name="lock-check-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
-                  secureTextEntry
+                  secureTextEntry={!showConfirmPassword}
                   placeholder={t.confirmPasswordPlaceholder}
                   placeholderTextColor={colors.inputPlaceholder}
                   style={[styles.modernInput, { color: colors.textPrimary }]}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                 />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(v => !v)} style={styles.eyeBtn}>
+                  <MaterialCommunityIcons
+                    name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color={confirmPassword.length > 0 && passwordsMatch ? colors.success : colors.textSecondary}
+                  />
+                </TouchableOpacity>
               </View>
             </Animated.View>
 
@@ -250,14 +267,16 @@ export default function RegisterScreen() {
                 style={[
                   styles.submitButton,
                   (!canSubmit || isSubmitting) && styles.submitButtonDisabled,
-                  { backgroundColor: colors.accent, shadowColor: colors.accent, shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+                  { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
                 ]}
               >
-                <Text
-                  style={[styles.submitButtonText, { color: '#000000' }]}
-                >
-                  {t.submit}
-                </Text>
+                {isSubmitting ? (
+                  <ActivityIndicator color={colors.onPrimary} size="small" />
+                ) : (
+                  <Text style={[styles.submitButtonText, { color: colors.onPrimary }]}>
+                    {t.submit}
+                  </Text>
+                )}
               </TouchableOpacity>
 
               {authError ? (
@@ -322,4 +341,5 @@ const styles = StyleSheet.create({
   submitButtonText: { fontWeight: "800", fontSize: 16, letterSpacing: 0.5 },
   linkButton: { marginTop: 20, alignItems: "center", paddingVertical: 12 },
   linkText: { fontSize: 14, fontWeight: "500" },
+  eyeBtn: { padding: 4 },
 });
