@@ -202,7 +202,38 @@ export default function EmergencyCallScreen() {
     }
   }, [params]);
 
+  // Helper: wait for the app to return to foreground
+  const waitForForeground = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      // If already in foreground, resolve immediately
+      if (AppState.currentState === "active") {
+        resolve();
+        return;
+      }
+      const sub = AppState.addEventListener("change", (state) => {
+        if (state === "active") {
+          sub.remove();
+          resolve();
+        }
+      });
+      // Safety timeout — don't wait forever (30 seconds max)
+      setTimeout(() => {
+        sub.remove();
+        resolve();
+      }, 30000);
+    });
+  }, []);
+
+  // Store callbacks in refs so the simulation effect doesn't re-run
+  const sendMessageRef = useRef(sendMessageAsync);
+  sendMessageRef.current = sendMessageAsync;
+  const safeSpeakRef = useRef(safeSpeakAsync);
+  safeSpeakRef.current = safeSpeakAsync;
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
+
   // ====== MAIN CALL SIMULATION FLOW ======
+  // Runs exactly ONCE on mount — never cancelled by re-renders
   useEffect(() => {
     if (callStartedRef.current) return;
     callStartedRef.current = true;
@@ -210,29 +241,33 @@ export default function EmergencyCallScreen() {
     let cancelled = false;
 
     const runCallSimulation = async () => {
-      // ------- PHASE 1: DIALING + SEND MESSAGE IN PARALLEL -------
+      const p = paramsRef.current;
+
+      // ------- PHASE 1: DIALING -------
       setPhase("dialing");
       setCurrentDialogue("");
 
-      // Fire message send (non-blocking — runs in parallel with dialing delay)
-      void sendMessageAsync();
+      // Fire emergency message in background (non-blocking)
+      // This opens SMS/WhatsApp but we don't wait for it
+      void sendMessageRef.current();
 
-      await delay(3000);
+      // Dialing tone duration
+      await delay(3500);
       if (cancelled) return;
 
       // ------- PHASE 2: RINGING -------
       setPhase("ringing");
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await delay(2500);
       if (cancelled) return;
 
       // ------- PHASE 3: OPERATOR ANSWERS -------
       setPhase("connected");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       const operatorGreeting = "Nueve uno uno, ¿cuál es su emergencia?";
       setCurrentDialogue(`📞 Operadora: "${operatorGreeting}"`);
-      await safeSpeakAsync(operatorGreeting, { rate: 0.9, pitch: 1.1 });
+      await safeSpeakRef.current(operatorGreeting, { rate: 0.9, pitch: 1.1 });
       if (cancelled) return;
 
       // ------- PHASE 4: WAIT FOR USER (5 seconds) -------
@@ -247,19 +282,19 @@ export default function EmergencyCallScreen() {
 
       // ------- PHASE 5: RESCUENOW AUTO-SPEAKS PATIENT INFO -------
       const script = get911VoiceScript(
-        params.userName ?? "Paciente",
+        p.userName ?? "Paciente",
         {
-          latitude: parseFloat(params.latitude ?? "0"),
-          longitude: parseFloat(params.longitude ?? "0"),
+          latitude: parseFloat(p.latitude ?? "0"),
+          longitude: parseFloat(p.longitude ?? "0"),
         },
         {
-          bloodType: params.bloodType ?? "",
-          allergies: params.allergies ?? "",
-          medicalConditions: params.medicalConditions ?? "",
+          bloodType: p.bloodType ?? "",
+          allergies: p.allergies ?? "",
+          medicalConditions: p.medicalConditions ?? "",
         },
       );
       setCurrentDialogue(`🤖 RescueNow:\n"${script}"`);
-      await safeSpeakAsync(script, { rate: 0.85, pitch: 0.95 });
+      await safeSpeakRef.current(script, { rate: 0.85, pitch: 0.95 });
       if (cancelled) return;
 
       // ------- PHASE 6: OPERATOR CONFIRMS AMBULANCE -------
@@ -269,13 +304,13 @@ export default function EmergencyCallScreen() {
 
       const operatorResponse = "Entendido. Estamos enviando una ambulancia a su ubicación. Por favor mantengan la calma y no muevan al paciente. La ayuda va en camino.";
       setCurrentDialogue(`📞 Operadora:\n"${operatorResponse}"`);
-      await safeSpeakAsync(operatorResponse, { rate: 0.9, pitch: 1.1 });
+      await safeSpeakRef.current(operatorResponse, { rate: 0.9, pitch: 1.1 });
       if (cancelled) return;
 
       // ------- PHASE 7: CALL ENDED → SHOW MEDICAL CARD -------
       setPhase("ended");
       setCurrentDialogue("");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     };
 
     runCallSimulation();
@@ -285,7 +320,8 @@ export default function EmergencyCallScreen() {
       Speech.stop();
       if (callTimerRef.current) clearInterval(callTimerRef.current);
     };
-  }, [sendMessageAsync, safeSpeakAsync, params]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleHangUp = () => {
     Speech.stop();

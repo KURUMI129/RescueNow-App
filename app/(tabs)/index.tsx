@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated as RNAnimated,
   Dimensions,
+  Image,
   Linking,
   Modal,
   PanResponder,
@@ -24,7 +25,7 @@ import Animated, {
 import MapView, { Callout, Marker, Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BrandLogo } from "@/components/brand/brand-logo";
+
 import { getAppPreferences, updateAppPreferences } from "@/constants/app-preferences";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useActiveTheme } from "@/hooks/use-active-theme";
@@ -384,7 +385,15 @@ export default function HomeScreen() {
             </Text>
           </View>
           <Pressable style={[styles.profileBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
-             <BrandLogo width={36} height={36} />
+            {user?.photoURL ? (
+              <Image source={{ uri: user.photoURL }} style={styles.profileAvatar} />
+            ) : (
+              <View style={[styles.profileInitials, { backgroundColor: colors.primary }]}>
+                <Text style={styles.profileInitialsText}>
+                  {(user?.displayName ?? "U").charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
           </Pressable>
         </View>
       </Animated.View>
@@ -699,7 +708,10 @@ const styles = StyleSheet.create({
   headerLeft: { flex: 1, paddingRight: 12 },
   headerSubtitle: { fontSize: 12, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' },
   headerTitle: { fontSize: 16, fontWeight: '800' },
-  profileBtn: { width: 44, height: 44, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  profileBtn: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  profileAvatar: { width: 40, height: 40, borderRadius: 20 },
+  profileInitials: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  profileInitialsText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   aiFabContainer: { position: 'absolute', left: 20, zIndex: 30 },
   aiFab: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#0EA5E9', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
   fabContainer: { position: 'absolute', right: 20, zIndex: 30 },

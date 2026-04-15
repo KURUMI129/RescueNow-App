@@ -19,7 +19,7 @@ export function BrandLogo({
 }: BrandLogoProps) {
   const logo = (
     <Image
-      source={require("../../assets/images/rescuenow-logo.jpeg")}
+      source={require("../../assets/images/icon.png")}
       style={[styles.logo, { width, height }]}
       resizeMode={resizeMode}
     />

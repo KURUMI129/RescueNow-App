@@ -22,7 +22,7 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 
-import { BrandLogo } from "@/components/brand/brand-logo";
+
 import { getAppCopy } from "@/constants/app-copy";
 import {
     AccountRole,
@@ -181,7 +181,14 @@ export default function OptionsScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={[styles.headerBar, { backgroundColor: colors.background }]}>
+        <Pressable
+          style={styles.backBtn}
+          onPress={() => router.navigate("/(tabs)")}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+        </Pressable>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Mi Perfil</Text>
+        <View style={styles.backBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -347,8 +354,9 @@ export default function OptionsScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  headerBar: { paddingHorizontal: 20, paddingVertical: 14 },
-  headerTitle: { fontSize: 24, fontWeight: "900" },
+  headerBar: { paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backBtn: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: "900", textAlign: 'center', flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 },
   profileSection: { alignItems: 'center', marginBottom: 32 },
   avatarWrapper: { width: 100, height: 100, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
