@@ -245,8 +245,8 @@ export default function OptionsScreen() {
           </View>
 
           {/* ACCESO RÁPIDO A FICHA MÉDICA */}
-          <Pressable 
-            style={[styles.medicalCard, { backgroundColor: colors.surface }]}
+          <Pressable
+            style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}
             onPress={() => router.push("/(tabs)/medical-id")}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -264,7 +264,7 @@ export default function OptionsScreen() {
           {/* 2. SECCIÓN VIP / SUSCRIPCIÓN */}
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(200).springify()}>
-          <View style={[styles.cardGroup, { backgroundColor: colors.surface }]}>
+          <View style={[styles.cardGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
             <View style={styles.cardHeader}>
               <MaterialCommunityIcons name="crown" size={20} color={colors.accent} />
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Planes y Suscripción</Text>
@@ -289,7 +289,7 @@ export default function OptionsScreen() {
           </View>
 
           {/* 3. SECCIÓN DE AJUSTES GLOBALES */}
-          <View style={[styles.cardGroup, { backgroundColor: colors.surface }]}>
+          <View style={[styles.cardGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="settings-sharp" size={18} color={colors.textSecondary} />
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Ajustes Generales</Text>
@@ -313,7 +313,7 @@ export default function OptionsScreen() {
           </View>
 
           {/* 4. SECCIÓN CONTACTO DE CONFIANZA */}
-          <View style={[styles.cardGroup, { backgroundColor: colors.surface }]}>
+          <View style={[styles.cardGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="shield-checkmark" size={18} color={colors.success} />
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Contacto de Emergencia</Text>
@@ -325,9 +325,9 @@ export default function OptionsScreen() {
                   onChangeText={setTrustedContactName}
                   placeholder="Ej: Mamá, Papá..."
                   placeholderTextColor={colors.textSecondary}
-                  style={[styles.phoneInput, { color: colors.textPrimary, backgroundColor: colors.mapBackground, marginBottom: 12 }]}
+                  style={[styles.phoneInput, { color: colors.textPrimary, backgroundColor: colors.mapBackground, borderColor: colors.cardBorder, marginBottom: 12 }]}
                 />
-                
+
                 <Text style={{fontSize: 12, fontWeight: '700', marginBottom: 6, color: colors.textSecondary}}>Número de Teléfono:</Text>
                <TextInput
                   value={trustedContactPhone}
@@ -335,14 +335,18 @@ export default function OptionsScreen() {
                   keyboardType="phone-pad"
                   placeholder="Ej: +52 55 1234 5678"
                   placeholderTextColor={colors.textSecondary}
-                  style={[styles.phoneInput, { color: colors.textPrimary, backgroundColor: colors.mapBackground }]}
+                  style={[styles.phoneInput, { color: colors.textPrimary, backgroundColor: colors.mapBackground, borderColor: colors.cardBorder }]}
                 />
                 <View style={[styles.switchRow, { marginTop: 12 }]}>
                   <Text style={[styles.settingLabel, { flex: 1, color: colors.textPrimary }]}>Alertar automáticamente en S.O.S.</Text>
                   <Switch value={useTrustedContact} onValueChange={setUseTrustedContact} trackColor={{ false: colors.cardBorder, true: colors.primary }} thumbColor="#FFFFFF" />
                 </View>
-                <Pressable onPress={handleSaveContact} style={[styles.upgradeBtn, { backgroundColor: colors.background, marginTop: 16 }]}>
-                  <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{isSavingContact ? "Guardando..." : "Guardar Contacto"}</Text>
+                <Pressable onPress={handleSaveContact} disabled={isSavingContact} style={[styles.saveContactBtn, { backgroundColor: colors.primary, marginTop: 16 }]}>
+                  {isSavingContact ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>Guardar Contacto</Text>
+                  )}
                 </Pressable>
             </View>
           </View>
@@ -391,7 +395,7 @@ const styles = StyleSheet.create({
   editProfileBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 18, borderRadius: 10, borderWidth: 1, marginTop: 4 },
   cardGroup: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 1, shadowColor: '#0B1120', shadowOpacity: 0.04, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
-  medicalCard: { marginHorizontal: 0, marginBottom: 24, borderRadius: 16, padding: 16, shadowColor: '#E11D48', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  medicalCard: { marginHorizontal: 0, marginBottom: 20, borderRadius: 16, padding: 16, borderWidth: 1, shadowColor: '#E11D48', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   medicalIconWrap: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center" },
   medicalCardTitle: { fontSize: 16, fontWeight: "800", marginBottom: 2 },
   medicalCardSubtitle: { fontSize: 13 },
@@ -405,7 +409,8 @@ const styles = StyleSheet.create({
   pillsRow: { flexDirection: 'row', gap: 6 },
   pillBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
   pillText: { fontSize: 12, fontWeight: '800' },
-  phoneInput: { borderRadius: 12, padding: 14, fontSize: 15, fontWeight: '600' },
+  phoneInput: { borderRadius: 12, padding: 14, fontSize: 15, fontWeight: '600', borderWidth: 1 },
+  saveContactBtn: { paddingVertical: 14, borderRadius: 12, alignItems: 'center', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   switchRow: { flexDirection: 'row', alignItems: 'center' },
   logoutButton: { marginTop: 10, borderRadius: 14, minHeight: 52, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
   logoutText: { color: "#fff", fontSize: 15, fontWeight: "800" }

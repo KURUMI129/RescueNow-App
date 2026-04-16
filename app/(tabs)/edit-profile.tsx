@@ -8,6 +8,7 @@ import { firebaseAuth, firestoreDb } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
 import * as ImagePicker from "expo-image-picker";
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -94,7 +95,7 @@ export default function EditProfileScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       {/* HEADER */}
-      <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
+      <View style={[styles.header, { borderBottomColor: colors.cardBorder, borderBottomWidth: 1 }]}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </Pressable>
@@ -196,15 +197,19 @@ export default function EditProfileScreen() {
           </View>
 
           {/* Botón Guardar */}
-          <Pressable 
+          <Pressable
             onPress={handleSave}
             disabled={isSaving}
-            style={[styles.saveButton, { backgroundColor: isSaving ? colors.cardBorder : colors.primary }]}
+            style={[
+              styles.saveButton,
+              { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+              isSaving && { opacity: 0.7 },
+            ]}
           >
             {isSaving ? (
-              <Text style={[styles.saveButtonText, { color: colors.textPrimary }]}>Guardando...</Text>
+              <ActivityIndicator color="#ffffff" size="small" />
             ) : (
-              <Text style={[styles.saveButtonText, { color: '#ffffff' }]}>Guardar Cambios Básicos</Text>
+              <Text style={[styles.saveButtonText, { color: '#ffffff' }]}>Guardar Cambios</Text>
             )}
           </Pressable>
 
@@ -217,12 +222,13 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   flexItem: { flex: 1 },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    paddingHorizontal: 20, 
-    paddingVertical: 14, 
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
   },
   backButton: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: "800" },
@@ -255,11 +261,11 @@ const styles = StyleSheet.create({
   avatarPhoto: { width: 110, height: 110, borderRadius: 55 },
   avatarFallback: { width: 110, height: 110, borderRadius: 55, justifyContent: 'center', alignItems: 'center' },
   avatarFallbackText: { color: '#FFFFFF', fontSize: 42, fontWeight: '900' },
-  formContainer: { borderRadius: 20, padding: 20, paddingBottom: 8, marginBottom: 24, shadowColor: '#0B1120', shadowOpacity: 0.04, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  formContainer: { borderRadius: 20, padding: 20, paddingBottom: 8, marginBottom: 24, borderWidth: 1, shadowColor: '#0B1120', shadowOpacity: 0.04, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
   rowInputs: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
   inputGroup: { marginBottom: 20 },
   inputLabel: { fontSize: 13, fontWeight: "700", marginBottom: 8, paddingLeft: 4 },
-  inputWrapper: { flexDirection: "row", alignItems: "center", borderRadius: 14, paddingHorizontal: 14 },
+  inputWrapper: { flexDirection: "row", alignItems: "center", borderRadius: 14, paddingHorizontal: 14, borderWidth: 1 },
   inputIcon: { marginRight: 12 },
   modernInput: { flex: 1, height: 52, fontSize: 16, fontWeight: "600" },
   saveButton: { width: "100%", paddingVertical: 18, borderRadius: 16, alignItems: "center", shadowColor: '#0B1120', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
