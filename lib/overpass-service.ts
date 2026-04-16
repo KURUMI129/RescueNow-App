@@ -19,10 +19,13 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const SERVICE_TO_OSM_TAGS: Record<string, string> = {
   gas: '[amenity=fuel]',
   mechanic: '[shop=car_repair]',
+  mechanic_car: '[shop=car_repair]',
+  mechanic_moto: '[shop~"motorcycle_repair|motorcycle"]',
+  electrician: '[craft=electrician]',
   tire: '[shop=tyres]',
   locksmith: '[shop=locksmith]',
   tow: '[shop=car_repair]["service:vehicle:towing"="yes"]',
-  hospital: '[amenity~"hospital|clinic"]',
+  hospital: '[amenity~"hospital|clinic|doctors"]',
 };
 
 export type POIResult = {
@@ -44,7 +47,7 @@ export async function fetchNearbyPOIs(
   lat: number,
   lng: number,
   serviceType: string,
-  radiusMeters: number = 5000,
+  radiusMeters: number = 15000,
 ): Promise<POIResult[]> {
   const osmTag = SERVICE_TO_OSM_TAGS[serviceType];
   if (!osmTag) {
@@ -66,8 +69,9 @@ export async function fetchNearbyPOIs(
     (
       node${osmTag}(around:${radiusMeters},${lat},${lng});
       way${osmTag}(around:${radiusMeters},${lat},${lng});
+      relation${osmTag}(around:${radiusMeters},${lat},${lng});
     );
-    out center 20;
+    out center 50;
   `;
 
   // Try each server until one works
@@ -141,6 +145,9 @@ function getDefaultName(serviceType: string): string {
   const names: Record<string, string> = {
     gas: "Gasolinera",
     mechanic: "Taller Mecánico",
+    mechanic_car: "Taller Mecánico (Autos)",
+    mechanic_moto: "Taller de Motos",
+    electrician: "Electricista Automotriz",
     tire: "Llantera",
     locksmith: "Cerrajería",
     tow: "Servicio de Grúa",

@@ -15,6 +15,7 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import * as LocalAuthentication from "expo-local-authentication";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { firebaseAuth, firestoreDb } from "@/lib/firebase";
@@ -42,10 +43,58 @@ export default function LoginScreen() {
 
   const t = getAppCopy(language as AppLanguage).auth.login;
 
-  // Layout animations handled by react-native-reanimated
+  // Biometric login — uses device fingerprint/face and checks for Firebase cached session
+  const handleBiometric = async () => {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      if (!hasHardware) {
+        setAuthError(language === "es" ? "Tu dispositivo no soporta autenticación biométrica." : "Your device doesn't support biometric authentication.");
+        return;
+      }
+
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!isEnrolled) {
+        setAuthError(language === "es" ? "No tienes huellas/rostro configurado en tu dispositivo." : "No biometrics enrolled on your device.");
+        return;
+      }
+
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: language === "es" ? "Inicia sesión con biometría" : "Sign in with biometrics",
+        cancelLabel: language === "es" ? "Cancelar" : "Cancel",
+        fallbackLabel: language === "es" ? "Usar contraseña" : "Use password",
+      });
+
+      if (result.success) {
+        // Check if Firebase has a cached user (from a previous login)
+        const currentUser = firebaseAuth.currentUser;
+        if (currentUser) {
+          router.replace("/(tabs)");
+        } else {
+          setAuthError(language === "es"
+            ? "Biometría exitosa pero necesitas iniciar sesión por primera vez con correo y contraseña."
+            : "Biometric verified but you need to sign in with email first.");
+        }
+      }
+    } catch (e) {
+      console.warn("[Biometric] Error:", e);
+      setAuthError(language === "es" ? "Error al verificar biometría." : "Biometric verification error.");
+    }
+  };
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) return;
+    // Field-level validation
+    if (!email.trim() && !password.trim()) {
+      setAuthError(language === "es" ? "Ingresa tu correo y contraseña." : "Enter your email and password.");
+      return;
+    }
+    if (!email.trim()) {
+      setAuthError(language === "es" ? "Ingresa tu correo electrónico." : "Enter your email address.");
+      return;
+    }
+    if (!password.trim()) {
+      setAuthError(language === "es" ? "Ingresa tu contraseña." : "Enter your password.");
+      return;
+    }
 
     setIsSubmitting(true);
     setAuthError("");
@@ -77,8 +126,14 @@ export default function LoginScreen() {
       router.replace("/(tabs)");
     } catch (error: any) {
       const code = error?.code ?? "";
-      if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+      if (code === "auth/user-not-found") {
+        setAuthError(language === "es"
+          ? "No existe una cuenta con este correo. ¿Deseas registrarte?"
+          : "No account found with this email. Want to register?");
+      } else if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
         setAuthError(language === "es" ? "Correo o contraseña incorrectos." : "Invalid email or password.");
+      } else if (code === "auth/invalid-email") {
+        setAuthError(language === "es" ? "El formato del correo no es válido." : "The email format is not valid.");
       } else if (code === "auth/too-many-requests") {
         setAuthError(language === "es" ? "Demasiados intentos. Intenta más tarde." : "Too many attempts. Try later.");
       } else if (code === "auth/network-request-failed") {
@@ -204,7 +259,7 @@ export default function LoginScreen() {
 
               <View style={styles.biometricRow}>
                 <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
-                <TouchableOpacity activeOpacity={0.6} style={[styles.biometricBtn, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+                <TouchableOpacity activeOpacity={0.6} style={[styles.biometricBtn, { backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => void handleBiometric()}>
                   <MaterialCommunityIcons name="fingerprint" size={26} color={colors.textSecondary} />
                 </TouchableOpacity>
                 <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />

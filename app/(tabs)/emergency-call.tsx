@@ -53,6 +53,14 @@ export default function EmergencyCallScreen() {
   const callStartedRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
 
+  // Reset the call-started flag when this screen unmounts
+  // so re-entering the screen can run the simulation again
+  useEffect(() => {
+    return () => {
+      callStartedRef.current = false;
+    };
+  }, []);
+
   // Track when user returns from SMS/WhatsApp app
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
