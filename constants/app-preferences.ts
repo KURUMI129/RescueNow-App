@@ -7,14 +7,16 @@ export type ThemeMode = "system" | "time" | "light" | "dark";
 
 export type AppPreferences = {
   language: AppLanguage;
+  trustedContactName: string;
+  trustedContactCountryCode: string;
   trustedContactPhone: string;
+  trustedContactRelationship: string;
   useTrustedContact: boolean;
   subscriptionPlan: SubscriptionPlan;
   accountRole: AccountRole;
   themeMode: ThemeMode;
   hasPromptedTheme: boolean;
   hasPromptedContact: boolean;
-  trustedContactName: string;
   bloodType: string;
   allergies: string;
   medicalConditions: string;
@@ -25,14 +27,16 @@ const preferenceListeners = new Set<(preferences: AppPreferences) => void>();
 
 const DEFAULT_APP_PREFERENCES: AppPreferences = {
   language: "es",
+  trustedContactName: "",
+  trustedContactCountryCode: "+52",
   trustedContactPhone: "",
+  trustedContactRelationship: "Amigo/a",
   useTrustedContact: false,
   subscriptionPlan: "free",
   accountRole: "user",
   themeMode: "time",
   hasPromptedTheme: false,
   hasPromptedContact: false,
-  trustedContactName: "",
   bloodType: "",
   allergies: "",
   medicalConditions: "",
@@ -41,8 +45,31 @@ const DEFAULT_APP_PREFERENCES: AppPreferences = {
 let inMemoryPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
 let isPersistentStorageAvailable = true;
 
+// Solo extrae dígitos
 function normalizePhone(phone: string): string {
-  return phone.replace(/[^\d+]/g, "").trim();
+  return phone.replace(/[^\d]/g, "").trim();
+}
+
+// Formateador universal exportable
+export function formatPhoneNumber(
+  countryCode: string | undefined, 
+  phone: string | undefined
+): string {
+  const code = countryCode?.trim() || "+52";
+  const num = phone?.trim() || "";
+  
+  if (!num) return "No configurado";
+
+  // Si tiene 10 dígitos (ej. 452 123 4567), se formatea (452) 123-4567
+  const cleaned = num.replace(/\D/g, "");
+  if (cleaned.length === 10) {
+    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+    if (match) {
+      return `${code} (${match[1]}) ${match[2]}-${match[3]}`;
+    }
+  }
+  
+  return `${code} ${num}`;
 }
 
 function sanitizePreferences(
@@ -53,6 +80,8 @@ function sanitizePreferences(
     rawPreferences?.subscriptionPlan === "premium" ? "premium" : "free";
   const accountRole =
     rawPreferences?.accountRole === "technician" ? "technician" : "user";
+  
+  const trustedContactCountryCode = rawPreferences?.trustedContactCountryCode ?? "+52";
   const trustedContactPhone = normalizePhone(
     rawPreferences?.trustedContactPhone ?? "",
   );
@@ -69,20 +98,23 @@ function sanitizePreferences(
   const hasPromptedTheme = Boolean(rawPreferences?.hasPromptedTheme);
   const hasPromptedContact = Boolean(rawPreferences?.hasPromptedContact);
   const trustedContactName = rawPreferences?.trustedContactName ?? "";
+  const trustedContactRelationship = rawPreferences?.trustedContactRelationship ?? "Amigo/a";
   const bloodType = rawPreferences?.bloodType ?? "";
   const allergies = rawPreferences?.allergies ?? "";
   const medicalConditions = rawPreferences?.medicalConditions ?? "";
 
   return {
     language,
-    trustedContactPhone,
-    useTrustedContact,
     subscriptionPlan,
     accountRole,
+    trustedContactCountryCode,
+    trustedContactPhone,
+    useTrustedContact,
     themeMode,
     hasPromptedTheme,
     hasPromptedContact,
     trustedContactName,
+    trustedContactRelationship,
     bloodType,
     allergies,
     medicalConditions,

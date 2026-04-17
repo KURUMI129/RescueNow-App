@@ -52,6 +52,7 @@ export default function OptionsScreen() {
   const [language, setLanguage] = useState<AppLanguage>(DEFAULT_APP_PREFERENCES.language);
   const [themeMode, setThemeMode] = useState<ThemeMode>(DEFAULT_APP_PREFERENCES.themeMode);
   
+  const [trustedContactCountryCode, setTrustedContactCountryCode] = useState(DEFAULT_APP_PREFERENCES.trustedContactCountryCode);
   const [trustedContactPhone, setTrustedContactPhone] = useState(DEFAULT_APP_PREFERENCES.trustedContactPhone);
   const [trustedContactName, setTrustedContactName] = useState(DEFAULT_APP_PREFERENCES.trustedContactName);
   const [useTrustedContact, setUseTrustedContact] = useState(DEFAULT_APP_PREFERENCES.useTrustedContact);
@@ -76,6 +77,7 @@ export default function OptionsScreen() {
       const preferences = await getAppPreferences();
       setLanguage(preferences.language);
       setThemeMode(preferences.themeMode);
+      setTrustedContactCountryCode(preferences.trustedContactCountryCode);
       setTrustedContactPhone(preferences.trustedContactPhone);
       setTrustedContactName(preferences.trustedContactName);
       setUseTrustedContact(preferences.useTrustedContact);
@@ -125,7 +127,14 @@ export default function OptionsScreen() {
     if (isSavingContact) return;
     setIsSavingContact(true);
     
-    const nextPrefs = await updateAppPreferences({ trustedContactPhone, trustedContactName, useTrustedContact });
+    // Save to AppPreferences
+    const nextPrefs = await updateAppPreferences({ 
+      trustedContactCountryCode, 
+      trustedContactPhone, 
+      trustedContactName, 
+      useTrustedContact 
+    });
+    setTrustedContactCountryCode(nextPrefs.trustedContactCountryCode);
     setTrustedContactPhone(nextPrefs.trustedContactPhone);
     setTrustedContactName(nextPrefs.trustedContactName);
     setUseTrustedContact(nextPrefs.useTrustedContact);
@@ -134,6 +143,7 @@ export default function OptionsScreen() {
     if (user) {
       try {
         await setDoc(doc(firestoreDb, "users", user.uid), {
+          trustedContactCountryCode: nextPrefs.trustedContactCountryCode,
           trustedContactPhone: nextPrefs.trustedContactPhone,
           trustedContactName: nextPrefs.trustedContactName,
           useTrustedContact: nextPrefs.useTrustedContact,
@@ -352,7 +362,25 @@ export default function OptionsScreen() {
                   style={[styles.phoneInput, { color: colors.textPrimary, backgroundColor: colors.mapBackground, borderColor: colors.cardBorder, marginBottom: 12 }]}
                 />
 
-                <Text style={{fontSize: 12, fontWeight: '700', marginBottom: 6, color: colors.textSecondary}}>Número de Teléfono:</Text>
+                <Text style={{fontSize: 12, fontWeight: '700', marginBottom: 6, color: colors.textSecondary}}>Lada / Código de País:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+                  {["+52", "+1", "+34", "+57", "+54", "+56"].map(l => (
+                    <Pressable 
+                      key={l} 
+                      onPress={() => setTrustedContactCountryCode(l)}
+                      style={[
+                        styles.pillBtn, 
+                        trustedContactCountryCode === l 
+                          ? { backgroundColor: colors.accent, borderWidth: 0 } 
+                          : { backgroundColor: colors.mapBackground, borderColor: colors.cardBorder, borderWidth: 1 }
+                      ]}
+                    >
+                      <Text style={[styles.pillText, trustedContactCountryCode === l ? { color: "#000" } : { color: colors.textSecondary }]}>{l}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+
+                <Text style={{fontSize: 12, fontWeight: '700', marginBottom: 6, color: colors.textSecondary}}>Número de Teléfono a 10 Dígitos:</Text>
                <TextInput
                   value={trustedContactPhone}
                   onChangeText={setTrustedContactPhone}

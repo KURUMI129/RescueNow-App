@@ -1,5 +1,5 @@
 import { useActiveTheme } from "@/hooks/use-active-theme";
-import { getAppPreferences, updateAppPreferences } from "@/constants/app-preferences";
+import { getAppPreferences, updateAppPreferences, formatPhoneNumber } from "@/constants/app-preferences";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -36,6 +36,11 @@ export default function MedicalIdScreen() {
   const [allergies, setAllergies] = useState("");
   const [medicalConditions, setMedicalConditions] = useState("");
   
+  const [trustedName, setTrustedName] = useState("");
+  const [trustedRel, setTrustedRel] = useState("");
+  const [trustedCountryCode, setTrustedCountryCode] = useState("");
+  const [trustedPhone, setTrustedPhone] = useState("");
+  
   const [isSaving, setIsSaving] = useState(false);
   
   // Heartbeat pulse animation (Reanimated native thread)
@@ -52,6 +57,10 @@ export default function MedicalIdScreen() {
       setBloodType(prefs.bloodType);
       setAllergies(prefs.allergies);
       setMedicalConditions(prefs.medicalConditions);
+      setTrustedName(prefs.trustedContactName);
+      setTrustedRel(prefs.trustedContactRelationship);
+      setTrustedCountryCode(prefs.trustedContactCountryCode);
+      setTrustedPhone(prefs.trustedContactPhone);
     });
   }, [pulseScale]);
 
@@ -60,6 +69,8 @@ export default function MedicalIdScreen() {
   }));
 
   const { user } = useAuth();
+  
+  const formattedEmergencyPhone = formatPhoneNumber(trustedCountryCode, trustedPhone);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -128,8 +139,36 @@ export default function MedicalIdScreen() {
             </Text>
           </View>
 
-          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.formContainer, { backgroundColor: 'transparent' }]}>
+          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.formContainer, { backgroundColor: 'transparent', borderColor: colors.cardBorder, borderWidth: 1 }]}>
             
+            {/* READ-ONLY EMERGENCY CONTACT SECTION */}
+            <View style={{ marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Familiar de Emergencia a Notificar</Text>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingHorizontal: 4 }}>
+                <MaterialCommunityIcons name="shield-account" size={24} color={colors.primary} style={{ marginRight: 10 }} />
+                <View>
+                  <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
+                    {trustedName || trustedRel || "Sin Registro"}
+                  </Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
+                    {trustedName ? trustedRel : "Parentesco"}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4 }}>
+                <MaterialCommunityIcons name="phone" size={20} color={colors.textSecondary} style={{ marginRight: 14, marginLeft: 2 }} />
+                <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}>
+                  {formattedEmergencyPhone || "No configurado"}
+                </Text>
+              </View>
+              
+              <Pressable onPress={() => router.push("/(tabs)/options")} style={{ marginTop: 12, paddingVertical: 8, backgroundColor: `${colors.primary}12`, borderRadius: 10, alignItems: 'center' }}>
+                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>Editar Contacto en Ajustes</Text>
+              </Pressable>
+            </View>
+
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Grupo Sanguíneo</Text>
               <View style={[styles.inputWrapper, { backgroundColor: colors.mapBackground, borderColor: colors.cardBorder }]}>

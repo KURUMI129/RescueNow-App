@@ -26,6 +26,7 @@ import Animated, {
 import MapView, { Callout, Marker, Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
+import { Audio } from "expo-av";
 
 
 import { getAppPreferences, updateAppPreferences } from "@/constants/app-preferences";
@@ -139,6 +140,9 @@ export default function HomeScreen() {
   const [sosCountdown, setSosCountdown] = useState(10);
   const [showMedicalID, setShowMedicalID] = useState(false);
   
+  // Referencia para la alarma de audio
+  const alarmSoundRef = useRef<Audio.Sound | null>(null);
+
   // Medical Data para Offline
   const [medicalData, setMedicalData] = useState({ bloodType: "", allergies: "", conditions: "", contact: "" });
 
@@ -168,27 +172,74 @@ export default function HomeScreen() {
 
   // Crash detection is handled by useCrashDetection() hook above (Accelerometer > 4G)
 
-  // SOS Countdown Mechanism
+  // SOS Countdown Mechanism y Alarma
   useEffect(() => {
+    let internalInterval: ReturnType<typeof setInterval> | null = null;
+    
+    const playAlarm = async () => {
+      try {
+        // Obliga al celular a ignorar el modo silencio/vibrar (Especial para emergencias)
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+
+        if (!alarmSoundRef.current) {
+          const { sound } = await Audio.Sound.createAsync(
+            require("../../assets/audio/alarm.mp3"),
+            { isLooping: true, volume: 1.0 }
+          );
+          alarmSoundRef.current = sound;
+        }
+        // Volumen al máximo del reproductor (1.0)
+        await alarmSoundRef.current.setVolumeAsync(1.0);
+        await alarmSoundRef.current.playAsync();
+      } catch (e) {
+        console.warn("No se pudo reproducir la alarma:", e);
+      }
+    };
+    
+    const stopAlarm = async () => {
+      if (alarmSoundRef.current) {
+        await alarmSoundRef.current.stopAsync();
+      }
+    };
+
     if (showSOSModal) {
       setSosCountdown(10);
-      countdownIntervalRef.current = setInterval(() => {
+      
+      // Solo hacer sonar la sirena si fue un accidente detectado automáticamente
+      if (crashTriggered) {
+        void playAlarm();
+      }
+      
+      internalInterval = setInterval(() => {
         setSosCountdown((prev) => {
           if (prev <= 1) {
-             clearInterval(countdownIntervalRef.current!);
+             if (internalInterval) clearInterval(internalInterval);
+             void stopAlarm();
              triggerEmergency();
              return 0;
           }
           return prev - 1;
         });
       }, 1000);
+      countdownIntervalRef.current = internalInterval;
     } else {
+      if (internalInterval) clearInterval(internalInterval);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      void stopAlarm();
     }
+    
     return () => {
+      if (internalInterval) clearInterval(internalInterval);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      void stopAlarm();
     }
-  }, [showSOSModal]);
+  }, [showSOSModal, crashTriggered]);
 
   const triggerEmergency = async () => {
     setShowSOSModal(false);

@@ -35,6 +35,12 @@ export default function RegisterScreen() {
 
   const [fullName, setFullName] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
+  
+  // Emergency Contact Info
+  const [trustedName, setTrustedName] = useState<string>("");
+  const [trustedCode, setTrustedCode] = useState<string>("+52");
+  const [trustedPhone, setTrustedPhone] = useState<string>("");
+
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
@@ -42,6 +48,8 @@ export default function RegisterScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState("");
+
+  const COUNTRY_CODES = ["+52", "+1", "+34", "+57", "+54", "+56"];
 
   const t = getAppCopy(language as AppLanguage).auth.register;
 
@@ -90,6 +98,9 @@ export default function RegisterScreen() {
           email: credentials.user.email ?? email.trim(),
           fullName: fullName.trim(),
           phone: phone.trim(),
+          trustedContactName: trustedName.trim(),
+          trustedContactCountryCode: trustedCode,
+          trustedContactPhone: trustedPhone.replace(/\D/g,""),
           role,
           subscriptionPlan: "free",
           language,
@@ -105,6 +116,10 @@ export default function RegisterScreen() {
       await updateAppPreferences({
         accountRole: role,
         subscriptionPlan: "free",
+        trustedContactName: trustedName.trim(),
+        trustedContactCountryCode: trustedCode,
+        trustedContactPhone: trustedPhone.replace(/\D/g,""),
+        useTrustedContact: trustedPhone.trim().length >= 10,
       });
 
       router.replace("/(tabs)");
@@ -189,6 +204,52 @@ export default function RegisterScreen() {
                   style={[styles.modernInput, { color: colors.textPrimary }]}
                   value={phone}
                   onChangeText={setPhone}
+                />
+              </View>
+
+              <Text style={[styles.label, { color: colors.textPrimary, marginTop: 12 }]}>
+                {language === "es" ? "Familiar / Emergencia (Opcional)" : "Emergency Contact (Optional)"}
+              </Text>
+              
+              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+                <MaterialCommunityIcons name="heart-pulse" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  placeholder={language === "es" ? "Nombre completo" : "Full name"}
+                  placeholderTextColor={colors.inputPlaceholder}
+                  style={[styles.modernInput, { color: colors.textPrimary }]}
+                  value={trustedName}
+                  onChangeText={setTrustedName}
+                />
+              </View>
+              
+              <Text style={[styles.label, { color: colors.textPrimary, fontSize: 13, marginBottom: 4, marginTop: -4 }]}>
+                {language === "es" ? "Lada / Región" : "Country Code"}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, maxHeight: 40}}>
+                {COUNTRY_CODES.map((code) => (
+                  <TouchableOpacity
+                    key={code}
+                    onPress={() => setTrustedCode(code)}
+                    style={[
+                      { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.inputBorder, marginRight: 8, backgroundColor: colors.inputBackground },
+                      trustedCode === code && { backgroundColor: `${colors.primary}33`, borderColor: colors.primary }
+                    ]}
+                  >
+                    <Text style={{ color: trustedCode === code ? colors.primary : colors.textSecondary, fontWeight: "600" }}>{code}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+                <MaterialCommunityIcons name="phone-alert-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  keyboardType="phone-pad"
+                  placeholder={language === "es" ? "Número de emergencia a 10 dígitos" : "10-digit emergency number"}
+                  placeholderTextColor={colors.inputPlaceholder}
+                  style={[styles.modernInput, { color: colors.textPrimary }]}
+                  value={trustedPhone}
+                  onChangeText={setTrustedPhone}
+                  maxLength={10}
                 />
               </View>
 
