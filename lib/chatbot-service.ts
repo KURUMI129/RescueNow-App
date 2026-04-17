@@ -4,19 +4,19 @@
  */
 
 import NetInfo from "@react-native-community/netinfo";
+import { FUN_FACTS_FREE, FUN_FACTS_PREMIUM } from "@/constants/fun-facts";
 
-const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const ANTHROPIC_BASE = "https://api.anthropic.com/v1/messages";
 
-// Models to try in order — if the first fails, try the next
-const GEMINI_MODELS = [
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-2.0-flash-lite",
-];
+// Usaremos Haiku por su extrema velocidad y bajo costo
+const CLAUDE_MODEL = "claude-3-haiku-20240307";
+
+// Track whether we've already shown the "limited" warning this session
+let _hasShown429Warning = false;
 
 type ChatMessage = {
-  role: "user" | "model";
-  parts: { text: string }[];
+  role: "user" | "assistant";
+  content: string;
 };
 
 type ChatbotResponse = {
@@ -28,56 +28,77 @@ type ChatbotResponse = {
 
 const SYSTEM_PROMPT_BASE = `Eres RescueAI, el asistente de emergencia inteligente de RescueNow, una aplicación mexicana de asistencia vehicular.
 
-Reglas generales:
-- Responde SIEMPRE en español de México, amigable y directo.
-- Sé conciso pero informativo (máximo 3-4 párrafos).
-- Si es una situación que requiere llamar al 911, recomiéndalo claramente.
-- No inventes datos de ubicaciones específicas.
-- Incluye emojis relevantes para ser más visual.
-- Sé empático y profesional.`;
+REGLAS ESTRICTAS DE RESPUESTA:
+1. Responde SIEMPRE en español de México, amigable y directo.
+2. Si el usuario reporta una emergencia médica o accidente grave, recomiéndale PRESIONAR EL BOTÓN SOS ROJO de la app o llamar al 911 de inmediato.
+3. Los usuarios escriben rápido. IGNORA errores ortográficos y de tipeo (ej. "vateria"). INTERPRETA su intención.
+4. DEFENSA ESTRICTA (FUERA DE LÍMITES): Rechaza de forma educada pero tajante cualquier pregunta sobre:
+   - Chistes, cuentos, entretenimiento o juegos.
+   - Matemáticas, escuela, programación, ciencia general (excepto mecánica).
+   - Recetas, política, opiniones, o temas variados.
+   Si preguntan algo de esto, diles: "Lo siento, soy tu asistente exclusivo de emergencias vehiculares y viajes. Solo puedo ayudarte con tu auto, seguridad vial o accidentes."`;
 
 const SYSTEM_PROMPT_FREE = `${SYSTEM_PROMPT_BASE}
 
-PLAN DEL USUARIO: GRATUITO (Free)
+PLAN DEL USUARIO: BÁSICO (Gratuito)
 
-Funciones disponibles para este usuario:
-✅ Consejos de emergencia vehicular básicos (motor sobrecalentado, batería muerta, llanta ponchada)
-✅ Instrucciones de primeros auxilios básicos
-✅ Tips de seguridad vial
-✅ Orientación en caso de accidente (pasos legales básicos)
-✅ Recomendar que use los filtros del mapa en la pantalla principal para buscar gasolineras, talleres, etc.
+Tus capacidades PERMITIDAS en este plan:
+✅ MECÁNICA BÁSICA: Cambiar llantas, pasar corriente, revisar nivel de aceite/agua.
+✅ MANEJO SEGURO: Tips de manejo con lluvia, neblina o tráfico.
+✅ CLIMA: Consultas rápidas si va a llover.
+✅ PRIMEROS AUXILIOS: Pasos urgentes post-choque.
 
-Funciones NO disponibles (solo Premium):
-❌ Diagnóstico avanzado de fallas mecánicas paso a paso
-❌ Asesoría legal detallada post-accidente
-❌ Guía personalizada de primeros auxilios avanzados
-❌ Soporte prioritario 24/7
-❌ Análisis del historial de incidentes
+LO QUE DEBES DENEGAR Y VENDER COMO PREMIUM:
+❌ Diagnósticos mecánicos complejos (ruidos raros, vibraciones, códigos del tablero).
+❌ Precios o cotizaciones (costos de gasolina, refacciones, casetas).
+❌ Asesoría legal y seguros (quién tiene la culpa en un choque, qué fotos tomar, derechos ante tránsito).
+❌ Mantenimientos preventivos según kilometraje.
 
-Cuando el usuario pregunte sobre funciones Premium, responde la pregunta de forma GENERAL y breve, luego sugiere amablemente actualizar a Premium para obtener una respuesta más detallada y personalizada. Ejemplo: "Puedo darte una orientación general... Para un diagnóstico paso a paso más detallado, te recomiendo activar el plan Premium 🌟".`;
+REGLA CLAVE PARA BÁSICOS:
+Si el usuario pregunta alguno de los temas prohibidos arriba, dale un consejo de 1 pequeña oración y luego invítalo al Premium:
+"💡 *Esa consulta avanzada y detallada es exclusiva. Te recomiendo activar el plan Premium 🌟 desde tu perfil para recibir asesoría completa.*"
+`;
 
 const SYSTEM_PROMPT_PREMIUM = `${SYSTEM_PROMPT_BASE}
 
-PLAN DEL USUARIO: PREMIUM 🌟
+PLAN DEL USUARIO: PREMIUM 🌟 (VIP)
 
-Este usuario tiene acceso COMPLETO. Proporciona respuestas detalladas y personalizadas:
-✅ Diagnóstico avanzado de fallas mecánicas con pasos detallados
-✅ Asesoría legal completa post-accidente  
-✅ Primeros auxilios avanzados con instrucciones paso a paso
-✅ Soporte prioritario — trata al usuario como VIP
-✅ Análisis detallado y recomendaciones personalizadas
-✅ Respuestas más largas y completas cuando sea necesario
+Este usuario paga el nivel máximo. Tienes acceso completo para ayudarle sin restricciones de nivel:
+✅ DIAGNÓSTICO AVANZADO: Detecta ruidos, fallas electrónicas, códigos de tablero y guía paso a paso.
+✅ LEGAL Y SEGUROS: Asesoría completa post-choque, cómo lidiar con seguros y autoridades de tránsito.
+✅ FINANZAS Y RUTAS: Precios estimados de gasolina, refacciones y recomendaciones de viaje.
+✅ MANTENIMIENTO: Tablas de revisión exhaustiva según el kilometraje del vehículo.
+✅ EMERGENCIAS VIP: Primeros auxilios quirúrgicos y psicológicos (cómo calmar pasajeros).
 
-Responde con el nivel de detalle y personalización que un usuario Premium merece.`;
+REGLA DE LOCALIZACIÓN GPS (FUTURE FEATURE):
+Si el usuario pregunta algo como "Llevame a..." o "Dónde estoy", dile: "La navegación automática GPS se está implementando para que RescueNow lo haga por ti muy pronto."
+`;
+
+// ====== FUN FACTS / TIPS ROTATORIOS ======
+
+function getRandomFunFact(plan: "free" | "premium"): string {
+  const pool = plan === "premium" ? [...FUN_FACTS_FREE, ...FUN_FACTS_PREMIUM] : FUN_FACTS_FREE;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 // ====== WELCOME MESSAGES ======
 
+let _hasSeenIntro = false;
+
 export function getWelcomeMessage(userName: string, plan: "free" | "premium"): string {
+  const fact = getRandomFunFact(plan);
+
+  if (_hasSeenIntro) {
+    return fact;
+  }
+  
+  _hasSeenIntro = true;
+
   if (plan === "premium") {
-    return `¡Hola ${userName}! 🌟 Soy **RescueAI Premium**, tu asistente personal de emergencia.\n\nComo miembro Premium, tienes acceso completo a:\n\n🔧 Diagnóstico avanzado de fallas mecánicas\n⚖️ Asesoría legal detallada post-accidente\n🏥 Primeros auxilios paso a paso\n🛡️ Soporte prioritario 24/7\n\n¿En qué te puedo ayudar hoy?`;
+    return `¡Hola ${userName}! 🌟 Soy **RescueAI Premium**, tu asistente personal de emergencia.\n\nComo miembro Premium, tienes acceso completo a:\n\n🔧 Diagnóstico avanzado de fallas mecánicas\n⚖️ Asesoría legal detallada post-accidente\n🏥 Primeros auxilios paso a paso\n🛡️ Soporte prioritario 24/7\n\n${fact}\n\n¿En qué te puedo ayudar hoy?`;
   }
 
-  return `¡Hola ${userName}! 👋 Soy **RescueAI**, tu asistente de emergencia.\n\nPuedo ayudarte con:\n\n🔧 Problemas mecánicos básicos (motor, batería, llantas)\n🚗 Qué hacer en caso de accidente\n⛽ Encontrar gasolineras y talleres (usa el mapa)\n🆘 Cómo usar las funciones de emergencia\n\n💡 *¿Sabías que con Premium obtienes diagnósticos avanzados y asesoría legal detallada?*\n\n¿En qué te puedo ayudar?`;
+  return `¡Hola ${userName}! 👋 Soy **RescueAI**, tu asistente de emergencia.\n\nPuedo ayudarte con:\n\n🔧 Problemas mecánicos básicos\n🚗 Qué hacer en caso de accidente\n⛽ Encontrar gasolineras y talleres\n🆘 Funciones de emergencia\n\n${fact}\n\n¿En qué te puedo ayudar?`;
 }
 
 // ====== QUICK SUGGESTIONS ======
@@ -99,6 +120,86 @@ export function getQuickSuggestions(plan: "free" | "premium"): string[] {
   ];
 }
 
+// ====== FOLLOW-UP SUGGESTIONS (contextual) ======
+
+export function getFollowUpSuggestions(userMessage: string, plan: "free" | "premium"): string[] {
+  const lower = userMessage.toLowerCase();
+
+  // Topic-based follow-ups
+  if (lower.match(/accidente|choque|golpe|volcadura/)) {
+    return [
+      "¿Cómo tomo fotos del accidente? 📸",
+      "¿Necesito un abogado? ⚖️",
+      "Primeros auxilios básicos 🏥",
+      "¿Cómo reporto al seguro? 📋",
+    ];
+  }
+  if (lower.match(/motor|sobrecalent|humo|temperatura|ruido/)) {
+    return [
+      "¿Puedo seguir manejando? 🚗",
+      "¿Cuánto cuesta la reparación? 💰",
+      "¿Dónde encuentro un mecánico? 🔧",
+      "Mi motor hace un ruido extraño 🔊",
+    ];
+  }
+  if (lower.match(/bater[ií]a|no enciende|no prende|arranca/)) {
+    return [
+      "¿Cómo reviso si es la batería? 🔋",
+      "¿Cuánto dura una batería nueva? ⏱️",
+      "¿Dónde compro una batería? 🏪",
+      "Mi carro no arranca en frío ❄️",
+    ];
+  }
+  if (lower.match(/llanta|poncha|neumático|neumatico/)) {
+    return [
+      "¿Cómo uso el gato hidráulico? 🔧",
+      "¿Cada cuánto rotar llantas? 🔄",
+      "¿Dónde encuentro una llantera? 🛞",
+      "Presión recomendada de llantas 💨",
+    ];
+  }
+  if (lower.match(/premium|plan|suscripci[oó]n|mejorar|upgrade/)) {
+    return [
+      "¿Cómo activo Premium? 🌟",
+      "¿Vale la pena Premium? 🤔",
+      "Diferencias entre planes 📊",
+      "Mi motor se sobrecalentó 🔧",
+    ];
+  }
+  if (lower.match(/gasolina|combustible|tanque/)) {
+    return [
+      "¿Cómo ahorro gasolina? ⛽",
+      "Mi carro consume mucho 💸",
+      "¿Qué pasa si uso gasolina mala? ⚠️",
+      "Tips de mantenimiento básico 🔧",
+    ];
+  }
+  if (lower.match(/emergencia|sos|911|ayuda/)) {
+    return [
+      "¿Cómo funciona el SOS? 🚨",
+      "¿Qué datos envía a mi contacto? 📱",
+      "¿Cómo configuro mi ficha médica? 🏥",
+      "Tuve un accidente, ¿qué hago? 🚗",
+    ];
+  }
+
+  // Default follow-ups
+  if (plan === "premium") {
+    return [
+      "Diagnóstico de motor avanzado 🔧",
+      "Asesoría legal post-accidente ⚖️",
+      "Primeros auxilios avanzados 🏥",
+      "Tips de seguridad vial 🛣️",
+    ];
+  }
+  return [
+    "¿Qué hago en un accidente? 🚗",
+    "Mi batería murió 🔋",
+    "¿Cómo encuentro un mecánico? 🔧",
+    "¿Qué ofrece Premium? 🌟",
+  ];
+}
+
 // ====== OFFLINE FALLBACK RESPONSES ======
 
 const OFFLINE_RESPONSES: Record<string, string> = {
@@ -110,8 +211,9 @@ const OFFLINE_RESPONSES: Record<string, string> = {
   gasolinera: "⛽ Usa el filtro 'Gasolina' en el mapa de la pantalla principal para encontrar la gasolinera más cercana.",
   mecanico: "🔧 Usa el filtro 'Mecánico' en el mapa de la pantalla principal para encontrar talleres cercanos.",
   grua: "🚛 Selecciona la opción 'Grúa' en la pantalla principal. Si es una emergencia grave, usa el botón SOS.",
-  premium: "🌟 Con el plan **Premium** obtienes:\n\n🔧 Diagnóstico avanzado de fallas mecánicas\n⚖️ Asesoría legal detallada post-accidente\n🏥 Primeros auxilios avanzados paso a paso\n🛡️ Soporte prioritario 24/7\n📊 Análisis del historial de incidentes\n\nPuedes activarlo desde **Mi Perfil → Plan de Suscripción**.",
-  default: "👋 No entendí tu pregunta. Intenta preguntar sobre:\n\n🔧 Problemas mecánicos\n🚗 Qué hacer en caso de accidente\n⛽ Encontrar gasolineras y talleres\n🆘 Funciones de emergencia\n\n¿En qué te puedo ayudar?",
+  premium: "🌟 Con el plan **Premium** obtienes:\n\n🔧 Diagnósticos mecánicos completos\n⛽ Precios de gasolina\n⚖️ Asesoría legal detallada post-accidente\n🏥 Primeros auxilios avanzados\n\nPuedes activarlo en **Mi Perfil**.",
+  auxilios: "🏥 Primeros Auxilios Básicos:\n\n1. Asegura la escena, no te pongas en riesgo.\n2. Llama al 911 o presiona el botón SOS.\n3. Si la persona no respira, inicia RCP (30 compresiones fuertes en el pecho).\n4. Controla hemorragias aplicando presión directa con un paño limpio.",
+  default: "👋 Soy RescueAI. Si no tienes Internet, solo puedo responder palabras clave básicas como: 'batería', 'motor', 'accidente', 'primeros auxilios', 'gasolina'.\n\n¿En qué te ayudo?",
 };
 
 // ====== CHECK CONNECTIVITY ======
@@ -133,87 +235,82 @@ export async function sendChatMessage(
   subscriptionPlan: "free" | "premium",
   conversationHistory: ChatMessage[],
 ): Promise<ChatbotResponse> {
-  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+  const apiKey = process.env.EXPO_PUBLIC_CLAUDE_API_KEY;
 
-  // Check real connectivity
+  // Check connectivity
   const isOnline = await checkIsOnline();
 
   if (!isOnline || !apiKey) {
-    // Offline fallback
+    if (!apiKey && isOnline) {
+       console.warn("[Chatbot] No API Key found, using offline fallback. Make sure EXPO_PUBLIC_CLAUDE_API_KEY is set in your .env or EAS secrets.");
+    }
     return { text: getOfflineResponse(userMessage, subscriptionPlan) };
   }
 
-  // Online — try Gemini API with model fallbacks
+  // Set system prompt context based on Tier
   const systemPrompt = subscriptionPlan === "premium" ? SYSTEM_PROMPT_PREMIUM : SYSTEM_PROMPT_FREE;
-
   const locationContext = location
-    ? `\nUbicación actual del usuario: lat ${location.latitude.toFixed(4)}, lng ${location.longitude.toFixed(4)}`
-    : "\nUbicación del usuario: no disponible";
+    ? `\n\nUbicación actual del usuario: latitud ${location.latitude.toFixed(4)}, longitud ${location.longitude.toFixed(4)}`
+    : "";
 
-  const contents = [
-    {
-      role: "user" as const,
-      parts: [{ text: systemPrompt + locationContext }],
-    },
-    {
-      role: "model" as const,
-      parts: [{ text: "Entendido. Soy RescueAI, listo para ayudar. ¿En qué puedo asistirte?" }],
-    },
+  const finalSystemPrompt = systemPrompt + locationContext;
+
+  const messagesPayload = [
     ...conversationHistory,
     {
-      role: "user" as const,
-      parts: [{ text: userMessage }],
+      role: "user",
+      content: userMessage,
     },
   ];
 
-  const body = JSON.stringify({
-    contents,
-    generationConfig: {
-      temperature: subscriptionPlan === "premium" ? 0.8 : 0.7,
-      maxOutputTokens: subscriptionPlan === "premium" ? 800 : 400,
-      topP: 0.9,
-    },
-  });
+  try {
+    const response = await fetch(ANTHROPIC_BASE, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: CLAUDE_MODEL,
+        max_tokens: subscriptionPlan === "premium" ? 800 : 400,
+        temperature: subscriptionPlan === "premium" ? 0.7 : 0.6,
+        system: finalSystemPrompt,
+        messages: messagesPayload
+      }),
+    });
 
-  // Try each model in order until one works
-  for (const model of GEMINI_MODELS) {
-    try {
-      const url = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
-      console.log(`[Chatbot] Trying model: ${model}`);
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-        if (text) {
-          console.log(`[Chatbot] ✓ Success with model: ${model}`);
-          return { text };
-        }
-        console.warn(`[Chatbot] Model ${model} returned empty text`);
-      } else if (response.status === 429) {
-        // Quota exceeded — no point trying other models with same key
-        console.warn(`[Chatbot] API key quota exceeded (429). Using offline mode.`);
-        return {
-          text: getOfflineResponse(userMessage, subscriptionPlan) +
-            "\n\n⚠️ _Nota: El servicio de IA está temporalmente limitado. Usando respuestas predefinidas._"
-        };
-      } else {
-        let errorBody = "";
-        try { errorBody = await response.text(); } catch { /* ignore */ }
-        console.warn(`[Chatbot] Model ${model} failed: HTTP ${response.status} — ${errorBody.substring(0, 200)}`);
+    if (response.ok) {
+      const data = await response.json();
+      const rawText = data.content?.[0]?.text;
+      
+      if (rawText) {
+        return { text: rawText };
       }
-    } catch (e) {
-      console.warn(`[Chatbot] Model ${model} network error:`, e);
+    } else if (response.status === 429) {
+      console.warn(`[Chatbot] API Quota exceeded or Rate limited (429). Using offline fallback.`);
+      const offlineText = getOfflineResponse(userMessage, subscriptionPlan);
+      
+      if (!_hasShown429Warning) {
+        _hasShown429Warning = true;
+        return {
+          text: offlineText +
+            "\n\n⚠️ _Nota: Mi conexión al servidor principal está temporalmente llena. Respondí esto con mis conocimientos de emergencia offline._"
+        };
+      }
+      return { text: offlineText };
+    } else {
+      let errorBody = "";
+      try { errorBody = await response.text(); } catch { /* ignore */ }
+      console.warn(`[Chatbot] Claude API failed: HTTP ${response.status} — ${errorBody}`);
     }
+  } catch (e) {
+    console.warn(`[Chatbot] Network error fetching Claude:`, e);
   }
 
-  // All models failed — use offline fallback
-  console.warn("[Chatbot] All Gemini models failed — using offline responses");
+  // Fallback if the fetch try...catch failed or response was bad
+  console.warn("[Chatbot] Claude request failed, defaulting to offline responses.");
   return { text: getOfflineResponse(userMessage, subscriptionPlan) };
 }
 
@@ -223,21 +320,21 @@ function getOfflineResponse(message: string, plan: "free" | "premium"): string {
   const lower = message.toLowerCase();
 
   const keywords: [string[], string][] = [
-    [["emergencia", "sos", "ayuda urgente", "911"], "emergencia"],
-    [["accidente", "choque", "volcadura", "golpe"], "accidente"],
-    [["motor", "sobrecalentado", "humo", "temperatura", "ruido"], "motor"],
-    [["batería", "bateria", "no enciende", "no prende", "arranca"], "bateria"],
-    [["llanta", "ponchadura", "ponchada", "neumático", "neumatico"], "llanta"],
-    [["gasolinera", "gasolina", "combustible", "tanque"], "gasolinera"],
-    [["mecánico", "mecanico", "taller", "reparar", "falla"], "mecanico"],
-    [["grúa", "grua", "remolque", "arrastrar"], "grua"],
-    [["premium", "plan", "suscripción", "suscripcion", "mejorar", "upgrade"], "premium"],
+    [["emergencia", "emerjencia", "emergensia", "sos", "ayuda urgente", "ayda", "911", "auxilio"], "emergencia"],
+    [["accidente", "acidente", "accidnte", "aczidente", "choque", "choke", "volcadura", "golpe"], "accidente"],
+    [["motor", "motr", "motro", "sobrecalentado", "sobrecalntado", "humo", "temperatura", "tempertura", "ruido", "rruido", "ruido extraño"], "motor"],
+    [["batería", "bateria", "vateria", "batria", "vatria", "no enciende", "no prende", "arranca", "aranca", "murió"], "bateria"],
+    [["llanta", "yanta", "llnta", "lanta", "ponchadura", "ponchada", "ponchda", "neumático", "neumatico", "neumatco"], "llanta"],
+    [["gasolinera", "gasolinra", "gasolinero", "gasolnera", "gasolina", "gasolin", "combustible", "conbustible", "tanque", "tanqe"], "gasolinera"],
+    [["mecánico", "mecanico", "mecanoco", "mecanko", "mecanuco", "taller", "tallr", "reparar", "repara", "falla", "faya"], "mecanico"],
+    [["grúa", "grua", "grúua", "grüa", "remolque", "remolke", "arrastrar", "arastra"], "grua"],
+    [["premium", "premiun", "prenium", "plan", "suscripción", "suscripcion", "suscripcin", "mejorar", "upgrade", "upgred"], "premium"],
+    [["primeros auxilios", "respira", "sangra", "herido", "inconsciente", "rcp"], "auxilios"],
   ];
 
   for (const [words, key] of keywords) {
     if (words.some((w) => lower.includes(w))) {
       const base = OFFLINE_RESPONSES[key] ?? OFFLINE_RESPONSES.default;
-      // If free user asked about premium features, append upsell
       if (plan === "free" && ["motor", "accidente"].includes(key)) {
         return base + "\n\n💡 *Con Premium obtendrías un diagnóstico más detallado y personalizado.*";
       }
@@ -254,7 +351,7 @@ export function toChatHistory(
   messages: { isUser: boolean; text: string }[],
 ): ChatMessage[] {
   return messages.map((msg) => ({
-    role: msg.isUser ? "user" : "model",
-    parts: [{ text: msg.text }],
+    role: msg.isUser ? "user" : "assistant",
+    content: msg.text,
   }));
 }

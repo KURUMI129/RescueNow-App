@@ -17,6 +17,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -94,15 +96,20 @@ export default function MedicalIdScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <View style={styles.safeArea}>
+      <LinearGradient 
+        colors={colors.gradientBg} 
+        style={StyleSheet.absoluteFillObject} 
+      />
+      <SafeAreaView style={styles.safeArea}>
       {/* HEADER EXCLUSIVO MÉDICO */}
-      <View style={[styles.header, { borderBottomColor: 'transparent' }]}>
+      <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.header, { borderBottomColor: 'transparent' }]}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </Pressable>
         <Ionicons name="medical" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
         <Text style={[styles.headerTitle, { color: colors.textPrimary, flex: 1 }]}>Ficha Médica S.O.S</Text>
-      </View>
+      </BlurView>
 
       <KeyboardAvoidingView 
         style={styles.flexItem} 
@@ -121,7 +128,7 @@ export default function MedicalIdScreen() {
             </Text>
           </View>
 
-          <View style={[styles.formContainer, { backgroundColor: colors.surface }]}>
+          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.formContainer, { backgroundColor: 'transparent' }]}>
             
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Grupo Sanguíneo</Text>
@@ -167,7 +174,7 @@ export default function MedicalIdScreen() {
               </View>
             </View>
 
-          </View>
+          </BlurView>
 
           {/* Botón Guardar */}
           <Pressable 
@@ -188,7 +195,8 @@ export default function MedicalIdScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -231,7 +239,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
+    elevation: 0,
   },
   inputGroup: {
     marginBottom: 20,

@@ -25,6 +25,7 @@ import Animated, {
 } from "react-native-reanimated";
 import MapView, { Callout, Marker, Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 
 
 import { getAppPreferences, updateAppPreferences } from "@/constants/app-preferences";
@@ -38,8 +39,28 @@ import { useAuth } from "@/lib/auth-context";
 import { fetchNearbyPOIs, distanceKm, type POIResult } from "@/lib/overpass-service";
 import { AppEvents, EVENT_SELECT_SERVICE_FILTER } from "@/lib/app-events";
 
-// TODO: Copilot - Inserta aquí el JSON de tu mapa oscuro
-const RESCUE_DARK_MAP_STYLE: any[] = []; 
+// Mapa en escala de azules oscuros tipo radar/sonar de rescate
+const RESCUE_DARK_MAP_STYLE: any[] = [
+  { "elementType": "geometry", "stylers": [{ "color": "#0B1120" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#8ec3b9" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#1a3646" }] },
+  { "featureType": "administrative.country", "elementType": "geometry.stroke", "stylers": [{ "color": "#4b6878" }] },
+  { "featureType": "administrative.land_parcel", "elementType": "labels.text.fill", "stylers": [{ "color": "#64779e" }] },
+  { "featureType": "administrative.province", "elementType": "geometry.stroke", "stylers": [{ "color": "#4b6878" }] },
+  { "featureType": "landscape.man_made", "elementType": "geometry.stroke", "stylers": [{ "color": "#151b2c" }] },
+  { "featureType": "landscape.natural", "elementType": "geometry", "stylers": [{ "color": "#080c16" }] },
+  { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#1a2233" }] },
+  { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#6f9ba5" }] },
+  { "featureType": "poi", "elementType": "labels.text.stroke", "stylers": [{ "color": "#0B1120" }] },
+  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#1d273a" }] },
+  { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#98a5be" }] },
+  { "featureType": "road", "elementType": "labels.text.stroke", "stylers": [{ "color": "#0B1120" }] },
+  { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#2c6675" }] },
+  { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#255763" }] },
+  { "featureType": "road.highway", "elementType": "labels.text.fill", "stylers": [{ "color": "#b0d5ce" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0e1626" }] },
+  { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#4e6d70" }] }
+]
 
 type ServiceOption = {
   id: string;
@@ -378,7 +399,7 @@ export default function HomeScreen() {
 
       {/* HEADER FLOTANTE */}
       <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]} pointerEvents="box-none">
-        <View style={[styles.headerBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+        <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.headerBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
           <View style={styles.headerLeft}>
             <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
               {language === "es" ? "Ubicación Actual" : "Current Location"}
@@ -398,7 +419,7 @@ export default function HomeScreen() {
               </View>
             )}
           </Pressable>
-        </View>
+        </BlurView>
       </Animated.View>
 
       {/* FAB: RESCUE AI (Chatbot) */}
@@ -407,11 +428,14 @@ export default function HomeScreen() {
           { bottom: RNAnimated.add(sheetAnim, 24) }
         ]}
       >
-        <Pressable 
-          style={[styles.aiFab, { backgroundColor: colors.surface, borderColor: colors.cardBorder, shadowColor: colors.accent }]} 
-          onPress={() => router.push("/(tabs)/chatbot")}
-        >
-          <MaterialCommunityIcons name="robot-outline" size={28} color={colors.accent} />
+        <Pressable onPress={() => router.push("/(tabs)/chatbot")}>
+          <BlurView
+            intensity={activeTheme === "dark" ? 40 : 80}
+            tint={activeTheme}
+            style={[styles.aiFab, { backgroundColor: 'transparent', borderColor: colors.cardBorder, borderWidth: 1 }]}
+          >
+            <MaterialCommunityIcons name="robot-outline" size={28} color={colors.accent} />
+          </BlurView>
         </Pressable>
       </RNAnimated.View>
 
@@ -421,11 +445,14 @@ export default function HomeScreen() {
           { bottom: RNAnimated.add(sheetAnim, 100) }
         ]}
       >
-        <Pressable 
-          style={[styles.centerBtn, { backgroundColor: colors.surface }]}
-          onPress={handleCenterOnUser}
-        >
-          <Ionicons name="locate" size={22} color={colors.primary} />
+        <Pressable onPress={handleCenterOnUser}>
+          <BlurView
+            intensity={activeTheme === "dark" ? 40 : 80}
+            tint={activeTheme}
+            style={[styles.centerBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.cardBorder }]}
+          >
+            <Ionicons name="locate" size={22} color={colors.primary} />
+          </BlurView>
         </Pressable>
       </RNAnimated.View>
 
@@ -451,15 +478,16 @@ export default function HomeScreen() {
       <RNAnimated.View 
         style={[
           styles.bottomSheet, 
-          { 
-            height: sheetAnim, 
-            backgroundColor: colors.surface, 
-            paddingBottom: Math.max(insets.bottom, 20) 
-          }
+          { height: sheetAnim }
         ]}
       >
-        {/* Manija de Arrastre */}
-        <View style={styles.dragHandleWrapper} {...panResponder.panHandlers}>
+        <BlurView 
+          intensity={activeTheme === "dark" ? 40 : 80} 
+          tint={activeTheme} 
+          style={[{ flex: 1, backgroundColor: 'transparent', paddingBottom: Math.max(insets.bottom, 20) }]}
+        >
+          {/* Manija de Arrastre */}
+          <View style={styles.dragHandleWrapper} {...panResponder.panHandlers}>
           <View style={[styles.dragHandle, { backgroundColor: colors.textSecondary, opacity: 0.3 }]} />
         </View>
 
@@ -490,8 +518,8 @@ export default function HomeScreen() {
         >
           {SERVICES.map((service, idx) => {
             const isSelected = selectedService === service.id;
-            const bgColor = isSelected ? `${service.colorHex}15` : colors.background;
-            const shadowForce = isSelected ? { shadowColor: service.colorHex, shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6 } : {};
+            const bgColor = isSelected ? `${service.colorHex}15` : 'transparent';
+            const shadowForce = isSelected ? { shadowColor: service.colorHex, shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 0 } : {};
 
             return (
               <Animated.View key={service.id} entering={FadeInDown.delay(100 + idx * 60).springify()}>
@@ -524,6 +552,7 @@ export default function HomeScreen() {
             );
           })}
         </ScrollView>
+        </BlurView>
       </RNAnimated.View>
 
       {/* CUSTOM THEME MODAL */}
@@ -724,7 +753,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { position: 'absolute', top: 0, width: '100%', paddingHorizontal: 16, zIndex: 10 },
-  headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20, borderWidth: 1, shadowColor: "#0B1120", shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 6 },
+  headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20, borderWidth: 1, shadowColor: "#0B1120", shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 0 },
   headerLeft: { flex: 1, paddingRight: 12 },
   headerSubtitle: { fontSize: 12, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' },
   headerTitle: { fontSize: 16, fontWeight: '800' },
@@ -735,8 +764,8 @@ const styles = StyleSheet.create({
   aiFabContainer: { position: 'absolute', left: 20, zIndex: 30 },
   aiFab: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#0EA5E9', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
   fabContainer: { position: 'absolute', right: 20, zIndex: 30 },
-  sosFab: { width: 68, height: 68, borderRadius: 20, backgroundColor: '#E11D48', alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20 },
-  bottomSheet: { position: 'absolute', bottom: 0, width: '100%', borderTopLeftRadius: 28, borderTopRightRadius: 28, zIndex: 20, shadowColor: "#0B1120", shadowOpacity: 0.08, shadowRadius: 24, shadowOffset: { width: 0, height: -8 }, elevation: 12 },
+  sosFab: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#E11D48', alignItems: 'center', justifyContent: 'center', shadowColor: '#E11D48', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.5, shadowRadius: 24, elevation: 12 },
+  bottomSheet: { position: 'absolute', bottom: 0, width: '100%', borderTopLeftRadius: 36, borderTopRightRadius: 36, zIndex: 20, shadowColor: "#0B1120", shadowOpacity: 0.15, shadowRadius: 32, shadowOffset: { width: 0, height: -12 }, elevation: 0, overflow: 'hidden' },
   dragHandleWrapper: { width: '100%', alignItems: 'center', paddingVertical: 14 },
   dragHandle: { width: 40, height: 4, borderRadius: 2 },
   sheetTitle: { fontSize: 20, fontWeight: '900', letterSpacing: 0.2, flex: 1 },

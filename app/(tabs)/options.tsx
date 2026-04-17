@@ -14,6 +14,8 @@ import {
     TextInput,
     View,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
     FadeInDown,
     useAnimatedStyle,
@@ -179,8 +181,13 @@ export default function OptionsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <View style={[styles.headerBar, { backgroundColor: colors.background }]}>
+    <View style={styles.safeArea}>
+      <LinearGradient 
+        colors={colors.gradientBg} 
+        style={StyleSheet.absoluteFillObject} 
+      />
+      <SafeAreaView style={styles.safeArea}>
+      <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.headerBar, { borderBottomColor: colors.cardBorder, borderBottomWidth: 1 }]}>
         <Pressable
           style={styles.backBtn}
           onPress={() => router.navigate("/(tabs)")}
@@ -189,13 +196,13 @@ export default function OptionsScreen() {
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Mi Perfil</Text>
         <View style={styles.backBtn} />
-      </View>
+      </BlurView>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeInDown.delay(100).springify()}>
           
           {/* 1. SECCIÓN DE PERFIL CENTRADO */}
-          <View style={[styles.profileHeroCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.profileHeroCard, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
             <View style={styles.avatarWrapper}>
               {subscriptionPlan === "premium" && (
                 <>
@@ -242,13 +249,13 @@ export default function OptionsScreen() {
               <MaterialCommunityIcons name="pencil-outline" size={15} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 14 }}>Editar Perfil</Text>
             </Pressable>
-          </View>
+          </BlurView>
 
           {/* ACCESO RÁPIDO A FICHA MÉDICA */}
           <Pressable
-            style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}
             onPress={() => router.push("/(tabs)/medical-id")}
           >
+            <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.medicalCard, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={[styles.medicalIconWrap, { backgroundColor: 'rgba(225, 29, 72, 0.08)' }]}>
                 <Ionicons name="medical" size={24} color="#E11D48" />
@@ -259,12 +266,13 @@ export default function OptionsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </View>
+            </BlurView>
           </Pressable>
 
           {/* 2. SECCIÓN VIP / SUSCRIPCIÓN */}
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(200).springify()}>
-          <View style={[styles.cardGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.cardGroup, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
             <View style={styles.cardHeader}>
               <MaterialCommunityIcons name="crown" size={20} color={colors.accent} />
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Planes y Suscripción</Text>
@@ -286,10 +294,10 @@ export default function OptionsScreen() {
                 </Text>
               </Pressable>
             </View>
-          </View>
+          </BlurView>
 
           {/* 3. SECCIÓN DE AJUSTES GLOBALES */}
-          <View style={[styles.cardGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.cardGroup, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="settings-sharp" size={18} color={colors.textSecondary} />
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Ajustes Generales</Text>
@@ -310,16 +318,32 @@ export default function OptionsScreen() {
                 </Pressable>
               </View>
             </View>
-          </View>
+          </BlurView>
 
           {/* 4. SECCIÓN CONTACTO DE CONFIANZA */}
-          <View style={[styles.cardGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.cardGroup, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="shield-checkmark" size={18} color={colors.success} />
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Contacto de Emergencia</Text>
             </View>
             <View style={styles.settingRowStack}>
-                <Text style={{fontSize: 12, fontWeight: '700', marginBottom: 6, color: colors.textSecondary}}>Nombre del Familiar:</Text>
+                <Text style={{fontSize: 12, fontWeight: '700', marginBottom: 6, color: colors.textSecondary}}>Nombre o Parentesco:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+                  {["Mamá", "Papá", "Pareja", "Hijo/a", "Hermano/a", "Amigo/a"].map(rel => (
+                    <Pressable 
+                      key={rel} 
+                      onPress={() => setTrustedContactName(rel)}
+                      style={[
+                        styles.pillBtn, 
+                        trustedContactName === rel 
+                          ? { backgroundColor: colors.primary, borderWidth: 0 } 
+                          : { backgroundColor: colors.mapBackground, borderColor: colors.cardBorder, borderWidth: 1 }
+                      ]}
+                    >
+                      <Text style={[styles.pillText, trustedContactName === rel ? { color: "#fff" } : { color: colors.textSecondary }]}>{rel}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
                <TextInput
                   value={trustedContactName}
                   onChangeText={setTrustedContactName}
@@ -349,7 +373,7 @@ export default function OptionsScreen() {
                   )}
                 </Pressable>
             </View>
-          </View>
+          </BlurView>
 
           {/* 5. CERRAR SESIÓN */}
           <Pressable onPress={handleLogout} style={[styles.logoutButton, { backgroundColor: '#E11D48' }]}>
@@ -359,7 +383,8 @@ export default function OptionsScreen() {
 
         </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -370,7 +395,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: "900", textAlign: 'center', flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 },
   profileSection: { alignItems: 'center', marginBottom: 32 },
-  profileHeroCard: { alignItems: 'center', borderRadius: 20, padding: 24, marginBottom: 20, borderWidth: 1, shadowColor: '#0B1120', shadowOpacity: 0.05, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  profileHeroCard: { alignItems: 'center', borderRadius: 20, padding: 24, marginBottom: 20, borderWidth: 1, shadowColor: '#0B1120', shadowOpacity: 0.05, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 0 },
   avatarWrapper: { width: 100, height: 100, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   premiumPulseRing: { position: 'absolute', width: 90, height: 90, borderRadius: 45 },
   premiumMultiColorRing: { 
@@ -393,9 +418,9 @@ const styles = StyleSheet.create({
   profileBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, marginBottom: 16 },
   profileBadgeText: { fontSize: 12, fontWeight: '700' },
   editProfileBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 18, borderRadius: 10, borderWidth: 1, marginTop: 4 },
-  cardGroup: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 1, shadowColor: '#0B1120', shadowOpacity: 0.04, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  cardGroup: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 1, shadowColor: '#0B1120', shadowOpacity: 0.04, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 0 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
-  medicalCard: { marginHorizontal: 0, marginBottom: 20, borderRadius: 16, padding: 16, borderWidth: 1, shadowColor: '#E11D48', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  medicalCard: { marginHorizontal: 0, marginBottom: 20, borderRadius: 16, padding: 16, borderWidth: 1, shadowColor: '#E11D48', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 0 },
   medicalIconWrap: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center" },
   medicalCardTitle: { fontSize: 16, fontWeight: "800", marginBottom: 2 },
   medicalCardSubtitle: { fontSize: 13 },

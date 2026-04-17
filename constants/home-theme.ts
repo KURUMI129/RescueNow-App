@@ -1,5 +1,6 @@
 export type HomeThemeColors = {
   background: string;
+  gradientBg: readonly [string, string];
   surface: string;
   cardBorder: string;
   textPrimary: string;
@@ -21,8 +22,9 @@ export type HomeThemeColors = {
 
 // Opción "Rescue Premium" (Modo Oscuro Pizarra/Navy)
 const darkTheme: HomeThemeColors = {
-  background: "#0B1120", // Deep navy
-  surface: "rgba(30, 41, 59, 0.8)", // Slate 800 frosted glass support
+  background: "#080C16", // Deep space navy/black
+  gradientBg: ["#0B1120", "#040608"], // Top to bottom gradient
+  surface: "rgba(17, 24, 39, 0.45)", // ultra translucid slate for blur
   cardBorder: "rgba(255, 255, 255, 0.08)",
   textPrimary: "#F8FAFC",
   textSecondary: "#94A3B8",
@@ -44,7 +46,8 @@ const darkTheme: HomeThemeColors = {
 // Opción "Clínica Limpia" (Modo Claro Premium)
 const lightTheme: HomeThemeColors = {
   background: "#F8FAFC", // Clean slate 50
-  surface: "rgba(255, 255, 255, 0.85)", // Frosted glass support
+  gradientBg: ["#FFFFFF", "#F1F5F9"],
+  surface: "rgba(255, 255, 255, 0.5)", // Frosted glass support
   cardBorder: "rgba(15, 23, 42, 0.06)",
   textPrimary: "#0F172A",
   textSecondary: "#64748B",

@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   KeyboardAvoidingView,
@@ -12,6 +12,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useActiveTheme } from "@/hooks/use-active-theme";
@@ -23,6 +25,7 @@ import {
   toChatHistory,
   getWelcomeMessage,
   getQuickSuggestions,
+  getFollowUpSuggestions,
   checkIsOnline,
 } from "@/lib/chatbot-service";
 
@@ -74,6 +77,58 @@ export default function ChatbotScreen() {
     void init();
   }, [user]);
 
+  // Auto-clear timer ref
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const planRef = useRef(subscriptionPlan);
+  planRef.current = subscriptionPlan;
+
+  // When screen focuses: check plan changes + reset conversation if away too long
+  // When screen blurs: start 20-second auto-clear timer
+  useFocusEffect(
+    useCallback(() => {
+      // === ON FOCUS ===
+      // Cancel any pending clear timer (user came back in time)
+      if (blurTimerRef.current) {
+        clearTimeout(blurTimerRef.current);
+        blurTimerRef.current = null;
+      }
+
+      // Check for plan changes
+      const refreshPlan = async () => {
+        const prefs = await getAppPreferences();
+        const newPlan = prefs.subscriptionPlan;
+        if (newPlan !== planRef.current) {
+          setSubscriptionPlan(newPlan);
+          setQuickSuggestions(getQuickSuggestions(newPlan));
+          const planMsg: Message = {
+            id: Date.now().toString() + "_plan",
+            isUser: false,
+            text: newPlan === "premium"
+              ? "🌟 ¡Tu plan se ha actualizado a **Premium**! Ahora tienes acceso completo a diagnósticos avanzados, asesoría legal y más."
+              : "ℹ️ Tu plan ha cambiado a **Estándar**. Algunas funciones avanzadas están limitadas.",
+          };
+          setMessages((prev) => [...prev, planMsg]);
+        }
+      };
+      void refreshPlan();
+
+      // === ON BLUR (return cleanup) ===
+      return () => {
+        // Start 20-second timer — if user doesn't come back, reset conversation
+        blurTimerRef.current = setTimeout(() => {
+          const displayName = user?.displayName ?? "Amigo";
+          const plan = planRef.current;
+          const welcomeText = getWelcomeMessage(displayName, plan);
+
+          setMessages([{ id: "welcome_" + Date.now(), isUser: false, text: welcomeText }]);
+          setQuickSuggestions(getQuickSuggestions(plan));
+          setShowSuggestions(true);
+          setInputText("");
+        }, 20000); // 20 seconds
+      };
+    }, [user]),
+  );
+
   // Periodically check connectivity
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -121,6 +176,11 @@ export default function ChatbotScreen() {
 
       setMessages((prev) => [...prev, botResponse]);
 
+      // Show contextual follow-up suggestions
+      const followUps = getFollowUpSuggestions(messageText, subscriptionPlan);
+      setQuickSuggestions(followUps);
+      setShowSuggestions(true);
+
       // Re-check connectivity after response
       const online = await checkIsOnline();
       setIsOnline(online);
@@ -150,10 +210,15 @@ export default function ChatbotScreen() {
   const isPremium = subscriptionPlan === "premium";
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <View style={styles.flexItem}>
+      <LinearGradient 
+        colors={colors.gradientBg} 
+        style={StyleSheet.absoluteFillObject} 
+      />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: "transparent" }]}>
 
       {/* HEADER */}
-      <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
+      <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </Pressable>
@@ -175,11 +240,12 @@ export default function ChatbotScreen() {
 
         {/* Connection indicator */}
         <View style={[styles.connectionDot, { backgroundColor: isOnline ? "#10B981" : "#F59E0B" }]} />
-      </View>
+      </BlurView>
 
       <KeyboardAvoidingView
         style={styles.flexItem}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ScrollView
           ref={scrollViewRef}
@@ -201,7 +267,7 @@ export default function ChatbotScreen() {
              <View style={[styles.offlineNotice, { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.2)' }]}>
                <MaterialCommunityIcons name="creation" size={16} color="#10B981" />
                <Text style={[styles.offlineText, { color: "#10B981" }]}>
-                 Conectado a Gemini AI • {isPremium ? "Modo Premium 🌟" : "Modo Estándar"}
+                 Conectado a RescueAI Neural • {isPremium ? "Modo Premium 🌟" : "Modo Estándar"}
                </Text>
              </View>
            )}
@@ -248,14 +314,14 @@ export default function ChatbotScreen() {
                  </View>
                  <View style={[styles.bubbleBot, { backgroundColor: colors.surface, borderColor: colors.cardBorder, paddingVertical: 12, paddingHorizontal: 16 }]}>
                    <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
-                     {isOnline ? "Pensando con Gemini AI..." : "Buscando respuesta..."}
+                     {isOnline ? "Procesando con RescueAI..." : "Buscando respuesta..."}
                    </Text>
                  </View>
              </View>
            )}
 
            {/* QUICK SUGGESTIONS */}
-           {showSuggestions && quickSuggestions.length > 0 && messages.length <= 1 && (
+           {showSuggestions && quickSuggestions.length > 0 && !isTyping && (
              <View style={styles.suggestionsContainer}>
                <Text style={[styles.suggestionsTitle, { color: colors.textSecondary }]}>
                  Sugerencias rápidas:
@@ -275,8 +341,8 @@ export default function ChatbotScreen() {
 
         </ScrollView>
 
-        {/* INPUT BOX */}
-        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.cardBorder }]}>
+        {/* Input Area Overlaying Chat */}
+        <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.inputContainer, { backgroundColor: 'transparent', borderTopColor: colors.cardBorder }]}>
           <TextInput
              value={inputText}
              onChangeText={setInputText}
@@ -292,22 +358,22 @@ export default function ChatbotScreen() {
           >
              <Ionicons name="send" size={16} color={inputText.trim().length > 0 ? "#fff" : colors.textSecondary} />
           </Pressable>
-        </View>
+        </BlurView>
 
-        {/* FREE TIER UPGRADE STRIP */}
         {!isPremium && (
-          <View style={[styles.upgradeStrip, { backgroundColor: colors.surface, borderTopColor: colors.cardBorder }]}>
+          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.upgradeStrip, { backgroundColor: 'transparent', borderTopColor: colors.cardBorder }]}>
             <Text style={[styles.upgradeText, { color: colors.textSecondary }]}>
               💡 Respuestas básicas •{" "}
             </Text>
             <Pressable onPress={() => router.push("/(tabs)/options")}>
               <Text style={[styles.upgradeLink, { color: colors.accent }]}>Actualizar a Premium</Text>
             </Pressable>
-          </View>
+          </BlurView>
         )}
 
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 

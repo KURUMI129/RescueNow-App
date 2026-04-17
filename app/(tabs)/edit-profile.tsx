@@ -20,6 +20,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 
 export default function EditProfileScreen() {
@@ -93,15 +95,20 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <View style={styles.safeArea}>
+      <LinearGradient 
+        colors={colors.gradientBg} 
+        style={StyleSheet.absoluteFillObject} 
+      />
+      <SafeAreaView style={styles.safeArea}>
       {/* HEADER */}
-      <View style={[styles.header, { borderBottomColor: colors.cardBorder, borderBottomWidth: 1 }]}>
+      <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.header, { borderBottomColor: colors.cardBorder, borderBottomWidth: 1 }]}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Editar Perfil</Text>
         <View style={{ width: 24 }} />
-      </View>
+      </BlurView>
 
       <KeyboardAvoidingView 
         style={styles.flexItem} 
@@ -131,7 +138,7 @@ export default function EditProfileScreen() {
           </View>
 
           {/* Formulario */}
-          <View style={[styles.formContainer, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.formContainer, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
             
             <View style={styles.rowInputs}>
               <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
@@ -194,7 +201,7 @@ export default function EditProfileScreen() {
               </View>
             </View>
 
-          </View>
+          </BlurView>
 
           {/* Botón Guardar */}
           <Pressable
@@ -215,7 +222,8 @@ export default function EditProfileScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -261,7 +269,7 @@ const styles = StyleSheet.create({
   avatarPhoto: { width: 110, height: 110, borderRadius: 55 },
   avatarFallback: { width: 110, height: 110, borderRadius: 55, justifyContent: 'center', alignItems: 'center' },
   avatarFallbackText: { color: '#FFFFFF', fontSize: 42, fontWeight: '900' },
-  formContainer: { borderRadius: 20, padding: 20, paddingBottom: 8, marginBottom: 24, borderWidth: 1, shadowColor: '#0B1120', shadowOpacity: 0.04, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  formContainer: { borderRadius: 20, padding: 20, paddingBottom: 8, marginBottom: 24, borderWidth: 1, shadowColor: '#0B1120', shadowOpacity: 0.04, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 0 },
   rowInputs: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
   inputGroup: { marginBottom: 20 },
   inputLabel: { fontSize: 13, fontWeight: "700", marginBottom: 8, paddingLeft: 4 },

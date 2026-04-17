@@ -16,6 +16,8 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { AuthHeader } from "@/components/auth/auth-header";
@@ -65,9 +67,12 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
-    >
+    <View style={styles.safeArea}>
+      <LinearGradient 
+        colors={colors.gradientBg} 
+        style={StyleSheet.absoluteFillObject} 
+      />
+      <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flexContainer}
@@ -79,11 +84,13 @@ export default function ForgotPasswordScreen() {
         >
           <AuthHeader colors={colors} />
 
-          <View
+          <BlurView
+            intensity={activeTheme === "dark" ? 40 : 80}
+            tint={activeTheme}
             style={[
               styles.card,
               {
-                backgroundColor: colors.surface,
+                backgroundColor: 'transparent',
                 borderColor: colors.cardBorder,
               },
             ]}
@@ -170,10 +177,11 @@ export default function ForgotPasswordScreen() {
                 </Text>
               </TouchableOpacity>
             </Animated.View>
-          </View>
+          </BlurView>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -200,7 +208,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    elevation: 0,
   },
   sectionTitle: {
     fontSize: 24,

@@ -22,6 +22,7 @@ import Animated, {
   withSequence,
   Easing,
 } from "react-native-reanimated";
+import { BlurView } from "expo-blur";
 import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
 import { get911VoiceScript, sendEmergencyMessage } from "@/lib/emergency-service";
@@ -392,73 +393,99 @@ export default function EmergencyCallScreen() {
           </Animated.View>
 
           {/* FICHA TÉCNICA DEL PACIENTE */}
-          <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.medicalCard}>
-            <View style={styles.medicalCardHeader}>
-              <Ionicons name="medical" size={22} color="#FF3B30" />
-              <Text style={styles.medicalCardTitle}>Ficha Médica del Paciente</Text>
-            </View>
+          <Animated.View entering={FadeInDown.delay(200).springify()} style={{ borderRadius: 20, overflow: "hidden", marginBottom: 16, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.08)" }}>
+            <BlurView intensity={40} tint="dark" style={[styles.medicalCard, { marginBottom: 0, borderWidth: 0 }]}>
+              <View style={styles.medicalCardHeader}>
+                <Ionicons name="medical" size={22} color="#FF3B30" />
+                <Text style={styles.medicalCardTitle}>Ficha Médica del Paciente</Text>
+              </View>
 
-            <View style={styles.medicalDivider} />
+              <View style={styles.medicalDivider} />
 
-            <View style={styles.medicalRow}>
-              <View style={styles.medicalIconCircle}>
-                <Ionicons name="person" size={18} color="#0EA5E9" />
+              <View style={styles.medicalRow}>
+                <View style={styles.medicalIconCircle}>
+                  <Ionicons name="person" size={18} color="#0EA5E9" />
+                </View>
+                <View style={styles.medicalRowContent}>
+                  <Text style={styles.medicalLabel}>Nombre</Text>
+                  <Text style={styles.medicalValue}>{params.userName || "No registrado"}</Text>
+                </View>
               </View>
-              <View style={styles.medicalRowContent}>
-                <Text style={styles.medicalLabel}>Nombre</Text>
-                <Text style={styles.medicalValue}>{params.userName || "No registrado"}</Text>
-              </View>
-            </View>
 
-            <View style={styles.medicalRow}>
-              <View style={[styles.medicalIconCircle, { backgroundColor: "rgba(225, 29, 72, 0.15)" }]}>
-                <MaterialCommunityIcons name="blood-bag" size={18} color="#E11D48" />
+              <View style={styles.medicalRow}>
+                <View style={[styles.medicalIconCircle, { backgroundColor: "rgba(225, 29, 72, 0.15)" }]}>
+                  <MaterialCommunityIcons name="blood-bag" size={18} color="#E11D48" />
+                </View>
+                <View style={styles.medicalRowContent}>
+                  <Text style={styles.medicalLabel}>Tipo de Sangre</Text>
+                  <Text style={[styles.medicalValue, styles.medicalHighlight]}>
+                    {params.bloodType || "No registrado"}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.medicalRowContent}>
-                <Text style={styles.medicalLabel}>Tipo de Sangre</Text>
-                <Text style={[styles.medicalValue, styles.medicalHighlight]}>
-                  {params.bloodType || "No registrado"}
-                </Text>
-              </View>
-            </View>
 
-            <View style={styles.medicalRow}>
-              <View style={[styles.medicalIconCircle, { backgroundColor: "rgba(245, 158, 11, 0.15)" }]}>
-                <Ionicons name="warning" size={18} color="#F59E0B" />
+              <View style={styles.medicalRow}>
+                <View style={[styles.medicalIconCircle, { backgroundColor: "rgba(245, 158, 11, 0.15)" }]}>
+                  <Ionicons name="warning" size={18} color="#F59E0B" />
+                </View>
+                <View style={styles.medicalRowContent}>
+                  <Text style={styles.medicalLabel}>Alergias</Text>
+                  <Text style={styles.medicalValue}>
+                    {params.allergies || "Ninguna registrada"}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.medicalRowContent}>
-                <Text style={styles.medicalLabel}>Alergias</Text>
-                <Text style={styles.medicalValue}>
-                  {params.allergies || "Ninguna registrada"}
-                </Text>
-              </View>
-            </View>
 
-            <View style={styles.medicalRow}>
-              <View style={[styles.medicalIconCircle, { backgroundColor: "rgba(139, 92, 246, 0.15)" }]}>
-                <MaterialCommunityIcons name="pill" size={18} color="#8B5CF6" />
+              <View style={styles.medicalRow}>
+                <View style={[styles.medicalIconCircle, { backgroundColor: "rgba(139, 92, 246, 0.15)" }]}>
+                  <MaterialCommunityIcons name="pill" size={18} color="#8B5CF6" />
+                </View>
+                <View style={styles.medicalRowContent}>
+                  <Text style={styles.medicalLabel}>Condiciones Médicas</Text>
+                  <Text style={styles.medicalValue}>
+                    {params.medicalConditions || "Ninguna registrada"}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.medicalRowContent}>
-                <Text style={styles.medicalLabel}>Condiciones Médicas</Text>
-                <Text style={styles.medicalValue}>
-                  {params.medicalConditions || "Ninguna registrada"}
-                </Text>
-              </View>
-            </View>
 
-            <View style={styles.medicalRow}>
-              <View style={[styles.medicalIconCircle, { backgroundColor: "rgba(16, 185, 129, 0.15)" }]}>
-                <Ionicons name="location" size={18} color="#10B981" />
+              <View style={styles.medicalRow}>
+                <View style={[styles.medicalIconCircle, { backgroundColor: "rgba(236, 72, 153, 0.15)" }]}>
+                  <Ionicons name="people" size={18} color="#EC4899" />
+                </View>
+                <View style={styles.medicalRowContent}>
+                  <Text style={styles.medicalLabel}>Contacto de Emergencia</Text>
+                  <Text style={styles.medicalValue}>
+                    {params.contactName || "No registrado"}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.medicalRowContent}>
-                <Text style={styles.medicalLabel}>Ubicación del accidente</Text>
-                <Text style={styles.medicalValue}>
-                  {params.latitude && params.longitude
-                    ? `${parseFloat(params.latitude).toFixed(5)}, ${parseFloat(params.longitude).toFixed(5)}`
-                    : "No disponible"}
-                </Text>
+
+              <View style={styles.medicalRow}>
+                <View style={[styles.medicalIconCircle, { backgroundColor: "rgba(236, 72, 153, 0.15)" }]}>
+                  <Ionicons name="call" size={18} color="#EC4899" />
+                </View>
+                <View style={styles.medicalRowContent}>
+                  <Text style={styles.medicalLabel}>Tel. de Emergencia</Text>
+                  <Text style={styles.medicalValue}>
+                    {params.contactPhone || "No registrado"}
+                  </Text>
+                </View>
               </View>
-            </View>
+
+              <View style={styles.medicalRow}>
+                <View style={[styles.medicalIconCircle, { backgroundColor: "rgba(16, 185, 129, 0.15)" }]}>
+                  <Ionicons name="location" size={18} color="#10B981" />
+                </View>
+                <View style={styles.medicalRowContent}>
+                  <Text style={styles.medicalLabel}>Ubicación del accidente</Text>
+                  <Text style={styles.medicalValue}>
+                    {params.latitude && params.longitude
+                      ? `${parseFloat(params.latitude).toFixed(5)}, ${parseFloat(params.longitude).toFixed(5)}`
+                      : "No disponible"}
+                  </Text>
+                </View>
+              </View>
+            </BlurView>
           </Animated.View>
 
           {/* Aviso para paramédicos */}
@@ -554,8 +581,10 @@ export default function EmergencyCallScreen() {
 
         {/* Live dialogue display */}
         {currentDialogue !== "" && (phase === "connected" || phase === "speaking" || phase === "operator_response") && (
-          <Animated.View entering={FadeIn} style={styles.dialogueBox}>
-            <Text style={styles.dialogueText} numberOfLines={8}>{currentDialogue}</Text>
+          <Animated.View entering={FadeIn} style={{ marginTop: 20, marginHorizontal: 24, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.08)" }}>
+            <BlurView intensity={30} tint="dark" style={[styles.dialogueBox, { marginTop: 0, marginHorizontal: 0, borderWidth: 0, maxWidth: "100%" }]}>
+              <Text style={styles.dialogueText} numberOfLines={8}>{currentDialogue}</Text>
+            </BlurView>
           </Animated.View>
         )}
       </Animated.View>

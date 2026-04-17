@@ -14,6 +14,8 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as LocalAuthentication from "expo-local-authentication";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -147,9 +149,12 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
-    >
+    <View style={styles.safeArea}>
+      <LinearGradient 
+        colors={colors.gradientBg} 
+        style={StyleSheet.absoluteFillObject} 
+      />
+      <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flexContainer}
@@ -161,11 +166,13 @@ export default function LoginScreen() {
         >
           <AuthHeader colors={colors} />
 
-          <View
+          <BlurView
+            intensity={activeTheme === "dark" ? 40 : 80}
+            tint={activeTheme}
             style={[
               styles.card,
               {
-                backgroundColor: colors.surface,
+                backgroundColor: 'transparent',
                 borderColor: colors.cardBorder,
               },
             ]}
@@ -280,10 +287,11 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
             </Animated.View>
-          </View>
+          </BlurView>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -300,8 +308,8 @@ const styles = StyleSheet.create({
     shadowColor: "#000000",
     shadowOpacity: 0.3,
     shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 0,
   },
   sectionTitle: { fontSize: 28, fontWeight: "900", letterSpacing: 0.5 },
   sectionSubtitle: { fontSize: 13, lineHeight: 19, marginTop: 4, marginBottom: 24 },

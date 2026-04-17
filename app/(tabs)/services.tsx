@@ -12,6 +12,8 @@ import {
     useWindowDimensions,
     View,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
@@ -122,7 +124,12 @@ export default function ServicesScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <View style={styles.safeArea}>
+      <LinearGradient 
+        colors={colors.gradientBg} 
+        style={StyleSheet.absoluteFillObject} 
+      />
+      <SafeAreaView style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -158,13 +165,14 @@ export default function ServicesScreen() {
                 style={({ pressed }) => [
                   styles.card,
                   {
-                    backgroundColor: colors.surface,
+                    backgroundColor: 'transparent',
                     borderLeftColor: service.colorHex,
                     opacity: pressed ? 0.85 : 1,
                     transform: [{ scale: pressed ? 0.98 : 1 }],
                   },
                 ]}
               >
+                <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <View style={[styles.iconWrap, { backgroundColor: `${service.colorHex}15` }]}>
                   <MaterialCommunityIcons
                     name={service.icon as keyof typeof MaterialCommunityIcons.glyphMap}
@@ -185,6 +193,7 @@ export default function ServicesScreen() {
                 <View style={[styles.arrowWrap, { backgroundColor: `${service.colorHex}10` }]}>
                   <Ionicons name="navigate" size={16} color={service.colorHex} />
                 </View>
+                </BlurView>
               </Pressable>
             </Animated.View>
           ))}
@@ -201,7 +210,8 @@ export default function ServicesScreen() {
 
         </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -247,16 +257,13 @@ const styles = StyleSheet.create({
   card: {
     borderLeftWidth: 3,
     borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
     marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
+    overflow: "hidden",
     shadowColor: "#0B1120",
     shadowOpacity: 0.04,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    elevation: 0,
   },
   iconWrap: {
     width: 40,
@@ -264,6 +271,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    marginVertical: 16,
+    marginLeft: 14,
   },
   textWrap: {
     marginLeft: 12,
@@ -285,6 +294,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 14,
   },
   noteContainer: {
     flexDirection: "row",

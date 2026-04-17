@@ -1,5 +1,6 @@
 export type AuthThemeColors = {
   background: string;
+  gradientBg: readonly [string, string];
   surface: string;
   cardBorder: string;
   textPrimary: string;
@@ -19,8 +20,9 @@ export type AuthThemeColors = {
 
 // Opción "Rescue Premium" (Modo Oscuro Pizarra/Navy)
 const darkTheme: AuthThemeColors = {
-  background: "#0B1120", // Deep navy
-  surface: "#1E293B",    // Slate 800
+  background: "#080C16", // Deep space navy/black
+  gradientBg: ["#0B1120", "#040608"], // Top to bottom gradient
+  surface: "rgba(17, 24, 39, 0.45)", // ultra translucid slate for blur
   cardBorder: "rgba(255, 255, 255, 0.08)",
   textPrimary: "#F8FAFC",
   textSecondary: "#94A3B8",
@@ -40,7 +42,8 @@ const darkTheme: AuthThemeColors = {
 // Opción "Clínica Limpia" (Modo Claro Premium)
 const lightTheme: AuthThemeColors = {
   background: "#F8FAFC", // Clean slate 50
-  surface: "#FFFFFF",
+  gradientBg: ["#FFFFFF", "#F1F5F9"],
+  surface: "rgba(255, 255, 255, 0.5)", // Frosted glass support
   cardBorder: "rgba(15, 23, 42, 0.06)",
   textPrimary: "#0F172A",
   textSecondary: "#64748B",
