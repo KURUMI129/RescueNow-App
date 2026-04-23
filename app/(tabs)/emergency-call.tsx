@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   AppState,
@@ -242,10 +242,18 @@ export default function EmergencyCallScreen() {
   paramsRef.current = params;
 
   // ====== MAIN CALL SIMULATION FLOW ======
-  // Runs exactly ONCE on mount — never cancelled by re-renders
-  useEffect(() => {
-    if (callStartedRef.current) return;
-    callStartedRef.current = true;
+  useFocusEffect(
+    useCallback(() => {
+      // 0. RESET ALL STATES FOR NEW SIMULATION
+      setPhase("dialing");
+      setCallDuration(0);
+      setIsUserSpeaking(false);
+      setCurrentDialogue("");
+      setMessageStatus("pending");
+      callStartedRef.current = false;
+
+      if (callStartedRef.current) return;
+      callStartedRef.current = true;
 
     let cancelled = false;
 
@@ -329,8 +337,8 @@ export default function EmergencyCallScreen() {
       Speech.stop();
       if (callTimerRef.current) clearInterval(callTimerRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [])
+  );
 
   const handleHangUp = () => {
     Speech.stop();

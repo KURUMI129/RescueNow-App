@@ -3,13 +3,16 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { BlurView } from "expo-blur";
@@ -27,13 +30,16 @@ import {
   getQuickSuggestions,
   getFollowUpSuggestions,
   checkIsOnline,
+  searchYouTubeVideo,
 } from "@/lib/chatbot-service";
+import type { YouTubeVideoResult } from "@/lib/chatbot-service";
 
 type Message = {
   id: string;
   isUser: boolean;
   text: string;
   isMapCard?: boolean;
+  youtubeVideo?: YouTubeVideoResult;
 };
 
 export default function ChatbotScreen() {
@@ -53,6 +59,14 @@ export default function ChatbotScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const { location } = useUserLocation();
 
+  // Force hide the status bar imperatively (Android needs this)
+  useFocusEffect(
+    useCallback(() => {
+      StatusBar.setHidden(true, "fade");
+      return () => StatusBar.setHidden(false, "fade");
+    }, [])
+  );
+
   // Check connectivity + load preferences + set welcome message
   useEffect(() => {
     const init = async () => {
@@ -65,13 +79,17 @@ export default function ChatbotScreen() {
       setSubscriptionPlan(plan);
       setIsOnline(online);
       setQuickSuggestions(getQuickSuggestions(plan));
+      setShowSuggestions(!online);
 
       const displayName = user?.displayName ?? "Amigo";
-      const welcomeText = getWelcomeMessage(displayName, plan);
-
-      setMessages([
-        { id: "welcome", isUser: false, text: welcomeText },
-      ]);
+      const welcomeData = getWelcomeMessage(displayName, plan);
+      const newMessages: Message[] = [];
+      if (welcomeData.intro) {
+        newMessages.push({ id: "welcome_intro", isUser: false, text: welcomeData.intro });
+      }
+      newMessages.push({ id: "welcome_fact", isUser: false, text: welcomeData.fact });
+      
+      setMessages(newMessages);
     };
 
     void init();
@@ -93,21 +111,28 @@ export default function ChatbotScreen() {
         blurTimerRef.current = null;
       }
 
-      // Check for plan changes
       const refreshPlan = async () => {
         const prefs = await getAppPreferences();
         const newPlan = prefs.subscriptionPlan;
+        
+        // Prevent showing the upgrade message on initial app load
+        // Only show if we already had a plan loaded (planRef.current updated by init at least once)
+        // and it actually changed.
+        const isInitialLoad = messages.length === 0;
+
         if (newPlan !== planRef.current) {
+          if (!isInitialLoad && planRef.current) {
+            const planMsg: Message = {
+              id: Date.now().toString() + "_plan",
+              isUser: false,
+              text: newPlan === "premium"
+                ? "🌟 ¡Tu plan se ha actualizado a **Premium**! Ahora tienes acceso completo a diagnósticos avanzados, asesoría legal y más."
+                : "ℹ️ Tu plan ha cambiado a **Estándar**. Algunas funciones avanzadas están limitadas.",
+            };
+            setMessages((prev) => [...prev, planMsg]);
+          }
           setSubscriptionPlan(newPlan);
           setQuickSuggestions(getQuickSuggestions(newPlan));
-          const planMsg: Message = {
-            id: Date.now().toString() + "_plan",
-            isUser: false,
-            text: newPlan === "premium"
-              ? "🌟 ¡Tu plan se ha actualizado a **Premium**! Ahora tienes acceso completo a diagnósticos avanzados, asesoría legal y más."
-              : "ℹ️ Tu plan ha cambiado a **Estándar**. Algunas funciones avanzadas están limitadas.",
-          };
-          setMessages((prev) => [...prev, planMsg]);
         }
       };
       void refreshPlan();
@@ -118,9 +143,14 @@ export default function ChatbotScreen() {
         blurTimerRef.current = setTimeout(() => {
           const displayName = user?.displayName ?? "Amigo";
           const plan = planRef.current;
-          const welcomeText = getWelcomeMessage(displayName, plan);
+          const welcomeData = getWelcomeMessage(displayName, plan);
+          const newMessages: Message[] = [];
+          if (welcomeData.intro) {
+            newMessages.push({ id: "welcome_" + Date.now() + "_intro", isUser: false, text: welcomeData.intro });
+          }
+          newMessages.push({ id: "welcome_" + Date.now() + "_fact", isUser: false, text: welcomeData.fact });
 
-          setMessages([{ id: "welcome_" + Date.now(), isUser: false, text: welcomeText }]);
+          setMessages(newMessages);
           setQuickSuggestions(getQuickSuggestions(plan));
           setShowSuggestions(true);
           setInputText("");
@@ -157,7 +187,7 @@ export default function ChatbotScreen() {
       } : null;
 
       const history = toChatHistory(
-        messages.filter((m) => m.id !== "welcome").map((m) => ({ isUser: m.isUser, text: m.text })),
+        messages.filter((m) => !m.id.startsWith("welcome") && !m.id.includes('_err')).map((m) => ({ isUser: m.isUser, text: m.text })),
       );
 
       const response = await sendChatMessage(
@@ -167,19 +197,63 @@ export default function ChatbotScreen() {
         history,
       );
 
+      // Process YOUTUBE_SEARCH tag: resolve to a real direct video URL
+      let finalText = response.text;
+      let youtubeVideo: YouTubeVideoResult | undefined;
+
+      const ytMatch = finalText.match(/\[YOUTUBE_SEARCH:\s*(.+?)\]/);
+      if (ytMatch) {
+        const searchQuery = ytMatch[1].trim();
+        finalText = finalText.replace(/\[YOUTUBE_SEARCH:\s*(.+?)\]/, "").trim();
+        try {
+          youtubeVideo = await searchYouTubeVideo(searchQuery);
+        } catch {
+          youtubeVideo = {
+            url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}`,
+            title: searchQuery,
+          };
+        }
+      }
+
+      // Split [SUGERENCIAS] into a separate bubble
+      let mainText = finalText;
+      let suggestionsText: string | null = null;
+
+      const sugMatch = finalText.split(/\[SUGERENCIAS\]/i);
+      if (sugMatch.length > 1) {
+        mainText = sugMatch[0].trim();
+        suggestionsText = sugMatch[1].trim();
+      }
+
       const botResponse: Message = {
         id: Date.now().toString() + "_bot",
         isUser: false,
-        text: response.text,
+        text: mainText,
         isMapCard: response.isMapCard,
+        youtubeVideo,
       };
 
-      setMessages((prev) => [...prev, botResponse]);
+      const newMessages: Message[] = [botResponse];
 
-      // Show contextual follow-up suggestions
-      const followUps = getFollowUpSuggestions(messageText, subscriptionPlan);
-      setQuickSuggestions(followUps);
-      setShowSuggestions(true);
+      // Add follow-up suggestions as a separate bubble
+      if (suggestionsText) {
+        newMessages.push({
+          id: Date.now().toString() + "_sug",
+          isUser: false,
+          text: suggestionsText,
+        });
+      }
+
+      setMessages((prev) => [...prev, ...newMessages]);
+
+      // Show contextual follow-up suggestions only when offline
+      if (!isOnline) {
+        const followUps = getFollowUpSuggestions(messageText, subscriptionPlan);
+        setQuickSuggestions(followUps);
+        setShowSuggestions(true);
+      } else {
+        setShowSuggestions(false);
+      }
 
       // Re-check connectivity after response
       const online = await checkIsOnline();
@@ -207,10 +281,42 @@ export default function ChatbotScreen() {
     void handleSend(suggestion);
   };
 
+  const handleClearChat = useCallback(() => {
+    const displayName = user?.displayName ?? "Amigo";
+    const welcomeData = getWelcomeMessage(displayName, subscriptionPlan);
+    const newMessages: Message[] = [];
+    if (welcomeData.intro) {
+      newMessages.push({ id: "welcome_" + Date.now() + "_intro", isUser: false, text: welcomeData.intro });
+    }
+    newMessages.push({ id: "welcome_" + Date.now() + "_fact", isUser: false, text: welcomeData.fact });
+    
+    setMessages(newMessages);
+    setQuickSuggestions(getQuickSuggestions(subscriptionPlan));
+    setShowSuggestions(!isOnline);
+    setInputText("");
+  }, [user, subscriptionPlan]);
+
+  const handleReloadAI = useCallback(() => {
+    const lastUserIndex = [...messages].reverse().findIndex(m => m.isUser);
+    if (lastUserIndex === -1) return;
+    
+    const realIndex = messages.length - 1 - lastUserIndex;
+    const lastUserText = messages[realIndex].text;
+
+    // Remove the last user message and any subsequent bot replies/errors 
+    // so we can cleanly resend it
+    setMessages(prev => prev.slice(0, realIndex));
+    
+    setTimeout(() => {
+        void handleSend(lastUserText);
+    }, 50);
+  }, [messages, handleSend]);
+
   const isPremium = subscriptionPlan === "premium";
 
   return (
     <View style={styles.flexItem}>
+      <StatusBar hidden />
       <LinearGradient 
         colors={colors.gradientBg} 
         style={StyleSheet.absoluteFillObject} 
@@ -238,8 +344,16 @@ export default function ChatbotScreen() {
           )}
         </View>
 
-        {/* Connection indicator */}
-        <View style={[styles.connectionDot, { backgroundColor: isOnline ? "#10B981" : "#F59E0B" }]} />
+        {/* Header Right Actions */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <Pressable onPress={handleReloadAI} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+            <Ionicons name="refresh" size={24} color={colors.primary} />
+          </Pressable>
+          <Pressable onPress={handleClearChat} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+            <Ionicons name="trash-outline" size={22} color={colors.textSecondary} />
+          </Pressable>
+          <View style={[styles.connectionDot, { backgroundColor: isOnline ? "#10B981" : "#F59E0B", position: "relative", top: 0, right: 0 }]} />
+        </View>
       </BlurView>
 
       <KeyboardAvoidingView
@@ -292,9 +406,48 @@ export default function ChatbotScreen() {
                   styles.messageBubble,
                   msg.isUser ? [styles.bubbleUser, { backgroundColor: colors.primary }] : [styles.bubbleBot, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]
                 ]}>
-                  <Text style={[styles.messageText, { color: msg.isUser ? "#fff" : colors.textPrimary }]}>
-                    {msg.text}
-                  </Text>
+                  {(() => {
+                    // If the message has a pre-resolved YouTube video, render it
+                    if (!msg.isUser && msg.youtubeVideo) {
+                      return (
+                        <>
+                          <Text style={[styles.messageText, { color: colors.textPrimary }]}>
+                            {msg.text}
+                          </Text>
+                          <TouchableOpacity
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              backgroundColor: "rgba(255, 0, 0, 0.08)",
+                              borderRadius: 12,
+                              paddingVertical: 10,
+                              paddingHorizontal: 14,
+                              marginTop: 10,
+                              borderWidth: 1,
+                              borderColor: "rgba(255, 0, 0, 0.15)",
+                            }}
+                            onPress={() => Linking.openURL(msg.youtubeVideo!.url)}
+                          >
+                            <MaterialCommunityIcons name="youtube" size={22} color="#FF0000" style={{ marginRight: 8 }} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ color: colors.accent, fontSize: 13, fontWeight: "700" }}>
+                                Ver Video Tutorial
+                              </Text>
+                              <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+                                {msg.youtubeVideo.title}
+                              </Text>
+                            </View>
+                            <Ionicons name="open-outline" size={16} color={colors.textSecondary} />
+                          </TouchableOpacity>
+                        </>
+                      );
+                    }
+                    return (
+                      <Text style={[styles.messageText, { color: msg.isUser ? "#fff" : colors.textPrimary }]}>
+                        {msg.text}
+                      </Text>
+                    );
+                  })()}
 
                   {msg.isMapCard && (
                     <View style={[styles.mapCard, { backgroundColor: colors.mapBackground }]}>

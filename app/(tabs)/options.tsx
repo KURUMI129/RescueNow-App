@@ -1,7 +1,7 @@
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Image,
@@ -71,22 +71,23 @@ export default function OptionsScreen() {
   const premiumPulse = useSharedValue(1);
   const premiumRotate = useSharedValue(0);
 
-  useEffect(() => {
-    const loadPreferences = async () => {
-      setIsLoadingPrefs(true);
-      const preferences = await getAppPreferences();
-      setLanguage(preferences.language);
-      setThemeMode(preferences.themeMode);
-      setTrustedContactCountryCode(preferences.trustedContactCountryCode);
-      setTrustedContactPhone(preferences.trustedContactPhone);
-      setTrustedContactName(preferences.trustedContactName);
-      setUseTrustedContact(preferences.useTrustedContact);
-      setSubscriptionPlan(preferences.subscriptionPlan);
-      setAccountRole(preferences.accountRole);
-      setIsLoadingPrefs(false);
-    };
-    void loadPreferences();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const loadPreferences = async () => {
+        const preferences = await getAppPreferences();
+        setLanguage(preferences.language);
+        setThemeMode(preferences.themeMode);
+        setTrustedContactCountryCode(preferences.trustedContactCountryCode);
+        setTrustedContactPhone(preferences.trustedContactPhone);
+        setTrustedContactName(preferences.trustedContactName);
+        setUseTrustedContact(preferences.useTrustedContact);
+        setSubscriptionPlan(preferences.subscriptionPlan);
+        setAccountRole(preferences.accountRole);
+        setIsLoadingPrefs(false);
+      };
+      void loadPreferences();
+    }, [])
+  );
 
   useEffect(() => {
     if (subscriptionPlan === "premium" && !reduceMotionEnabled) {
@@ -296,11 +297,11 @@ export default function OptionsScreen() {
               </Text>
               
               <Pressable 
-                onPress={handleTogglePlan}
+                onPress={() => router.push("/premium")}
                 style={[styles.upgradeBtn, { backgroundColor: subscriptionPlan === "premium" ? colors.background : colors.primary }]}
               >
                 <Text style={{ color: subscriptionPlan === "premium" ? colors.textPrimary : '#fff', fontWeight: '800' }}>
-                  {subscriptionPlan === "premium" ? "Bajar a Gratis" : "Actualizar a Premium"}
+                  {subscriptionPlan === "premium" ? "Ver Detalles de mi Plan Premium" : "Explorar Planes"}
                 </Text>
               </Pressable>
             </View>

@@ -48,6 +48,10 @@ export default function RootLayout() {
             name="(tabs)"
             options={{ headerShown: false, statusBarHidden: true }}
           />
+          <Stack.Screen
+            name="premium"
+            options={{ headerShown: false, presentation: "modal", statusBarHidden: true }}
+          />
         </Stack>
         <StatusBar hidden animated={false} />
       </ThemeProvider>

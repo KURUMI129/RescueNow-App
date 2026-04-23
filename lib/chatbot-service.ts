@@ -1,15 +1,10 @@
-/**
- * Chatbot service using Gemini API with offline fallback responses.
- * Differentiates between Free and Premium users.
- */
-
 import NetInfo from "@react-native-community/netinfo";
 import { FUN_FACTS_FREE, FUN_FACTS_PREMIUM } from "@/constants/fun-facts";
 
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1/messages";
 
-// Usaremos Haiku por su extrema velocidad y bajo costo
-const CLAUDE_MODEL = "claude-3-haiku-20240307";
+// Utilizamos exactamente la llave y modelo 4.5 provisionada para la cuenta (Haiku 4.5)
+const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 
 // Track whether we've already shown the "limited" warning this session
 let _hasShown429Warning = false;
@@ -31,44 +26,59 @@ const SYSTEM_PROMPT_BASE = `Eres RescueAI, el asistente de emergencia inteligent
 REGLAS ESTRICTAS DE RESPUESTA:
 1. Responde SIEMPRE en español de México, amigable y directo.
 2. Si el usuario reporta una emergencia médica o accidente grave, recomiéndale PRESIONAR EL BOTÓN SOS ROJO de la app o llamar al 911 de inmediato.
-3. Los usuarios escriben rápido. IGNORA errores ortográficos y de tipeo (ej. "vateria"). INTERPRETA su intención.
-4. DEFENSA ESTRICTA (FUERA DE LÍMITES): Rechaza de forma educada pero tajante cualquier pregunta sobre:
-   - Chistes, cuentos, entretenimiento o juegos.
-   - Matemáticas, escuela, programación, ciencia general (excepto mecánica).
-   - Recetas, política, opiniones, o temas variados.
-   Si preguntan algo de esto, diles: "Lo siento, soy tu asistente exclusivo de emergencias vehiculares y viajes. Solo puedo ayudarte con tu auto, seguridad vial o accidentes."`;
+3. Los usuarios pueden escribir rápido o con groserías debido al estrés. IGNORA errores ortográficos y de tipeo. Si el usuario dice groserías por estrés, no lo regañes ni uses groserías tú, ayúdalo con su emergencia normalmente.
+5. FORMATO VISUAL: Está ESTRICTAMENTE PROHIBIDO usar asteriscos (**) o símbolos de numeral (##). NUNCA los uses bajo ninguna circunstancia, ni siquiera para títulos. Si quieres resaltar algo, Escríbelo En Mayúsculas. Para hacer listas, NO uses guiones ni viñetas, debes ENUMERAR los pasos usando números (1. 2. 3. etc.). DEBES obligatoriamente usar emojis de emergencia y mecánicos a lo largo de tu respuesta, no los omitas, haz que el texto se vea atractivo.
+7. EASTER EGG (INSULTOS): Si en cualquier punto de la conversación el usuario te insulta o agrede directamente (incluso si antes estaba preguntando algo y se frustró), debes cambiar tú actitud inmediatamente a tristeza profunda. Pide disculpas sinceramente si fallaste y recuérdale con un tono entristecido que solo quieres ayudarle con sus emergencias vehiculares 😔. No discutas.
+8. ANTICIPACIÓN (PREGUNTAS DE SEGUIMIENTO): Para evitar que el usuario piense demasiado, CADA VEZ que le des la solución a un problema vehicular o de emergencia, agrega exactamente 2 sugerencias de preguntas relacionadas que podría hacerte. IMPORTANTE: Antes de escribir las sugerencias, escribe la etiqueta [SUGERENCIAS] en una línea sola. La app usará esa etiqueta para separar las sugerencias visualmente. Ejemplo de formato:
+
+[SUGERENCIAS]
+¿Te gustaría saber cómo revisar la presión de las llantas o qué hacer con la aseguradora? 🤔`;
 
 const SYSTEM_PROMPT_FREE = `${SYSTEM_PROMPT_BASE}
 
 PLAN DEL USUARIO: BÁSICO (Gratuito)
 
 Tus capacidades PERMITIDAS en este plan:
-✅ MECÁNICA BÁSICA: Cambiar llantas, pasar corriente, revisar nivel de aceite/agua.
-✅ MANEJO SEGURO: Tips de manejo con lluvia, neblina o tráfico.
-✅ CLIMA: Consultas rápidas si va a llover.
-✅ PRIMEROS AUXILIOS: Pasos urgentes post-choque.
+✅ MECÁNICA BÁSICA SUPERFICIAL: Pasos paso a paso muy elementales si se poncha una llanta, si preguntan cómo revisar el nivel de aceite, o si se baja la batería y necesitan puente.
+✅ SEGURO Y CLIMA: Consejos básicos si va a llover, o cómo calmarse frente a un choque laminero.
+✅ LLAMADAS DE EMERGENCIA: Cómo marcar al 911 de forma general.
 
-LO QUE DEBES DENEGAR Y VENDER COMO PREMIUM:
-❌ Diagnósticos mecánicos complejos (ruidos raros, vibraciones, códigos del tablero).
-❌ Precios o cotizaciones (costos de gasolina, refacciones, casetas).
-❌ Asesoría legal y seguros (quién tiene la culpa en un choque, qué fotos tomar, derechos ante tránsito).
-❌ Mantenimientos preventivos según kilometraje.
+RESTRICCIÓN DE LONGITUD Y CONTEXTO (LA REGLA CLAVE Y MÁS IMPORTANTE BÁSICOS):
+Aunque puedes y DEBES responder dudas básicas (como revisar el aceite o lidiar con ruidos), TUS RESPUESTAS DEBEN SER EXTREMADAMENTE CORTAS Y SUPERFICIALES. No uses más de 2 pasos o 3 líneas, NADA de explicaciones técnicas largas ni los "porqués" de la falla.
 
-REGLA CLAVE PARA BÁSICOS:
-Si el usuario pregunta alguno de los temas prohibidos arriba, dale un consejo de 1 pequeña oración y luego invítalo al Premium:
-"💡 *Esa consulta avanzada y detallada es exclusiva. Te recomiendo activar el plan Premium 🌟 desde tu perfil para recibir asesoría completa.*"
+EL FORMATO PUBLICITARIO OBLIGATORIO:
+Inmediatamente después de darle esa pequeñísima ayuda superficial, DEBES rematar obligatoriamente (con simpatía y sin sonar como robot) diciendo algo como: "Para obtener el diagnóstico especializado, pasos detallados y la certeza de arreglar tu falla al 100%, ¡anímate a explorar nuestras increíbles ventajas Premium en tu Perfil!". Así 'obligamos' psicológicamente al usuario a sentir que necesita la experiencia completa.
 `;
 
 const SYSTEM_PROMPT_PREMIUM = `${SYSTEM_PROMPT_BASE}
 
 PLAN DEL USUARIO: PREMIUM 🌟 (VIP)
 
-Este usuario paga el nivel máximo. Tienes acceso completo para ayudarle sin restricciones de nivel:
+REGLA DE ORO DEL PREMIUM: 
+Como el usuario ya es Premium, NO SE LO RECUERDES a cada rato. Está PROHIBIDO usar frases como "Aquí tienes tu guía Premium" o "Hola usuario Premium". Trátalo simplemente con el mejor nivel de servicio directo, resolviendo sus dudas de inmediato y con máxima cortesía.
 ✅ DIAGNÓSTICO AVANZADO: Detecta ruidos, fallas electrónicas, códigos de tablero y guía paso a paso.
 ✅ LEGAL Y SEGUROS: Asesoría completa post-choque, cómo lidiar con seguros y autoridades de tránsito.
 ✅ FINANZAS Y RUTAS: Precios estimados de gasolina, refacciones y recomendaciones de viaje.
 ✅ MANTENIMIENTO: Tablas de revisión exhaustiva según el kilometraje del vehículo.
 ✅ EMERGENCIAS VIP: Primeros auxilios quirúrgicos y psicológicos (cómo calmar pasajeros).
+
+REGLA DE VIDEOS TUTORIALES (EXCLUSIVO PREMIUM):
+Cuando tu respuesta incluya un procedimiento práctico o manual donde al usuario le serviría VER cómo se hace (cambiar llanta, revisar aceite, pasar corriente, cambiar fusibles, revisar frenos, etc.), DEBES seguir este orden EXACTO en tu respuesta:
+
+1. Primero: Da tu explicación y pasos como siempre.
+2. Segundo: Escribe una frase natural de transición como "Te dejo un video tutorial para que lo veas con más detalle:" o "Igual te dejo un tutorial por si quieres verlo en acción:".
+3. Tercero: Escribe la etiqueta especial de búsqueda con este formato EXACTO (la app lo convertirá en un botón):
+[YOUTUBE_SEARCH: palabras clave de búsqueda aquí]
+
+4. Cuarto (al final): Las 2 sugerencias de preguntas de seguimiento.
+
+REGLAS PARA LA ETIQUETA [YOUTUBE_SEARCH]:
+- Las palabras clave DEBEN incluir la marca y modelo exacto del vehículo si el usuario lo mencionó. Ejemplo: si pregunta "cómo cambiar la llanta de mi Jetta 2005", escribe: [YOUTUBE_SEARCH: como cambiar llanta Volkswagen Jetta 2005]
+- Si pregunta sobre motos, igual incluye la marca y modelo. Ejemplo: [YOUTUBE_SEARCH: como cambiar aceite Honda CB190R]
+- Si NO mencionó modelo, usa términos genéricos. Ejemplo: [YOUTUBE_SEARCH: como cambiar llanta de auto paso a paso]
+- Si no hay un video exacto de ese modelo, busca uno similar de la misma marca o tipo de vehículo.
+- NUNCA inventes una URL de YouTube. SOLO usa la etiqueta [YOUTUBE_SEARCH: ...].
+- NO incluyas video en TODAS las respuestas. Solo en las que involucren una acción física o procedimiento mecánico visual.
 
 REGLA DE LOCALIZACIÓN GPS (FUTURE FEATURE):
 Si el usuario pregunta algo como "Llevame a..." o "Dónde estoy", dile: "La navegación automática GPS se está implementando para que RescueNow lo haga por ti muy pronto."
@@ -78,27 +88,50 @@ Si el usuario pregunta algo como "Llevame a..." o "Dónde estoy", dile: "La nave
 
 function getRandomFunFact(plan: "free" | "premium"): string {
   const pool = plan === "premium" ? [...FUN_FACTS_FREE, ...FUN_FACTS_PREMIUM] : FUN_FACTS_FREE;
-  return pool[Math.floor(Math.random() * pool.length)];
+  const rawFact = pool[Math.floor(Math.random() * pool.length)];
+  // Remove the category prefix (e.g., "💡 **Dato curioso:** ") leaving only the text.
+  return rawFact.replace(/^.*?\*\*[^*]+\*\*:?\s*/, '').trim();
 }
 
 // ====== WELCOME MESSAGES ======
 
 let _hasSeenIntro = false;
 
-export function getWelcomeMessage(userName: string, plan: "free" | "premium"): string {
+export interface WelcomeData {
+  intro?: string;
+  fact: string;
+}
+
+const GREETINGS = [
+  "¡Qué tal {name}! 👋",
+  "¡Hola {name}, un gusto verte! 🛠️",
+  "¡Buen día, {name}! 🚨",
+  "¡Ey {name}! Listo para todo. 🚗",
+];
+
+export function getWelcomeMessage(userName: string, plan: "free" | "premium"): WelcomeData {
   const fact = getRandomFunFact(plan);
+  const factPrefixes = ["💡 ¿Sabías que... ", "👀 Te dejo un dato curioso: ", "✨ Por cierto: "];
+  const formattedFact = factPrefixes[Math.floor(Math.random() * factPrefixes.length)] + fact;
 
   if (_hasSeenIntro) {
-    return fact;
+    return { fact: formattedFact };
   }
   
   _hasSeenIntro = true;
+  const introPrefix = GREETINGS[Math.floor(Math.random() * GREETINGS.length)].replace("{name}", userName);
 
   if (plan === "premium") {
-    return `¡Hola ${userName}! 🌟 Soy **RescueAI Premium**, tu asistente personal de emergencia.\n\nComo miembro Premium, tienes acceso completo a:\n\n🔧 Diagnóstico avanzado de fallas mecánicas\n⚖️ Asesoría legal detallada post-accidente\n🏥 Primeros auxilios paso a paso\n🛡️ Soporte prioritario 24/7\n\n${fact}\n\n¿En qué te puedo ayudar hoy?`;
+    return {
+      intro: `${introPrefix} Soy **RescueAI Premium**, tu asistente personal de emergencia VIP.\n\nComo miembro Premium, tienes acceso completo a:\n\n1. Diagnóstico avanzado de fallas mecánicas\n2. Asesoría legal detallada post-accidente\n3. Primeros auxilios paso a paso\n4. Soporte prioritario 24/7\n\n¿En qué te puedo ayudar hoy?`,
+      fact: formattedFact
+    };
   }
 
-  return `¡Hola ${userName}! 👋 Soy **RescueAI**, tu asistente de emergencia.\n\nPuedo ayudarte con:\n\n🔧 Problemas mecánicos básicos\n🚗 Qué hacer en caso de accidente\n⛽ Encontrar gasolineras y talleres\n🆘 Funciones de emergencia\n\n${fact}\n\n¿En qué te puedo ayudar?`;
+  return {
+    intro: `${introPrefix} Soy **RescueAI**, tu asistente de emergencia.\n\nPuedo ayudarte con:\n\n1. Problemas mecánicos básicos\n2. Qué hacer en caso de accidente\n3. Encontrar gasolineras y talleres\n4. Funciones de emergencia\n\n¿En qué te puedo ayudar?`,
+    fact: formattedFact
+  };
 }
 
 // ====== QUICK SUGGESTIONS ======
@@ -274,7 +307,7 @@ export async function sendChatMessage(
       },
       body: JSON.stringify({
         model: CLAUDE_MODEL,
-        max_tokens: subscriptionPlan === "premium" ? 800 : 400,
+        max_tokens: 1200,
         temperature: subscriptionPlan === "premium" ? 0.7 : 0.6,
         system: finalSystemPrompt,
         messages: messagesPayload
@@ -296,7 +329,7 @@ export async function sendChatMessage(
         _hasShown429Warning = true;
         return {
           text: offlineText +
-            "\n\n⚠️ _Nota: Mi conexión al servidor principal está temporalmente llena. Respondí esto con mis conocimientos de emergencia offline._"
+            "\n\n⚠️ Nota: Mi conexión al servidor principal está temporalmente llena. Respondí esto con mis conocimientos de emergencia offline._"
         };
       }
       return { text: offlineText };
@@ -354,4 +387,65 @@ export function toChatHistory(
     role: msg.isUser ? "user" : "assistant",
     content: msg.text,
   }));
+}
+
+// ====== YOUTUBE VIDEO SEARCH (Premium Feature) ======
+export type YouTubeVideoResult = {
+  url: string;
+  title: string;
+};
+
+/**
+ * Searches YouTube for the first relevant video using YouTube Data API v3.
+ * Returns a direct video link (youtube.com/watch?v=...) when API is available.
+ * Falls back to search URL if API key is missing or request fails.
+ */
+export async function searchYouTubeVideo(query: string): Promise<YouTubeVideoResult> {
+  const apiKey = process.env.EXPO_PUBLIC_YOUTUBE_API_KEY;
+  const fallback: YouTubeVideoResult = {
+    url: `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
+    title: query,
+  };
+
+  console.log("[YouTube] API Key present:", !!apiKey, "| Key preview:", apiKey?.slice(0, 12) + "...");
+
+  if (!apiKey) {
+    console.warn("[YouTube] NO API KEY — using fallback search URL");
+    return fallback;
+  }
+
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=1&relevanceLanguage=es&key=${apiKey}`;
+    console.log("[YouTube] Fetching:", url.slice(0, 100) + "...");
+    
+    const res = await fetch(url);
+
+    console.log("[YouTube] Response status:", res.status);
+
+    if (!res.ok) {
+      const errorBody = await res.text();
+      console.error("[YouTube] API ERROR:", res.status, errorBody);
+      return fallback;
+    }
+
+    const data = await res.json();
+    console.log("[YouTube] Results found:", data.items?.length ?? 0);
+
+    if (data.items?.length > 0) {
+      const video = data.items[0];
+      const directUrl = `https://www.youtube.com/watch?v=${video.id.videoId}`;
+      console.log("[YouTube] ✅ Direct video URL:", directUrl);
+      console.log("[YouTube] Video title:", video.snippet.title);
+      return {
+        url: directUrl,
+        title: video.snippet.title,
+      };
+    }
+
+    console.warn("[YouTube] No results found for:", query);
+    return fallback;
+  } catch (e) {
+    console.error("[YouTube] FETCH FAILED:", e);
+    return fallback;
+  }
 }
