@@ -110,7 +110,7 @@ export default function TabLayout() {
           name="chatbot"
           options={{
             href: null,
-            title: "RescueAI",
+            title: "Rex",
           }}
         />
         <Tabs.Screen

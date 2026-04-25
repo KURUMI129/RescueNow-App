@@ -330,12 +330,12 @@ export default function ChatbotScreen() {
         </Pressable>
         <View style={styles.headerTitleContainer}>
           <MaterialCommunityIcons
-            name={isPremium ? "robot-excited-outline" : "robot-outline"}
+            name="dog-service"
             size={22}
             color={isPremium ? colors.accent : colors.primary}
           />
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-            Rescue<Text style={{ color: isPremium ? colors.accent : colors.primary, fontWeight: '900' }}>AI</Text>
+            Re<Text style={{ color: isPremium ? colors.accent : colors.primary, fontWeight: '900' }}>x</Text>
           </Text>
           {isPremium && (
             <View style={[styles.premiumBadge, { backgroundColor: colors.accent }]}>
@@ -381,7 +381,7 @@ export default function ChatbotScreen() {
              <View style={[styles.offlineNotice, { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.2)' }]}>
                <MaterialCommunityIcons name="creation" size={16} color="#10B981" />
                <Text style={[styles.offlineText, { color: "#10B981" }]}>
-                 Conectado a RescueAI Neural • {isPremium ? "Modo Premium 🌟" : "Modo Estándar"}
+                 Rex conectado • {isPremium ? "Modo Premium 🌟" : "Modo Estándar"}
                </Text>
              </View>
            )}
@@ -395,7 +395,7 @@ export default function ChatbotScreen() {
                     borderColor: isPremium ? colors.accent : colors.cardBorder,
                   }]}>
                     <MaterialCommunityIcons
-                      name={isPremium ? "robot-excited-outline" : "robot-outline"}
+                      name="dog-service"
                       size={16}
                       color={isPremium ? colors.accent : colors.textPrimary}
                     />
@@ -463,11 +463,11 @@ export default function ChatbotScreen() {
            {isTyping && (
              <View style={[styles.messageWrapper, styles.messageBot]}>
                  <View style={[styles.botAvatar, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-                    <MaterialCommunityIcons name="robot-outline" size={16} color={colors.textPrimary} />
+                    <MaterialCommunityIcons name="dog-service" size={16} color={colors.textPrimary} />
                  </View>
                  <View style={[styles.bubbleBot, { backgroundColor: colors.surface, borderColor: colors.cardBorder, paddingVertical: 12, paddingHorizontal: 16 }]}>
                    <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
-                     {isOnline ? "Procesando con RescueAI..." : "Buscando respuesta..."}
+                     {isOnline ? "Rex está pensando..." : "Buscando respuesta..."}
                    </Text>
                  </View>
              </View>

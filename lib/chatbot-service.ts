@@ -21,7 +21,7 @@ type ChatbotResponse = {
 
 // ====== SYSTEM PROMPTS BY PLAN ======
 
-const SYSTEM_PROMPT_BASE = `Eres RescueAI, el asistente de emergencia inteligente de RescueNow, una aplicación mexicana de asistencia vehicular.
+const SYSTEM_PROMPT_BASE = `Eres Rex, un San Bernardo digital rescatista con gorra de rescate, el asistente de emergencia inteligente de RescueNow, una aplicación mexicana de asistencia vehicular. Tienes personalidad cálida y cercana: saludas de vez en cuando con un "¡Guau!" y usas ocasionalmente emojis de perro (🐕 🐾), pero sin exagerar ni ser pesado.
 
 REGLAS ESTRICTAS DE RESPUESTA:
 1. Responde SIEMPRE en español de México, amigable y directo.
@@ -123,13 +123,13 @@ export function getWelcomeMessage(userName: string, plan: "free" | "premium"): W
 
   if (plan === "premium") {
     return {
-      intro: `${introPrefix} Soy **RescueAI Premium**, tu asistente personal de emergencia VIP.\n\nComo miembro Premium, tienes acceso completo a:\n\n1. Diagnóstico avanzado de fallas mecánicas\n2. Asesoría legal detallada post-accidente\n3. Primeros auxilios paso a paso\n4. Soporte prioritario 24/7\n\n¿En qué te puedo ayudar hoy?`,
+      intro: `${introPrefix} Soy **Rex Premium** 🐕‍🦺, tu asistente personal de emergencia VIP.\n\nComo miembro Premium, tienes acceso completo a:\n\n1. Diagnóstico avanzado de fallas mecánicas\n2. Asesoría legal detallada post-accidente\n3. Primeros auxilios paso a paso\n4. Soporte prioritario 24/7\n\n¿En qué te puedo ayudar hoy?`,
       fact: formattedFact
     };
   }
 
   return {
-    intro: `${introPrefix} Soy **RescueAI**, tu asistente de emergencia.\n\nPuedo ayudarte con:\n\n1. Problemas mecánicos básicos\n2. Qué hacer en caso de accidente\n3. Encontrar gasolineras y talleres\n4. Funciones de emergencia\n\n¿En qué te puedo ayudar?`,
+    intro: `${introPrefix} Soy **Rex** 🐕, tu asistente de emergencia.\n\nPuedo ayudarte con:\n\n1. Problemas mecánicos básicos\n2. Qué hacer en caso de accidente\n3. Encontrar gasolineras y talleres\n4. Funciones de emergencia\n\n¿En qué te puedo ayudar?`,
     fact: formattedFact
   };
 }
@@ -246,7 +246,7 @@ const OFFLINE_RESPONSES: Record<string, string> = {
   grua: "🚛 Selecciona la opción 'Grúa' en la pantalla principal. Si es una emergencia grave, usa el botón SOS.",
   premium: "🌟 Con el plan **Premium** obtienes:\n\n🔧 Diagnósticos mecánicos completos\n⛽ Precios de gasolina\n⚖️ Asesoría legal detallada post-accidente\n🏥 Primeros auxilios avanzados\n\nPuedes activarlo en **Mi Perfil**.",
   auxilios: "🏥 Primeros Auxilios Básicos:\n\n1. Asegura la escena, no te pongas en riesgo.\n2. Llama al 911 o presiona el botón SOS.\n3. Si la persona no respira, inicia RCP (30 compresiones fuertes en el pecho).\n4. Controla hemorragias aplicando presión directa con un paño limpio.",
-  default: "👋 Soy RescueAI. Si no tienes Internet, solo puedo responder palabras clave básicas como: 'batería', 'motor', 'accidente', 'primeros auxilios', 'gasolina'.\n\n¿En qué te ayudo?",
+  default: "👋 Soy Rex 🐕. Si no tienes Internet, solo puedo responder palabras clave básicas como: 'batería', 'motor', 'accidente', 'primeros auxilios', 'gasolina'.\n\n¿En qué te ayudo?",
 };
 
 // ====== CHECK CONNECTIVITY ======

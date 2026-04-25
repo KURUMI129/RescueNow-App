@@ -14,8 +14,10 @@ import {
     TextInput,
     View,
 } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
+import { RESCUENOW_WEB_URL } from "@/constants/links";
 import Animated, {
     FadeInDown,
     useAnimatedStyle,
@@ -404,7 +406,39 @@ export default function OptionsScreen() {
             </View>
           </BlurView>
 
-          {/* 5. CERRAR SESIÓN */}
+          {/* 5. CONOCE MÁS (Web) */}
+          <Pressable
+            onPress={() => {
+              void WebBrowser.openBrowserAsync(RESCUENOW_WEB_URL, {
+                presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+                toolbarColor: colors.background,
+                controlsColor: colors.primary,
+              });
+            }}
+            style={({ pressed }) => [
+              styles.webLinkBtn,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <View style={[styles.webLinkIcon, { backgroundColor: `${colors.accent}15` }]}>
+              <MaterialCommunityIcons name="web" size={22} color={colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.webLinkTitle, { color: colors.textPrimary }]}>
+                Conoce más sobre RescueNow
+              </Text>
+              <Text style={[styles.webLinkSub, { color: colors.textSecondary }]}>
+                Visita nuestra página oficial
+              </Text>
+            </View>
+            <Ionicons name="open-outline" size={18} color={colors.textSecondary} />
+          </Pressable>
+
+          {/* 6. CERRAR SESIÓN */}
           <Pressable onPress={handleLogout} style={[styles.logoutButton, { backgroundColor: '#E11D48' }]}>
             <Ionicons name="log-out-outline" size={18} color="#fff" />
             <Text style={styles.logoutText}>Cerrar Sesión</Text>
@@ -467,5 +501,9 @@ const styles = StyleSheet.create({
   saveContactBtn: { paddingVertical: 14, borderRadius: 12, alignItems: 'center', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   switchRow: { flexDirection: 'row', alignItems: 'center' },
   logoutButton: { marginTop: 10, borderRadius: 14, minHeight: 52, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
-  logoutText: { color: "#fff", fontSize: 15, fontWeight: "800" }
+  logoutText: { color: "#fff", fontSize: 15, fontWeight: "800" },
+  webLinkBtn: { marginTop: 18, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 14, borderWidth: 1 },
+  webLinkIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  webLinkTitle: { fontSize: 14, fontWeight: "800", marginBottom: 2 },
+  webLinkSub: { fontSize: 12, fontWeight: "500" }
 });

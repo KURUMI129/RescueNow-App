@@ -473,7 +473,7 @@ export default function HomeScreen() {
         </BlurView>
       </Animated.View>
 
-      {/* FAB: RESCUE AI (Chatbot) */}
+      {/* FAB: Rex (Chatbot) */}
       <RNAnimated.View style={[
           styles.aiFabContainer, 
           { bottom: RNAnimated.add(sheetAnim, 24) }
@@ -485,7 +485,7 @@ export default function HomeScreen() {
             tint={activeTheme}
             style={[styles.aiFab, { backgroundColor: 'transparent', borderColor: colors.cardBorder, borderWidth: 1 }]}
           >
-            <MaterialCommunityIcons name="robot-outline" size={28} color={colors.accent} />
+            <MaterialCommunityIcons name="dog-service" size={28} color={colors.accent} />
           </BlurView>
         </Pressable>
       </RNAnimated.View>
