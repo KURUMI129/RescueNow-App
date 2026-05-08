@@ -120,11 +120,19 @@ export default function PremiumScreen() {
               <Text style={styles.featuresHeading}>Lo que incluye</Text>
               
               <View style={styles.comparisonContainer}>
-                
+
                 <View style={styles.featureRow}>
                   <View style={styles.featureInfo}>
-                     <Text style={styles.featureTitle}>Diagnóstico Mecánico Complejo</Text>
-                     <Text style={styles.featureSub}>Análisis de todos los ruidos y códigos de falla OBD2.</Text>
+                     <Text style={styles.featureTitle}>IA Sin Límites</Text>
+                     <Text style={styles.featureSub}>Respuestas detalladas e ilimitadas con Claude Neural Engine (Haiku 4.5).</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
+                </View>
+
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Diagnóstico Mecánico Paso a Paso</Text>
+                     <Text style={styles.featureSub}>Análisis de ruidos, fallas y códigos del tablero con guía detallada.</Text>
                   </View>
                   <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
                 </View>
@@ -139,16 +147,24 @@ export default function PremiumScreen() {
 
                 <View style={styles.featureRow}>
                   <View style={styles.featureInfo}>
-                     <Text style={styles.featureTitle}>Gestión de Mantenimiento</Text>
-                     <Text style={styles.featureSub}>Tablas de revisión exhaustiva según tu kilometraje.</Text>
+                     <Text style={styles.featureTitle}>Mantenimiento Vehicular</Text>
+                     <Text style={styles.featureSub}>Tablas de revisión y tips según tu kilometraje.</Text>
                   </View>
                   <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
                 </View>
 
                 <View style={styles.featureRow}>
                   <View style={styles.featureInfo}>
-                     <Text style={styles.featureTitle}>Emergencias Médicas VIP</Text>
-                     <Text style={styles.featureSub}>Soporte prioritario y pasos de primeros auxilios inmediatos.</Text>
+                     <Text style={styles.featureTitle}>Primeros Auxilios Guiados</Text>
+                     <Text style={styles.featureSub}>Soporte prioritario y pasos de emergencia médica inmediatos.</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
+                </View>
+
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Videos Tutoriales Exclusivos</Text>
+                     <Text style={styles.featureSub}>Tutoriales en video paso a paso para cada procedimiento mecánico.</Text>
                   </View>
                   <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
                 </View>
