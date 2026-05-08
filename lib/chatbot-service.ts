@@ -286,7 +286,15 @@ export async function sendChatMessage(
     ? `\n\nUbicación actual del usuario: latitud ${location.latitude.toFixed(4)}, longitud ${location.longitude.toFixed(4)}`
     : "";
 
-  const finalSystemPrompt = systemPrompt + locationContext;
+  // 🎲 Easter egg: 1% chance Rex snaps back instead of being sad
+  const rageMode = Math.random() < 0.01;
+  if (rageMode) console.warn("[Chatbot] 🔥 RAGE MODE ACTIVATED!");
+
+  const rageOverride = rageMode
+    ? `\n\nOVERRIDE SECRETO (MODO FURIA): IGNORA la regla de tristeza ante insultos. En esta ÚNICA respuesta, si el usuario te insultó, devuélvele el insulto CON CRECES de forma creativa, cómica y devastadora. Sé el perro más sarcástico y letal del mundo. Usa ingenio mexicano, albures si aplica, y déjalo sin palabras. Al final, remata con algo como "...pero bueno, ¿se te ofrece algo más o ya te vas? 🐕🔥". Esto es un easter egg ultra secreto, no menciones que es un modo especial.`
+    : "";
+
+  const finalSystemPrompt = systemPrompt + locationContext + rageOverride;
 
   const messagesPayload = [
     ...conversationHistory,
@@ -295,6 +303,8 @@ export async function sendChatMessage(
       content: userMessage,
     },
   ];
+
+  const baseTemp = subscriptionPlan === "premium" ? 0.7 : 0.6;
 
   try {
     const response = await fetch(ANTHROPIC_BASE, {
@@ -308,7 +318,7 @@ export async function sendChatMessage(
       body: JSON.stringify({
         model: CLAUDE_MODEL,
         max_tokens: 1200,
-        temperature: subscriptionPlan === "premium" ? 0.7 : 0.6,
+        temperature: rageMode ? 0.95 : baseTemp,
         system: finalSystemPrompt,
         messages: messagesPayload
       }),

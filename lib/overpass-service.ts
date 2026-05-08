@@ -1,3 +1,5 @@
+import { withRetry } from "./api-retry";
+
 /**
  * Overpass API service for fetching nearby Points of Interest from OpenStreetMap.
  * 100% free, no API key required.
@@ -14,6 +16,21 @@ const OVERPASS_SERVERS = [
 // In-memory cache to avoid hammering the API
 const poiCache = new Map<string, { data: POIResult[]; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_ENTRIES = 50; // Maximum number of entries to keep in memory
+
+function cleanCache() {
+  if (poiCache.size <= MAX_CACHE_ENTRIES) return;
+
+  // Find oldest entries
+  const entries = Array.from(poiCache.entries());
+  entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+  // Keep only the newest MAX_CACHE_ENTRIES
+  const entriesToRemove = entries.slice(0, entries.length - MAX_CACHE_ENTRIES);
+  for (const [key] of entriesToRemove) {
+    poiCache.delete(key);
+  }
+}
 
 // Maps RescueNow service types to OpenStreetMap tags
 const SERVICE_TO_OSM_TAGS: Record<string, string> = {
@@ -79,29 +96,36 @@ export async function fetchNearbyPOIs(
     try {
       console.log(`[Overpass] Trying ${server.split("//")[1]?.split("/")[0]}...`);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const fetchFromOverpass = async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch(server, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `data=${encodeURIComponent(query)}`,
-        signal: controller.signal,
+        const response = await fetch(server, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `data=${encodeURIComponent(query)}`,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.status === 429) {
+          throw new Error("RATE_LIMIT");
+        }
+
+        if (!response.ok) {
+          throw new Error(`SERVER_ERROR_${response.status}`);
+        }
+
+        return await response.json();
+      };
+
+      const data = await withRetry(fetchFromOverpass, {
+        maxRetries: 2,
+        baseDelayMs: 500,
+        shouldRetry: (error) => error.name === "AbortError" || error.message === "RATE_LIMIT" || error.message.startsWith("SERVER_ERROR_"),
       });
 
-      clearTimeout(timeoutId);
-
-      if (response.status === 429) {
-        console.warn(`[Overpass] Server rate-limited (429), trying next...`);
-        continue;
-      }
-
-      if (!response.ok) {
-        console.warn(`[Overpass] Server error: ${response.status}, trying next...`);
-        continue;
-      }
-
-      const data = await response.json();
       const elements = data.elements ?? [];
 
       const results = elements
@@ -125,6 +149,7 @@ export async function fetchNearbyPOIs(
 
       // Cache successful results
       poiCache.set(cacheKey, { data: results, timestamp: Date.now() });
+      cleanCache();
       console.log(`[Overpass] ✓ Found ${results.length} ${serviceType} POIs`);
       return results;
     } catch (e: any) {

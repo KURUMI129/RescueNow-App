@@ -17,6 +17,8 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Animated, { FadeInUp, FadeInDown, Layout } from "react-native-reanimated";
 
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useActiveTheme } from "@/hooks/use-active-theme";
@@ -33,6 +35,7 @@ import {
   searchYouTubeVideo,
 } from "@/lib/chatbot-service";
 import type { YouTubeVideoResult } from "@/lib/chatbot-service";
+import { RexAvatar } from "@/components/chatbot/rex-avatar";
 
 type Message = {
   id: string;
@@ -42,6 +45,9 @@ type Message = {
   youtubeVideo?: YouTubeVideoResult;
 };
 
+const CHAT_SESSION_KEY = "@rex_chat_session_v2";
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+
 export default function ChatbotScreen() {
   const router = useRouter();
   const activeTheme = useActiveTheme();
@@ -50,6 +56,7 @@ export default function ChatbotScreen() {
 
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan>("free");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [hiddenHistory, setHiddenHistory] = useState<Message[] | null>(null);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -67,21 +74,51 @@ export default function ChatbotScreen() {
     }, [])
   );
 
-  // Check connectivity + load preferences + set welcome message
+  // Check connectivity + load preferences + load history
   useEffect(() => {
     const init = async () => {
-      const [prefs, online] = await Promise.all([
+      const [prefs, online, savedSessionStr] = await Promise.all([
         getAppPreferences(),
         checkIsOnline(),
+        AsyncStorage.getItem(CHAT_SESSION_KEY),
       ]);
 
       const plan = prefs.subscriptionPlan;
       setSubscriptionPlan(plan);
       setIsOnline(online);
+      const displayName = user?.displayName ?? "Amigo";
+
+      // Load saved history if available and not expired
+      if (savedSessionStr) {
+        try {
+          const session = JSON.parse(savedSessionStr) as { timestamp: number, messages: Message[] };
+          const isExpired = (Date.now() - session.timestamp) > TWELVE_HOURS_MS;
+
+          if (isExpired) {
+            await AsyncStorage.removeItem(CHAT_SESSION_KEY);
+          } else if (session.messages.length > 2) {
+            // Guardar en historial oculto para no saturar la pantalla
+            setHiddenHistory(session.messages);
+            setMessages([{
+              id: "resume_prompt",
+              isUser: false,
+              text: `👋 ¡Hola de nuevo, ${displayName}! He ocultado los mensajes anteriores para mantener tu pantalla limpia.\n\nSimplemente escríbeme para continuar donde nos quedamos, o si prefieres limpiar mi memoria por completo, presiona el botón del basurero (🗑️) arriba a la derecha.`
+            }]);
+            
+            // Sugerencias rápidas solo en offline
+            setQuickSuggestions(getQuickSuggestions(plan));
+            setShowSuggestions(!online);
+            return;
+          }
+        } catch (e) {
+          console.warn("Failed to parse chat session", e);
+        }
+      }
+
+      // If no valid history, load standard welcome message
       setQuickSuggestions(getQuickSuggestions(plan));
       setShowSuggestions(!online);
 
-      const displayName = user?.displayName ?? "Amigo";
       const welcomeData = getWelcomeMessage(displayName, plan);
       const newMessages: Message[] = [];
       if (welcomeData.intro) {
@@ -95,22 +132,26 @@ export default function ChatbotScreen() {
     void init();
   }, [user]);
 
-  // Auto-clear timer ref
-  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Save history whenever messages change (skip if empty or if it's the resume prompt)
+  useEffect(() => {
+    if (messages.length > 0 && !messages.some(m => m.id === "resume_prompt")) {
+      AsyncStorage.setItem(CHAT_SESSION_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        // Si hay hiddenHistory activo, significa que la pantalla de UI está limpia
+        // pero la memoria completa debe ser el hiddenHistory
+        messages: hiddenHistory ? hiddenHistory : messages
+      })).catch(e => {
+        console.warn("Failed to save chat session", e);
+      });
+    }
+  }, [messages, hiddenHistory]);
+
   const planRef = useRef(subscriptionPlan);
   planRef.current = subscriptionPlan;
 
-  // When screen focuses: check plan changes + reset conversation if away too long
-  // When screen blurs: start 20-second auto-clear timer
+  // When screen focuses: check plan changes (removed auto-clear to allow memory)
   useFocusEffect(
     useCallback(() => {
-      // === ON FOCUS ===
-      // Cancel any pending clear timer (user came back in time)
-      if (blurTimerRef.current) {
-        clearTimeout(blurTimerRef.current);
-        blurTimerRef.current = null;
-      }
-
       const refreshPlan = async () => {
         const prefs = await getAppPreferences();
         const newPlan = prefs.subscriptionPlan;
@@ -136,27 +177,7 @@ export default function ChatbotScreen() {
         }
       };
       void refreshPlan();
-
-      // === ON BLUR (return cleanup) ===
-      return () => {
-        // Start 20-second timer — if user doesn't come back, reset conversation
-        blurTimerRef.current = setTimeout(() => {
-          const displayName = user?.displayName ?? "Amigo";
-          const plan = planRef.current;
-          const welcomeData = getWelcomeMessage(displayName, plan);
-          const newMessages: Message[] = [];
-          if (welcomeData.intro) {
-            newMessages.push({ id: "welcome_" + Date.now() + "_intro", isUser: false, text: welcomeData.intro });
-          }
-          newMessages.push({ id: "welcome_" + Date.now() + "_fact", isUser: false, text: welcomeData.fact });
-
-          setMessages(newMessages);
-          setQuickSuggestions(getQuickSuggestions(plan));
-          setShowSuggestions(true);
-          setInputText("");
-        }, 20000); // 20 seconds
-      };
-    }, [user]),
+    }, [messages.length]),
   );
 
   // Periodically check connectivity
@@ -175,6 +196,7 @@ export default function ChatbotScreen() {
 
     const newUserMsg: Message = { id: Date.now().toString(), isUser: true, text: messageText };
 
+    // Solo mostramos el mensaje nuevo y el saludo en la pantalla para no ensuciar la vista
     setMessages((prev) => [...prev, newUserMsg]);
     setInputText("");
     setIsTyping(true);
@@ -186,11 +208,24 @@ export default function ChatbotScreen() {
         longitude: location.coords.longitude,
       } : null;
 
-      const history = toChatHistory(
-        messages.filter((m) => !m.id.startsWith("welcome") && !m.id.includes('_err')).map((m) => ({ isUser: m.isUser, text: m.text })),
+      // PERO enviamos a la IA todo el contexto oculto para que no pierda la memoria
+      let fullContextToAI = messages;
+      if (hiddenHistory) {
+        fullContextToAI = [...hiddenHistory, newUserMsg];
+      } else {
+        fullContextToAI = [...messages, newUserMsg];
+      }
+
+      // Filtramos mensajes de sistema (saludos, errores, prompts de memoria)
+      const filteredContext = fullContextToAI.filter(
+        (m) => !m.id.startsWith("welcome") && !m.id.includes('_err') && m.id !== "resume_prompt"
       );
 
-      const response = await sendChatMessage(
+      const history = toChatHistory(
+        filteredContext.map((m) => ({ isUser: m.isUser, text: m.text }))
+      );
+
+      const aiResponse = await sendChatMessage(
         messageText,
         userLocation,
         subscriptionPlan,
@@ -198,7 +233,7 @@ export default function ChatbotScreen() {
       );
 
       // Process YOUTUBE_SEARCH tag: resolve to a real direct video URL
-      let finalText = response.text;
+      let finalText = aiResponse.text;
       let youtubeVideo: YouTubeVideoResult | undefined;
 
       const ytMatch = finalText.match(/\[YOUTUBE_SEARCH:\s*(.+?)\]/);
@@ -229,13 +264,12 @@ export default function ChatbotScreen() {
         id: Date.now().toString() + "_bot",
         isUser: false,
         text: mainText,
-        isMapCard: response.isMapCard,
+        isMapCard: aiResponse.isMapCard,
         youtubeVideo,
       };
 
       const newMessages: Message[] = [botResponse];
 
-      // Add follow-up suggestions as a separate bubble
       if (suggestionsText) {
         newMessages.push({
           id: Date.now().toString() + "_sug",
@@ -245,6 +279,12 @@ export default function ChatbotScreen() {
       }
 
       setMessages((prev) => [...prev, ...newMessages]);
+
+      // Si teníamos un historial oculto, lo actualizamos secretamente 
+      // para que AsyncStorage guarde TODO completo (memoria vieja + el nuevo turno).
+      if (hiddenHistory) {
+         setHiddenHistory((prev) => prev ? [...prev, newUserMsg, ...newMessages] : null);
+      }
 
       // Show contextual follow-up suggestions only when offline
       if (!isOnline) {
@@ -281,7 +321,7 @@ export default function ChatbotScreen() {
     void handleSend(suggestion);
   };
 
-  const handleClearChat = useCallback(() => {
+  const handleClearChat = useCallback(async () => {
     const displayName = user?.displayName ?? "Amigo";
     const welcomeData = getWelcomeMessage(displayName, subscriptionPlan);
     const newMessages: Message[] = [];
@@ -291,10 +331,18 @@ export default function ChatbotScreen() {
     newMessages.push({ id: "welcome_" + Date.now() + "_fact", isUser: false, text: welcomeData.fact });
     
     setMessages(newMessages);
+    setHiddenHistory(null);
     setQuickSuggestions(getQuickSuggestions(subscriptionPlan));
     setShowSuggestions(!isOnline);
     setInputText("");
-  }, [user, subscriptionPlan]);
+    
+    // Clear storage
+    try {
+      await AsyncStorage.removeItem(CHAT_SESSION_KEY);
+    } catch(e) {
+      console.warn("Failed to clear chat history", e);
+    }
+  }, [user, subscriptionPlan, isOnline]);
 
   const handleReloadAI = useCallback(() => {
     const lastUserIndex = [...messages].reverse().findIndex(m => m.isUser);
@@ -329,11 +377,7 @@ export default function ChatbotScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </Pressable>
         <View style={styles.headerTitleContainer}>
-          <MaterialCommunityIcons
-            name="dog-service"
-            size={22}
-            color={isPremium ? colors.accent : colors.primary}
-          />
+          <RexAvatar size={24} />
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             Re<Text style={{ color: isPremium ? colors.accent : colors.primary, fontWeight: '900' }}>x</Text>
           </Text>
@@ -387,18 +431,19 @@ export default function ChatbotScreen() {
            )}
 
            {/* MESSAGES */}
-           {messages.map((msg) => (
-             <View key={msg.id} style={[styles.messageWrapper, msg.isUser ? styles.messageUser : styles.messageBot]}>
+           {messages.map((msg, index) => (
+             <Animated.View 
+               key={msg.id} 
+               entering={FadeInUp.delay(Math.min(index * 100, 300)).springify().damping(15)}
+               layout={Layout.springify()}
+               style={[styles.messageWrapper, msg.isUser ? styles.messageUser : styles.messageBot]}
+             >
                 {!msg.isUser && (
                   <View style={[styles.botAvatar, {
-                    backgroundColor: isPremium ? `${colors.accent}20` : colors.surface,
-                    borderColor: isPremium ? colors.accent : colors.cardBorder,
+                    backgroundColor: 'transparent',
+                    borderColor: 'transparent',
                   }]}>
-                    <MaterialCommunityIcons
-                      name="dog-service"
-                      size={16}
-                      color={isPremium ? colors.accent : colors.textPrimary}
-                    />
+                    <RexAvatar size={22} />
                   </View>
                 )}
 
@@ -456,21 +501,25 @@ export default function ChatbotScreen() {
                     </View>
                   )}
                 </View>
-             </View>
+             </Animated.View>
            ))}
 
            {/* TYPING INDICATOR */}
            {isTyping && (
-             <View style={[styles.messageWrapper, styles.messageBot]}>
-                 <View style={[styles.botAvatar, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-                    <MaterialCommunityIcons name="dog-service" size={16} color={colors.textPrimary} />
-                 </View>
+             <Animated.View 
+               entering={FadeInUp.springify().damping(15)}
+               layout={Layout.springify()}
+               style={[styles.messageWrapper, styles.messageBot]}
+             >
+                  <View style={[styles.botAvatar, { backgroundColor: 'transparent', borderColor: 'transparent' }]}>
+                    <RexAvatar size={22} />
+                  </View>
                  <View style={[styles.bubbleBot, { backgroundColor: colors.surface, borderColor: colors.cardBorder, paddingVertical: 12, paddingHorizontal: 16 }]}>
                    <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
                      {isOnline ? "Rex está pensando..." : "Buscando respuesta..."}
                    </Text>
                  </View>
-             </View>
+             </Animated.View>
            )}
 
            {/* QUICK SUGGESTIONS */}
@@ -580,10 +629,9 @@ const styles = StyleSheet.create({
   messageBot: { alignSelf: 'flex-start', alignItems: 'flex-end' },
 
   botAvatar: {
-    width: 28, height: 28, borderRadius: 14,
+    width: 28, height: 28,
     justifyContent: 'center', alignItems: 'center',
     marginRight: 8, marginBottom: 4,
-    borderWidth: 1,
   },
 
   messageBubble: { padding: 14, borderRadius: 20 },

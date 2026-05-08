@@ -39,6 +39,9 @@ import { useCrashDetection } from "@/hooks/use-crash-detection";
 import { useAuth } from "@/lib/auth-context";
 import { fetchNearbyPOIs, distanceKm, type POIResult } from "@/lib/overpass-service";
 import { AppEvents, EVENT_SELECT_SERVICE_FILTER } from "@/lib/app-events";
+import { BottomSheetServices } from "@/components/home/bottom-sheet-services";
+import { RexAvatar } from "@/components/chatbot/rex-avatar";
+import { MAP_SERVICES } from "@/constants/services";
 
 // Mapa en escala de azules oscuros tipo radar/sonar de rescate
 const RESCUE_DARK_MAP_STYLE: any[] = [
@@ -62,28 +65,6 @@ const RESCUE_DARK_MAP_STYLE: any[] = [
   { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0e1626" }] },
   { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#4e6d70" }] }
 ]
-
-type ServiceOption = {
-  id: string;
-  titleEs: string;
-  titleEn: string;
-  descEs: string;
-  descEn: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  colorHex: string;
-};
-
-// 8 Servicios Base
-const SERVICES: ServiceOption[] = [
-  { id: "hospital", titleEs: "Hospitales", titleEn: "Hospitals", descEs: "Clínicas y hospitales cercanos", descEn: "Nearby clinics and hospitals", icon: "hospital-box", colorHex: "#DC2626" },
-  { id: "tow", titleEs: "Grúa", titleEn: "Tow", descEs: "Vehículo inmovilizado", descEn: "Immobilized vehicle", icon: "tow-truck", colorHex: "#FFB800" },
-  { id: "mechanic_car", titleEs: "Mec. Autos", titleEn: "Car Mech.", descEs: "Falla de motor o batería", descEn: "Engine or battery failure", icon: "car-wrench", colorHex: "#3B82F6" },
-  { id: "mechanic_moto", titleEs: "Mec. Motos", titleEn: "Moto Mech.", descEs: "Reparación de motocicletas", descEn: "Motorcycle repair", icon: "motorbike", colorHex: "#6366F1" },
-  { id: "electrician", titleEs: "Electricista", titleEn: "Electrician", descEs: "Sistema eléctrico", descEn: "Electrical system", icon: "flash", colorHex: "#EAB308" },
-  { id: "gas", titleEs: "Gasolina", titleEn: "Gas", descEs: "Sin combustible", descEn: "Out of fuel", icon: "gas-station", colorHex: "#10B981" },
-  { id: "tire", titleEs: "Llantera", titleEn: "Tire", descEs: "Ponchadura o presión baja", descEn: "Puncture or low pressure", icon: "tire", colorHex: "#F97316" },
-  { id: "locksmith", titleEs: "Cerrajero", titleEn: "Locksmith", descEs: "Llaves atascadas", descEn: "Lost or stuck keys", icon: "key", colorHex: "#8B5CF6" },
-];
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -298,6 +279,19 @@ export default function HomeScreen() {
     transform: [{ scale: pulseScale.value }],
   }));
 
+  // Floating animation for Rex FAB
+  const floatY = useSharedValue(0);
+  useEffect(() => {
+    floatY.value = withRepeat(
+      withTiming(-8, { duration: 1500 }),
+      -1,
+      true
+    );
+  }, [floatY]);
+  const floatStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: floatY.value }],
+  }));
+
   // PanResponder para Bottom Sheet
   const panResponder = useRef(
     PanResponder.create({
@@ -422,7 +416,7 @@ export default function HomeScreen() {
       >
         {/* // TODO: Copilot - Renderizar Markers aquí */}
         {poiMarkers.map((poi) => {
-          const svc = SERVICES.find((s) => s.id === selectedService);
+          const svc = MAP_SERVICES.find((s) => s.id === selectedService);
           const dist = location
             ? distanceKm(location.coords.latitude, location.coords.longitude, poi.latitude, poi.longitude)
             : null;
@@ -479,15 +473,11 @@ export default function HomeScreen() {
           { bottom: RNAnimated.add(sheetAnim, 24) }
         ]}
       >
-        <Pressable onPress={() => router.push("/(tabs)/chatbot")}>
-          <BlurView
-            intensity={activeTheme === "dark" ? 40 : 80}
-            tint={activeTheme}
-            style={[styles.aiFab, { backgroundColor: 'transparent', borderColor: colors.cardBorder, borderWidth: 1 }]}
-          >
-            <MaterialCommunityIcons name="dog-service" size={28} color={colors.accent} />
-          </BlurView>
-        </Pressable>
+        <Animated.View style={floatStyle}>
+          <Pressable onPress={() => router.push("/(tabs)/chatbot")} style={styles.aiFab}>
+            <RexAvatar size={56} />
+          </Pressable>
+        </Animated.View>
       </RNAnimated.View>
 
       {/* BOTÓN: CENTRAR EN MI UBICACIÓN */}
@@ -526,85 +516,17 @@ export default function HomeScreen() {
       </RNAnimated.View>
 
       {/* BOTTOM SHEET INTERACTIVO */}
-      <RNAnimated.View 
-        style={[
-          styles.bottomSheet, 
-          { height: sheetAnim }
-        ]}
-      >
-        <BlurView 
-          intensity={activeTheme === "dark" ? 40 : 80} 
-          tint={activeTheme} 
-          style={[{ flex: 1, backgroundColor: 'transparent', paddingBottom: Math.max(insets.bottom, 20) }]}
-        >
-          {/* Manija de Arrastre */}
-          <View style={styles.dragHandleWrapper} {...panResponder.panHandlers}>
-          <View style={[styles.dragHandle, { backgroundColor: colors.textSecondary, opacity: 0.3 }]} />
-        </View>
-
-        <View style={styles.sheetTitleRow}>
-          <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
-            {language === "es" ? "¿Qué asistencia necesitas?" : "What assistance do you need?"}
-          </Text>
-          {loadingPOIs && (
-            <View style={[styles.loadingPill, { backgroundColor: colors.surface }]}>
-              <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 6 }} />
-              <Text style={[styles.loadingPillText, { color: colors.textSecondary }]}>
-                {language === "es" ? "Buscando..." : "Searching..."}
-              </Text>
-            </View>
-          )}
-          {!loadingPOIs && selectedService && poiMarkers.length > 0 && (
-            <View style={[styles.loadingPill, { backgroundColor: `${colors.accent}15` }]}>
-              <Text style={[styles.loadingPillText, { color: colors.accent }]}>
-                {poiMarkers.length} {language === "es" ? "encontrados" : "found"}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.gridMode}
-        >
-          {SERVICES.map((service, idx) => {
-            const isSelected = selectedService === service.id;
-            const bgColor = isSelected ? `${service.colorHex}15` : 'transparent';
-            const shadowForce = isSelected ? { shadowColor: service.colorHex, shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 0 } : {};
-
-            return (
-              <Animated.View key={service.id} entering={FadeInDown.delay(100 + idx * 60).springify()}>
-                <Pressable
-                  onPress={() => toggleService(service.id)}
-                  style={[
-                    styles.serviceListCard,
-                    { backgroundColor: bgColor, borderLeftColor: isSelected ? service.colorHex : 'transparent' },
-                    shadowForce
-                  ]}
-                >
-                  <View style={[styles.serviceIconWrap, { backgroundColor: `${service.colorHex}15` }]}>
-                    <MaterialCommunityIcons 
-                      name={service.icon} 
-                      size={24} 
-                      color={isSelected ? service.colorHex : colors.textSecondary} 
-                    />
-                  </View>
-                  <View style={styles.serviceTextWrap}>
-                    <Text style={[styles.serviceTitle, { color: colors.textPrimary }]}>
-                      {language === "es" ? service.titleEs : service.titleEn}
-                    </Text>
-                    <Text style={[styles.serviceDesc, { color: colors.textSecondary }]} numberOfLines={1}>
-                      {language === "es" ? service.descEs : service.descEn}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
-                </Pressable>
-              </Animated.View>
-            );
-          })}
-        </ScrollView>
-        </BlurView>
-      </RNAnimated.View>
+      <BottomSheetServices
+        sheetAnim={sheetAnim}
+        activeTheme={activeTheme}
+        colors={colors}
+        language={language}
+        panResponder={panResponder}
+        selectedService={selectedService}
+        loadingPOIs={loadingPOIs}
+        poiCount={poiMarkers.length}
+        onToggleService={toggleService}
+      />
 
       {/* CUSTOM THEME MODAL */}
       <Modal transparent visible={showThemeModal} animationType="fade">
@@ -813,19 +735,9 @@ const styles = StyleSheet.create({
   profileInitials: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   profileInitialsText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   aiFabContainer: { position: 'absolute', left: 20, zIndex: 30 },
-  aiFab: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#0EA5E9', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
+  aiFab: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowColor: '#0EA5E9', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
   fabContainer: { position: 'absolute', right: 20, zIndex: 30 },
   sosFab: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#E11D48', alignItems: 'center', justifyContent: 'center', shadowColor: '#E11D48', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.5, shadowRadius: 24, elevation: 12 },
-  bottomSheet: { position: 'absolute', bottom: 0, width: '100%', borderTopLeftRadius: 36, borderTopRightRadius: 36, zIndex: 20, shadowColor: "#0B1120", shadowOpacity: 0.15, shadowRadius: 32, shadowOffset: { width: 0, height: -12 }, elevation: 0, overflow: 'hidden' },
-  dragHandleWrapper: { width: '100%', alignItems: 'center', paddingVertical: 14 },
-  dragHandle: { width: 40, height: 4, borderRadius: 2 },
-  sheetTitle: { fontSize: 20, fontWeight: '900', letterSpacing: 0.2, flex: 1 },
-  gridMode: { paddingHorizontal: 20, paddingBottom: 24 },
-  serviceListCard: { borderLeftWidth: 3, borderRadius: 14, flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 14, marginBottom: 10 },
-  serviceIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14, flexShrink: 0 },
-  serviceTextWrap: { flex: 1, marginRight: 8, justifyContent: 'center' },
-  serviceTitle: { fontSize: 15, fontWeight: '800', marginBottom: 3 },
-  serviceDesc: { fontSize: 12, fontWeight: '600', lineHeight: 16 },
   centerBtnContainer: { position: 'absolute', right: 20, zIndex: 25 },
   centerBtn: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', shadowColor: '#0B1120', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(11, 17, 32, 0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
@@ -968,7 +880,4 @@ const styles = StyleSheet.create({
   medicalValue: { fontSize: 18, fontWeight: '700' },
   medicalDismissBtn: { position: 'absolute', bottom: 40, alignSelf: 'center', backgroundColor: '#0B1120', paddingVertical: 16, paddingHorizontal: 32, borderRadius: 16, shadowColor: '#0B1120', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 10 },
   medicalDismissText: { color: '#F8FAFC', fontSize: 14, fontWeight: '800' },
-  sheetTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 16 },
-  loadingPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  loadingPillText: { fontSize: 12, fontWeight: '700' },
 });

@@ -19,93 +19,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { AppEvents, EVENT_SELECT_SERVICE_FILTER } from "@/lib/app-events";
-
-// Service options that map directly to the map's POI filter system
-type ServiceItem = {
-  id: string;
-  titleEs: string;
-  titleEn: string;
-  descEs: string;
-  descEn: string;
-  icon: string; // MaterialCommunityIcons name
-  colorHex: string;
-};
-
-const SERVICE_OPTIONS: ServiceItem[] = [
-  {
-    id: "hospital",
-    titleEs: "Hospitales",
-    titleEn: "Hospitals",
-    descEs: "Encuentra clínicas y hospitales cercanos a tu ubicación",
-    descEn: "Find nearby clinics and hospitals",
-    icon: "hospital-box",
-    colorHex: "#DC2626",
-  },
-  {
-    id: "tow",
-    titleEs: "Grúa",
-    titleEn: "Tow Truck",
-    descEs: "Servicio de arrastre para vehículo inmovilizado",
-    descEn: "Towing service for immobilized vehicle",
-    icon: "tow-truck",
-    colorHex: "#FFB800",
-  },
-  {
-    id: "mechanic_car",
-    titleEs: "Mecánico de Autos",
-    titleEn: "Car Mechanic",
-    descEs: "Talleres mecánicos para fallas de motor, batería y más",
-    descEn: "Auto repair shops for engine, battery and more",
-    icon: "car-wrench",
-    colorHex: "#3B82F6",
-  },
-  {
-    id: "mechanic_moto",
-    titleEs: "Mecánico de Motos",
-    titleEn: "Motorcycle Mechanic",
-    descEs: "Talleres especializados en reparación de motocicletas",
-    descEn: "Motorcycle repair and service shops",
-    icon: "motorbike",
-    colorHex: "#6366F1",
-  },
-  {
-    id: "electrician",
-    titleEs: "Electricista Automotriz",
-    titleEn: "Auto Electrician",
-    descEs: "Diagnóstico y reparación de sistemas eléctricos vehiculares",
-    descEn: "Vehicle electrical system diagnosis and repair",
-    icon: "flash",
-    colorHex: "#EAB308",
-  },
-  {
-    id: "gas",
-    titleEs: "Gasolinera",
-    titleEn: "Gas Station",
-    descEs: "Encuentra la estación de combustible más cercana",
-    descEn: "Find the nearest fuel station",
-    icon: "gas-station",
-    colorHex: "#10B981",
-  },
-  {
-    id: "tire",
-    titleEs: "Llantera",
-    titleEn: "Tire Shop",
-    descEs: "Llanterías cercanas para ponchadura o presión baja",
-    descEn: "Nearby tire shops for punctures or low pressure",
-    icon: "tire",
-    colorHex: "#F97316",
-  },
-  {
-    id: "locksmith",
-    titleEs: "Cerrajero",
-    titleEn: "Locksmith",
-    descEs: "Apertura de vehículo o duplicado de llaves",
-    descEn: "Vehicle unlock or key duplication",
-    icon: "key",
-    colorHex: "#8B5CF6",
-  },
-];
-
+import { MAP_SERVICES } from "@/constants/services";
 
 export default function ServicesScreen() {
   const router = useRouter();
@@ -155,7 +69,7 @@ export default function ServicesScreen() {
           </View>
 
           {/* Service Cards */}
-          {SERVICE_OPTIONS.map((service, index) => (
+          {MAP_SERVICES.map((service, index) => (
             <Animated.View
               key={service.id}
               entering={FadeInDown.delay(200 + index * 65).springify()}

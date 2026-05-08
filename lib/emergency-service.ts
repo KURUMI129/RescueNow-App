@@ -2,6 +2,7 @@ import * as SMS from "expo-sms";
 import { Linking, Platform } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { withRetry } from "./api-retry";
 import { firestoreDb } from "./firebase";
 
 type EmergencyLocation = {
@@ -166,7 +167,7 @@ export async function saveIncident(
   medicalData: MedicalData,
   contactPhone?: string,
 ): Promise<string | null> {
-  try {
+  const saveToFirestore = async () => {
     const docRef = await addDoc(collection(firestoreDb, "incidents"), {
       userId,
       latitude: location.latitude,
@@ -182,6 +183,21 @@ export async function saveIncident(
       timestamp: serverTimestamp(),
     });
     return docRef.id;
+  };
+
+  try {
+    return await withRetry(saveToFirestore, {
+      maxRetries: 3,
+      baseDelayMs: 1000,
+      // Retry on network errors
+      shouldRetry: (error: any) => {
+        // Firestore errors often have a code property
+        return error.code === 'unavailable' || 
+               error.code === 'deadline-exceeded' || 
+               error.message?.includes('network') ||
+               !error.code; // Generic errors
+      }
+    });
   } catch (e) {
     console.error("Error saving incident:", e);
     return null;
