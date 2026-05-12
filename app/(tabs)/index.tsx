@@ -44,6 +44,7 @@ import { AppEvents, EVENT_SELECT_SERVICE_FILTER } from "@/lib/app-events";
 import { BottomSheetServices } from "@/components/home/bottom-sheet-services";
 import { RexAvatar } from "@/components/chatbot/rex-avatar";
 import { BatteryWarning } from "@/components/features/BatteryWarning";
+import { ContactShortcut } from "@/components/features/ContactShortcut";
 import { MAP_SERVICES } from "@/constants/services";
 
 // Mapa en escala de azules oscuros tipo radar/sonar de rescate
@@ -479,6 +480,7 @@ export default function HomeScreen() {
             </Text>
           </View>
           <View style={styles.headerRight}>
+            <ContactShortcut />
             <BatteryWarning />
             <Pressable style={[styles.profileBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
             {user?.photoURL ? (

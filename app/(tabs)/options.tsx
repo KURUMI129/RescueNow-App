@@ -30,6 +30,7 @@ import Animated, {
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { ShareAppCard } from "@/components/features/ShareAppCard";
 import { getAppCopy } from "@/constants/app-copy";
 import {
     AccountRole,
