@@ -476,18 +476,18 @@ export default function HomeScreen() {
         })}
       </MapView>
 
-      {/* HEADER FLOTANTE - MINIMAL */}
-      <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]} pointerEvents="box-none">
-        <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.headerBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder, paddingVertical: 8, paddingHorizontal: 12 }]}>
+      {/* HEADER FLOTANTE - COMPACTO EN UNA FILA */}
+      <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.header, { paddingTop: Math.max(insets.top, 6) }]} pointerEvents="box-none">
+        <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.headerBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 14 }]}>
           <View style={styles.headerRight}>
             <ContactShortcut />
             <WeatherWidget/>
             <BatteryWarning />
             <Pressable
               onPress={handleCenterOnUser}
-              style={[styles.centerBtnHeader, { backgroundColor: colors.surface }]}
+              style={[styles.iconBtn, { backgroundColor: colors.surface }]}
             >
-              <Ionicons name="locate" size={20} color={colors.primary} />
+              <Ionicons name="locate" size={16} color={colors.primary} />
             </Pressable>
             <Pressable
               onPress={async () => {
@@ -495,20 +495,20 @@ export default function HomeScreen() {
                 await updateAppPreferences({ themeMode: newTheme });
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              style={[styles.themeToggle, { backgroundColor: colors.surface }]}
+              style={[styles.iconBtn, { backgroundColor: colors.surface }]}
             >
               <Ionicons
                 name={activeTheme === "dark" ? "moon-outline" : "sunny-outline"}
-                size={20}
+                size={16}
                 color={colors.primary}
               />
             </Pressable>
-            <Pressable style={[styles.profileBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
+            <Pressable style={[styles.iconBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
             {user?.photoURL ? (
-              <Image source={{ uri: user.photoURL }} style={styles.profileAvatarSmall} />
+              <Image source={{ uri: user.photoURL }} style={styles.profileAvatarTiny} />
             ) : (
-              <View style={[styles.profileInitialsSmall, { backgroundColor: colors.primary }]}>
-                <Text style={styles.profileInitialsTextSmall}>
+              <View style={[styles.profileInitialsTiny, { backgroundColor: colors.primary }]}>
+                <Text style={styles.profileInitialsTextTiny}>
                   {(user?.displayName ?? "U").charAt(0).toUpperCase()}
                 </Text>
               </View>
@@ -765,20 +765,24 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { position: 'absolute', top: 0, width: '100%', paddingHorizontal: 16, zIndex: 10 },
-  headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20, borderWidth: 1, shadowColor: "#0B1120", shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 0 },
+  headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, borderWidth: 1, shadowColor: "#0B1120", shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 0 },
   headerLeft: { flex: 1, paddingRight: 12 },
-  headerRight: { alignItems: "center", gap: 8 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   headerSubtitle: { fontSize: 12, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' },
   headerTitle: { fontSize: 16, fontWeight: '800' },
   profileBtn: { width: 36, height: 36, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   themeToggle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   centerBtnHeader: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   profileAvatar: { width: 40, height: 40, borderRadius: 20 },
   profileAvatarSmall: { width: 32, height: 32, borderRadius: 16 },
+  profileAvatarTiny: { width: 26, height: 26, borderRadius: 13 },
   profileInitials: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   profileInitialsSmall: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  profileInitialsTiny: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   profileInitialsText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   profileInitialsTextSmall: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  profileInitialsTextTiny: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
   aiFabContainer: { position: 'absolute', left: 20, zIndex: 30 },
   aiFab: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowColor: '#0EA5E9', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
   fabContainer: { position: 'absolute', right: 20, zIndex: 30 },
