@@ -315,6 +315,27 @@ export default function OptionsScreen() {
             </Card>
           </Pressable>
 
+          {/* HISTORIAL DE UBICACIONES */}
+          <Pressable
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push("/(tabs)/location-history");
+            }}
+          >
+            <Card style={[styles.medicalCard, { borderColor: colors.cardBorder }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.medicalIconWrap, { backgroundColor: 'rgba(34, 197, 94, 0.08)' }]}>
+                <Ionicons name="location" size={24} color="#22C55E" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 16 }}>
+                <Text style={[styles.medicalCardTitle, { color: colors.textPrimary }]}>Historial de Ubicaciones</Text>
+                <Text style={[styles.medicalCardSubtitle, { color: colors.textSecondary }]}>Ver ubicaciones guardadas</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </View>
+            </Card>
+          </Pressable>
+
           {/* 2. SECCIÓN VIP / SUSCRIPCIÓN */}
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(200).springify()}>
