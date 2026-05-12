@@ -45,7 +45,7 @@ export function EmergencyTipCard({
 
   const detailStyle = useAnimatedStyle(() => ({
     opacity: detailHeight.value,
-    maxHeight: detailHeight.value * 200,
+    maxHeight: detailHeight.value * 1000,
   }));
 
   const iconBgColors: Record<string, string> = {
