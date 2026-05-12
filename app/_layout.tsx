@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { router } from "expo-router";
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import {
   DarkTheme,
@@ -12,6 +14,7 @@ import { getAppCopy } from "@/constants/app-copy";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import { AuthProvider } from "@/lib/auth-context";
 
 export const unstable_settings = {
@@ -23,7 +26,14 @@ export default function RootLayout() {
   const activeTheme = useActiveTheme();
   const colors = HOME_THEME_COLORS[activeTheme];
   const navigationCopy = getAppCopy(language).navigation;
-  
+  const { isCompleted, isLoading } = useOnboarding();
+
+  useEffect(() => {
+    if (!isLoading && !isCompleted) {
+      router.replace("/onboarding");
+    }
+  }, [isLoading, isCompleted]);
+
   const navigationTheme = {
     ...DarkTheme,
     colors: {
@@ -40,6 +50,10 @@ export default function RootLayout() {
     <AuthProvider>
       <ThemeProvider value={navigationTheme}>
         <Stack>
+          <Stack.Screen
+            name="onboarding"
+            options={{ headerShown: false, statusBarHidden: true }}
+          />
           <Stack.Screen
             name="(auth)"
             options={{ headerShown: false, statusBarHidden: true }}
