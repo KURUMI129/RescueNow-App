@@ -46,6 +46,7 @@ import { RexAvatar } from "@/components/chatbot/rex-avatar";
 import { BatteryWarning } from "@/components/features/BatteryWarning";
 import { ContactShortcut } from "@/components/features/ContactShortcut";
 import { WeatherWidget } from "@/components/features/WeatherWidget";
+import { QuickActionsFAB } from "@/components/features/QuickActionsFAB";
 import { MAP_SERVICES } from "@/constants/services";
 
 // Mapa en escala de azules oscuros tipo radar/sonar de rescate
@@ -484,6 +485,20 @@ export default function HomeScreen() {
             <ContactShortcut />
             <WeatherWidget/>
             <BatteryWarning />
+            <Pressable
+              onPress={async () => {
+                const newTheme = activeTheme === "dark" ? "light" : "dark";
+                await updateAppPreferences({ themeMode: newTheme });
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={[styles.themeToggle, { backgroundColor: colors.surface }]}
+            >
+              <Ionicons
+                name={activeTheme === "dark" ? "moon-outline" : "sunny-outline"}
+                size={22}
+                color={colors.primary}
+              />
+            </Pressable>
             <Pressable style={[styles.profileBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
             {user?.photoURL ? (
               <Image source={{ uri: user.photoURL }} style={styles.profileAvatar} />
@@ -545,6 +560,17 @@ export default function HomeScreen() {
             <MaterialCommunityIcons name="alert" size={34} color="#FFFFFF" />
           </Pressable>
         </Animated.View>
+      </RNAnimated.View>
+
+      {/* Quick Actions FAB */}
+      <RNAnimated.View style={[
+          styles.quickActionsContainer, 
+          { 
+            bottom: RNAnimated.add(sheetAnim, 100),
+          }
+        ]}
+      >
+        <QuickActionsFAB bottomOffset={0} />
       </RNAnimated.View>
 
       {/* BOTTOM SHEET INTERACTIVO */}
@@ -764,6 +790,7 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 12, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' },
   headerTitle: { fontSize: 16, fontWeight: '800' },
   profileBtn: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  themeToggle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   profileAvatar: { width: 40, height: 40, borderRadius: 20 },
   profileInitials: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   profileInitialsText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
@@ -772,6 +799,7 @@ const styles = StyleSheet.create({
   fabContainer: { position: 'absolute', right: 20, zIndex: 30 },
   sosFab: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#E11D48', alignItems: 'center', justifyContent: 'center', shadowColor: '#E11D48', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.5, shadowRadius: 24, elevation: 12 },
   centerBtnContainer: { position: 'absolute', right: 20, zIndex: 25 },
+  quickActionsContainer: { position: 'absolute', right: 20, zIndex: 25 },
   centerBtn: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', shadowColor: '#0B1120', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(11, 17, 32, 0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   modalContent: { width: '100%', borderRadius: 24, padding: 28, alignItems: 'center', shadowColor: '#0B1120', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.1, shadowRadius: 32, elevation: 15 },
