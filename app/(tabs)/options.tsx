@@ -31,6 +31,7 @@ import Animated, {
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ShareAppCard } from "@/components/features/ShareAppCard";
+import { CrashSensitivitySlider } from "@/components/features/CrashSensitivitySlider";
 import { getAppCopy } from "@/constants/app-copy";
 import {
     AccountRole,
@@ -41,6 +42,15 @@ import {
     ThemeMode,
     updateAppPreferences,
 } from "@/constants/app-preferences";
+import {
+    DEFAULT_SOS_SETTINGS,
+    SOSSoundOption,
+    SOS_SOUND_OPTIONS,
+} from "@/constants/sos-settings";
+import {
+    DEFAULT_CRASH_SENSITIVITY,
+    CrashSensitivitySettings,
+} from "@/constants/crash-settings";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useAccessibilityPreferences } from "@/hooks/use-accessibility-preferences";
 import { useAuth } from "@/lib/auth-context";
@@ -71,6 +81,11 @@ export default function OptionsScreen() {
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan>(DEFAULT_APP_PREFERENCES.subscriptionPlan);
   const [accountRole, setAccountRole] = useState<AccountRole>(DEFAULT_APP_PREFERENCES.accountRole);
 
+  const [sosSound, setSosSound] = useState<SOSSoundOption>(DEFAULT_SOS_SETTINGS.sound);
+  const [sosVibration, setSosVibration] = useState<boolean>(DEFAULT_SOS_SETTINGS.vibration);
+
+  const [crashThreshold, setCrashThreshold] = useState<number>(DEFAULT_CRASH_SENSITIVITY.threshold);
+
   const entranceReady = !isLoadingPrefs;
   
   // Premium Starburst / Radar Animation (Reanimated native thread)
@@ -89,6 +104,8 @@ export default function OptionsScreen() {
         setUseTrustedContact(preferences.useTrustedContact);
         setSubscriptionPlan(preferences.subscriptionPlan);
         setAccountRole(preferences.accountRole);
+        setSosSound(preferences.sosSound);
+        setSosVibration(preferences.sosVibration);
         setIsLoadingPrefs(false);
       };
       void loadPreferences();
@@ -186,6 +203,15 @@ export default function OptionsScreen() {
     setIsSavingPlan(false);
   };
 
+  const handleSOSSoundChange = async (sound: SOSSoundOption) => {
+    setSosSound(sound);
+    await updateAppPreferences({ sosSound: sound });
+  };
+
+  const handleSOSVibrationChange = async (vibration: boolean) => {
+    setSosVibration(vibration);
+    await updateAppPreferences({ sosVibration: vibration });
+  };
 
 
   const handleLogout = async () => {
@@ -336,6 +362,52 @@ export default function OptionsScreen() {
                 <Pressable onPress={() => handleThemeChange("time")} style={[styles.pillBtn, themeMode === "time" && { backgroundColor: colors.primary }]}>
                   <Text style={[styles.pillText, themeMode === "time" ? { color: "#fff" } : { color: colors.textSecondary }]}>Auto</Text>
                 </Pressable>
+              </View>
+            </View>
+
+            {/* CRASH SENSITIVITY */}
+            <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+              <CrashSensitivitySlider
+                threshold={crashThreshold}
+                onThresholdChange={setCrashThreshold}
+                label="Sensibilidad de Detección de Choques"
+              />
+            </View>
+          </Card>
+
+          {/* SOS SOUND SETTINGS */}
+          <Card style={[styles.cardGroup, { borderColor: colors.cardBorder }]}>
+            <View style={styles.cardHeader}>
+              <MaterialCommunityIcons name="bullhorn" size={18} color={colors.accent} />
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Sonido S.O.S.</Text>
+            </View>
+            <View style={styles.settingRowStack}>
+              <Text style={[styles.settingLabel, { color: colors.textPrimary, marginBottom: 12 }]}>Selecciona el sonido de alerta:</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {SOS_SOUND_OPTIONS.map(option => (
+                  <Pressable
+                    key={option.id}
+                    onPress={() => handleSOSSoundChange(option.id)}
+                    style={[
+                      styles.pillBtn,
+                      sosSound === option.id
+                        ? { backgroundColor: colors.primary, borderWidth: 0 }
+                        : { backgroundColor: colors.mapBackground, borderColor: colors.cardBorder, borderWidth: 1 }
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={option.icon as any}
+                      size={14}
+                      color={sosSound === option.id ? "#fff" : colors.textSecondary}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[styles.pillText, sosSound === option.id ? { color: "#fff" } : { color: colors.textSecondary }]}>{option.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={[styles.switchRow, { marginTop: 16 }]}>
+                <Text style={[styles.settingLabel, { flex: 1, color: colors.textPrimary }]}>Vibración</Text>
+                <Switch value={sosVibration} onValueChange={handleSOSVibrationChange} trackColor={{ false: colors.cardBorder, true: colors.primary }} thumbColor="#FFFFFF" />
               </View>
             </View>
           </Card>

@@ -3,6 +3,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export type AppLanguage = "es" | "en";
 export type SubscriptionPlan = "free" | "premium";
 export type AccountRole = "user" | "technician";
+import { SOSSoundOption } from "./sos-settings";
+
 export type ThemeMode = "system" | "time" | "light" | "dark";
 
 export type AppPreferences = {
@@ -20,6 +22,8 @@ export type AppPreferences = {
   bloodType: string;
   allergies: string;
   medicalConditions: string;
+  sosSound: SOSSoundOption;
+  sosVibration: boolean;
 };
 
 const APP_PREFERENCES_KEY = "@rescuenow/app-preferences";
@@ -40,6 +44,8 @@ const DEFAULT_APP_PREFERENCES: AppPreferences = {
   bloodType: "",
   allergies: "",
   medicalConditions: "",
+  sosSound: "default",
+  sosVibration: true,
 };
 
 let inMemoryPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
@@ -103,6 +109,13 @@ function sanitizePreferences(
   const allergies = rawPreferences?.allergies ?? "";
   const medicalConditions = rawPreferences?.medicalConditions ?? "";
 
+  const rawSosSound = rawPreferences?.sosSound;
+  const sosSound: SOSSoundOption =
+    rawSosSound === "alarm" || rawSosSound === "siren" || rawSosSound === "silent"
+      ? rawSosSound
+      : "default";
+  const sosVibration = rawPreferences?.sosVibration !== undefined ? rawPreferences.sosVibration : true;
+
   return {
     language,
     subscriptionPlan,
@@ -118,6 +131,8 @@ function sanitizePreferences(
     bloodType,
     allergies,
     medicalConditions,
+    sosSound,
+    sosVibration,
   };
 }
 
