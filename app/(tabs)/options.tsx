@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as Haptics from "expo-haptics";
+import { Audio } from "expo-av";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { RESCUENOW_WEB_URL } from "@/constants/links";
@@ -25,6 +26,8 @@ import Animated, {
     useSharedValue,
     withRepeat,
     withTiming,
+    withSequence,
+    withTiming as withTimingReanimated,
 } from "react-native-reanimated";
 
 
@@ -85,6 +88,25 @@ export default function OptionsScreen() {
   const [sosVibration, setSosVibration] = useState<boolean>(DEFAULT_SOS_SETTINGS.vibration);
 
   const [crashThreshold, setCrashThreshold] = useState<number>(DEFAULT_CRASH_SENSITIVITY.threshold);
+  const [showCrashExplanation, setShowCrashExplanation] = useState(false);
+  const crashExplanationHeight = useSharedValue(0);
+  const crashExplanationOpacity = useSharedValue(0);
+
+  const toggleCrashExplanation = () => {
+    const willShow = !showCrashExplanation;
+    setShowCrashExplanation(willShow);
+    crashExplanationHeight.value = withTimingReanimated(willShow ? 1 : 0, { duration: 300 });
+    crashExplanationOpacity.value = withSequence(
+      withTimingReanimated(willShow ? 1 : 0, { duration: 200 }),
+      withTimingReanimated(willShow ? 1 : 0, { duration: 100 })
+    );
+  };
+
+  const crashExplanationStyle = useAnimatedStyle(() => ({
+    height: crashExplanationHeight.value * 320,
+    opacity: crashExplanationOpacity.value,
+    overflow: "hidden",
+  }));
 
   const entranceReady = !isLoadingPrefs;
   
@@ -203,9 +225,40 @@ export default function OptionsScreen() {
     setIsSavingPlan(false);
   };
 
+  const playSoundPreview = async (sound: SOSSoundOption) => {
+    if (sound === "silent") return;
+    
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+      });
+
+      const soundUri = sound === "siren" 
+        ? require("@/assets/audio/alarm.mp3")
+        : require("@/assets/audio/alarm.mp3");
+
+      const { sound: audioSound } = await Audio.Sound.createAsync(soundUri, { 
+        shouldPlay: true, 
+        volume: 0.6,
+        isLooping: sound === "alarm" || sound === "siren",
+      });
+
+      const duration = sound === "default" ? 300 : 600;
+      setTimeout(async () => {
+        await audioSound.stopAsync();
+        await audioSound.unloadAsync();
+      }, duration);
+    } catch (error) {
+      console.warn("Sound preview failed:", error);
+    }
+  };
+
   const handleSOSSoundChange = async (sound: SOSSoundOption) => {
     setSosSound(sound);
     await updateAppPreferences({ sosSound: sound });
+    void playSoundPreview(sound);
   };
 
   const handleSOSVibrationChange = async (vibration: boolean) => {
@@ -430,6 +483,33 @@ export default function OptionsScreen() {
 
             {/* CRASH SENSITIVITY */}
             <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+              <Pressable onPress={toggleCrashExplanation}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <Ionicons name="information-circle" size={20} color={colors.primary} />
+                  <Text style={[styles.settingLabel, { color: colors.textSecondary, marginLeft: 6, marginBottom: 0 }]}>
+                    ¿Qué significa esta sensibilidad?
+                  </Text>
+                </View>
+              </Pressable>
+              <Animated.View style={crashExplanationStyle}>
+                <View style={[styles.crashExplanationBox, { backgroundColor: colors.mapBackground, borderColor: colors.cardBorder }]}>
+                  <Text style={[styles.crashExplanationText, { color: colors.textSecondary }]}>
+                    Esta función detecta posible accidentes de tránsito usando el acelerómetro de tu dispositivo.
+                  </Text>
+                  <Text style={[styles.crashExplanationText, { color: colors.textPrimary, marginTop: 8 }]}>
+                    • Sensibilidad ALTA (7-10): Detecta golpes fuertes y bruscos. Ideal para terrenos con baches o caminos en mal estado. Puede activarse con menos fuerza.
+                  </Text>
+                  <Text style={[styles.crashExplanationText, { color: colors.textPrimary, marginTop: 8 }]}>
+                    • Sensibilidad MEDIA (4-6): Equilibrio recomendado. Detecta impactos significativos sin ser demasiado sensible. Configuración recomendada para la mayoría de usuarios.
+                  </Text>
+                  <Text style={[styles.crashExplanationText, { color: colors.textPrimary, marginTop: 8 }]}>
+                    • Sensibilidad BAJA (1-3): Solo detecta golpes muy intensos. Ideal si conduces en autopistas lisas o si recibes muchas falsas alarmas.
+                  </Text>
+                  <Text style={[styles.crashExplanationNote, { color: colors.accent, marginTop: 12 }]}>
+                    NOTA: Esta función requiere que la app esté abierta o en segundo plano. Cerciórate de mantener RescueNow activo mientras conduces.
+                  </Text>
+                </View>
+              </Animated.View>
               <CrashSensitivitySlider
                 threshold={crashThreshold}
                 onThresholdChange={setCrashThreshold}
@@ -654,5 +734,8 @@ const styles = StyleSheet.create({
   webLinkBtn: { marginTop: 18, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 14, borderWidth: 1 },
   webLinkIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   webLinkTitle: { fontSize: 14, fontWeight: "800", marginBottom: 2 },
-  webLinkSub: { fontSize: 12, fontWeight: "500" }
+  webLinkSub: { fontSize: 12, fontWeight: "500" },
+  crashExplanationBox: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
+  crashExplanationText: { fontSize: 13, lineHeight: 18 },
+  crashExplanationNote: { fontSize: 12, fontWeight: "700" }
 });
