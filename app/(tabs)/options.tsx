@@ -336,6 +336,27 @@ export default function OptionsScreen() {
             </Card>
           </Pressable>
 
+          {/* EMERGENCY TIPS */}
+          <Pressable
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push("/(tabs)/emergency-tips");
+            }}
+          >
+            <Card style={[styles.medicalCard, { borderColor: colors.cardBorder }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.medicalIconWrap, { backgroundColor: 'rgba(249, 115, 22, 0.08)' }]}>
+                <MaterialCommunityIcons name="medical-bag" size={24} color="#F97316" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 16 }}>
+                <Text style={[styles.medicalCardTitle, { color: colors.textPrimary }]}>Tips de Emergencia</Text>
+                <Text style={[styles.medicalCardSubtitle, { color: colors.textSecondary }]}>Guía básica de primeros auxilios</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </View>
+            </Card>
+          </Pressable>
+
           {/* HISTORIAL DE UBICACIONES */}
           <Pressable
             onPress={() => {

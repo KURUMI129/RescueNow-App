@@ -119,6 +119,12 @@ export default function TabLayout() {
             href: null,
           }}
         />
+        <Tabs.Screen
+          name="emergency-tips"
+          options={{
+            href: null,
+          }}
+        />
       </Tabs>
       
       {/* Tostada IN-APP (Respaldo para Expo Go) */}
