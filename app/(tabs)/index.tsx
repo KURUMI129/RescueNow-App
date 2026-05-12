@@ -21,12 +21,14 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
+  withSequence,
   withTiming,
 } from "react-native-reanimated";
 import MapView, { Callout, Marker, Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { Audio } from "expo-av";
+import * as Haptics from "expo-haptics";
 
 
 import { getAppPreferences, updateAppPreferences } from "@/constants/app-preferences";
@@ -119,6 +121,28 @@ export default function HomeScreen() {
   // SOS Mechanic states
   const [showSOSModal, setShowSOSModal] = useState(false);
   const [sosCountdown, setSosCountdown] = useState(10);
+  const sosPulseOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (showSOSModal) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      sosPulseOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.6, { duration: 500 }),
+          withTiming(0.2, { duration: 500 }),
+        ),
+        -1,
+        true,
+      );
+    } else {
+      sosPulseOpacity.value = 0;
+    }
+  }, [showSOSModal, sosPulseOpacity]);
+
+  const sosPulseAnimatedStyle = useAnimatedStyle(() => ({
+    backgroundColor: `rgba(225, 29, 72, ${sosPulseOpacity.value})`,
+  }));
+
   const [showMedicalID, setShowMedicalID] = useState(false);
   
   // Referencia para la alarma de audio
@@ -618,22 +642,22 @@ export default function HomeScreen() {
 
       {/* SOS COUNTDOWN MODAL — MANUAL PRESS */}
       <Modal transparent visible={showSOSModal && !crashTriggered} animationType="fade">
-        <View style={styles.sosModalOverlay}>
-           <Text style={styles.sosAlertTitle}>¡EMERGENCIA INICIADA!</Text>
-           <Text style={styles.sosAlertDesc}>En breve se mandará un mensaje y tu ubicación exacta al contacto predeterminado y a los sistemas de emergencia.</Text>
+<Animated.View style={[styles.sosModalOverlay, sosPulseAnimatedStyle]}>
+            <Text style={styles.sosAlertTitle}>¡EMERGENCIA INICIADA!</Text>
+            <Text style={styles.sosAlertDesc}>En breve se mandará un mensaje y tu ubicación exacta al contacto predeterminado y a los sistemas de emergencia.</Text>
 
-           <View style={styles.countdownContainer}>
-             <Text style={styles.countdownNumber}>{sosCountdown}</Text>
-             <Text style={styles.countdownLabel}>segundos</Text>
-           </View>
+            <View style={styles.countdownContainer}>
+              <Text style={styles.countdownNumber}>{sosCountdown}</Text>
+              <Text style={styles.countdownLabel}>segundos</Text>
+            </View>
 
-           <Pressable 
-              onPress={() => setShowSOSModal(false)}
-              style={styles.sosCancelBtn}
-           >
-              <Text style={styles.sosCancelText}>CANCELAR ALERTA</Text>
-           </Pressable>
-        </View>
+            <Pressable 
+               onPress={() => setShowSOSModal(false)}
+               style={styles.sosCancelBtn}
+            >
+               <Text style={styles.sosCancelText}>CANCELAR ALERTA</Text>
+            </Pressable>
+        </Animated.View>
       </Modal>
 
       {/* CRASH DETECTION FULLSCREEN */}

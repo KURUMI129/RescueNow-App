@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -36,7 +37,10 @@ export function SOSButton({ onPress, size = 72 }: SOSButtonProps) {
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
       <TouchableOpacity
-        onPress={onPress}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          onPress();
+        }}
         style={[
           styles.button,
           {
