@@ -315,6 +315,27 @@ export default function OptionsScreen() {
             </Card>
           </Pressable>
 
+          {/* SAFETY CHECK-IN */}
+          <Pressable
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push("/(tabs)/safety-check");
+            }}
+          >
+            <Card style={[styles.medicalCard, { borderColor: colors.cardBorder }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.medicalIconWrap, { backgroundColor: `${colors.success}15` }]}>
+                <MaterialCommunityIcons name="shield-check" size={24} color={colors.success} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 16 }}>
+                <Text style={[styles.medicalCardTitle, { color: colors.textPrimary }]}>Check-in de Seguridad</Text>
+                <Text style={[styles.medicalCardSubtitle, { color: colors.textSecondary }]}>Configura recordatorios de seguridad</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </View>
+            </Card>
+          </Pressable>
+
           {/* HISTORIAL DE UBICACIONES */}
           <Pressable
             onPress={() => {
