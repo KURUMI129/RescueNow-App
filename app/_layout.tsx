@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { router } from "expo-router";
+import { View } from "react-native";
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import {
   DarkTheme,
@@ -10,6 +11,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
+import AnimatedSplash from "./components/animated-splash";
 import { getAppCopy } from "@/constants/app-copy";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
@@ -27,12 +29,20 @@ export default function RootLayout() {
   const colors = HOME_THEME_COLORS[activeTheme];
   const navigationCopy = getAppCopy(language).navigation;
   const { isCompleted, isLoading } = useOnboarding();
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isCompleted) {
       router.replace("/onboarding");
     }
   }, [isLoading, isCompleted]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsReady(true);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const navigationTheme = {
     ...DarkTheme,
@@ -49,6 +59,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ThemeProvider value={navigationTheme}>
+        {!isReady && <AnimatedSplash />}
         <Stack>
           <Stack.Screen
             name="onboarding"
