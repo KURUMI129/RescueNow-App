@@ -446,6 +446,9 @@ export default function OptionsScreen() {
             <Ionicons name="open-outline" size={18} color={colors.textSecondary} />
           </Pressable>
 
+          {/* COMPARTIR APP */}
+          <ShareAppCard />
+
           {/* 6. CERRAR SESIÓN */}
           <Button
             title="Cerrar Sesión"

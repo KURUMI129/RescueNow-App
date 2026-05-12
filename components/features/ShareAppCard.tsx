@@ -1,7 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Sharing from "expo-sharing";
 
 import { Card } from "@/components/ui/Card";
 import { useActiveTheme } from "@/hooks/use-active-theme";
@@ -16,11 +15,9 @@ export function ShareAppCard() {
 
   const handleShare = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    const isAvailable = await Sharing.isAvailableAsync();
-    if (isAvailable) {
-      await Sharing.shareAsync(SHARE_MESSAGE);
-    }
+    await Share.share({
+      message: SHARE_MESSAGE,
+    });
   };
 
   return (
