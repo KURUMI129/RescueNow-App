@@ -112,7 +112,13 @@ export default function HomeScreen() {
     setCrashTriggered(true);
     setShowSOSModal(true);
   }, []);
-  useCrashDetection({ onCrashDetected: handleCrashDetected });
+  const { resetTrigger } = useCrashDetection({ onCrashDetected: handleCrashDetected });
+
+  const handleDismissCrashModal = useCallback(() => {
+    setShowSOSModal(false);
+    setCrashTriggered(false);
+    resetTrigger();
+  }, [resetTrigger]);
 
   // Bottom Sheet Físicas
   const sheetAnim = useRef(new RNAnimated.Value(SHEET_MIN_HEIGHT)).current;
@@ -470,21 +476,19 @@ export default function HomeScreen() {
         })}
       </MapView>
 
-      {/* HEADER FLOTANTE */}
-      <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]} pointerEvents="box-none">
-        <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.headerBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-          <View style={styles.headerLeft}>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-              {language === "es" ? "Ubicación Actual" : "Current Location"}
-            </Text>
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-              {location ? `Satélites Conectados` : "Buscando satélites..."}
-            </Text>
-          </View>
+      {/* HEADER FLOTANTE - MINIMAL */}
+      <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]} pointerEvents="box-none">
+        <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.headerBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder, paddingVertical: 8, paddingHorizontal: 12 }]}>
           <View style={styles.headerRight}>
             <ContactShortcut />
             <WeatherWidget/>
             <BatteryWarning />
+            <Pressable
+              onPress={handleCenterOnUser}
+              style={[styles.centerBtnHeader, { backgroundColor: colors.surface }]}
+            >
+              <Ionicons name="locate" size={20} color={colors.primary} />
+            </Pressable>
             <Pressable
               onPress={async () => {
                 const newTheme = activeTheme === "dark" ? "light" : "dark";
@@ -495,16 +499,16 @@ export default function HomeScreen() {
             >
               <Ionicons
                 name={activeTheme === "dark" ? "moon-outline" : "sunny-outline"}
-                size={22}
+                size={20}
                 color={colors.primary}
               />
             </Pressable>
             <Pressable style={[styles.profileBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
             {user?.photoURL ? (
-              <Image source={{ uri: user.photoURL }} style={styles.profileAvatar} />
+              <Image source={{ uri: user.photoURL }} style={styles.profileAvatarSmall} />
             ) : (
-              <View style={[styles.profileInitials, { backgroundColor: colors.primary }]}>
-                <Text style={styles.profileInitialsText}>
+              <View style={[styles.profileInitialsSmall, { backgroundColor: colors.primary }]}>
+                <Text style={styles.profileInitialsTextSmall}>
                   {(user?.displayName ?? "U").charAt(0).toUpperCase()}
                 </Text>
               </View>
@@ -527,24 +531,7 @@ export default function HomeScreen() {
         </Animated.View>
       </RNAnimated.View>
 
-      {/* BOTÓN: CENTRAR EN MI UBICACIÓN */}
-      <RNAnimated.View style={[
-          styles.centerBtnContainer, 
-          { bottom: RNAnimated.add(sheetAnim, 100) }
-        ]}
-      >
-        <Pressable onPress={handleCenterOnUser}>
-          <BlurView
-            intensity={activeTheme === "dark" ? 40 : 80}
-            tint={activeTheme}
-            style={[styles.centerBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.cardBorder }]}
-          >
-            <Ionicons name="locate" size={22} color={colors.primary} />
-          </BlurView>
-        </Pressable>
-      </RNAnimated.View>
-
-      {/* FAB (SOS Button) - MOVES WITH BOTTOM SHEET */}
+      {/* Quick Actions FAB */}
       <RNAnimated.View style={[
           styles.fabContainer, 
           { 
@@ -716,10 +703,7 @@ export default function HomeScreen() {
           <Text style={styles.crashCountdownLabel}>segundos para enviar alerta</Text>
 
           <Pressable
-            onPress={() => {
-              setShowSOSModal(false);
-              setCrashTriggered(false);
-            }}
+            onPress={handleDismissCrashModal}
             style={styles.crashOkButton}
           >
             <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
@@ -727,10 +711,7 @@ export default function HomeScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => {
-              setShowSOSModal(false);
-              setCrashTriggered(false);
-            }}
+            onPress={handleDismissCrashModal}
             style={styles.crashCancelLink}
           >
             <Text style={styles.crashCancelText}>Fue una falsa alarma</Text>
@@ -789,11 +770,15 @@ const styles = StyleSheet.create({
   headerRight: { alignItems: "center", gap: 8 },
   headerSubtitle: { fontSize: 12, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' },
   headerTitle: { fontSize: 16, fontWeight: '800' },
-  profileBtn: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  themeToggle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  profileBtn: { width: 36, height: 36, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  themeToggle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  centerBtnHeader: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   profileAvatar: { width: 40, height: 40, borderRadius: 20 },
+  profileAvatarSmall: { width: 32, height: 32, borderRadius: 16 },
   profileInitials: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  profileInitialsSmall: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   profileInitialsText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  profileInitialsTextSmall: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
   aiFabContainer: { position: 'absolute', left: 20, zIndex: 30 },
   aiFab: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowColor: '#0EA5E9', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
   fabContainer: { position: 'absolute', right: 20, zIndex: 30 },

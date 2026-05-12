@@ -24,6 +24,10 @@ export function useCrashDetection({ onCrashDetected, enabled = true }: UseCrashD
   const lastTriggerRef = useRef<number>(0);
   const callbackRef = useRef(onCrashDetected);
 
+  const resetTrigger = useCallback(() => {
+    lastTriggerRef.current = 0;
+  }, []);
+
   // Keep callback ref fresh without recreating subscription
   useEffect(() => {
     callbackRef.current = onCrashDetected;
@@ -75,4 +79,6 @@ export function useCrashDetection({ onCrashDetected, enabled = true }: UseCrashD
       }
     };
   }, [enabled, handleAccelerometerData]);
+
+  return { resetTrigger };
 }

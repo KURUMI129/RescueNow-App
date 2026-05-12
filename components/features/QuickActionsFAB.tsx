@@ -69,10 +69,10 @@ export function QuickActionsFAB({ bottomOffset = 100 }: QuickActionsFABProps) {
   }));
 
   const actionsContainerStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(
+    const translateX = interpolate(
       expanded.value,
       [0, 1],
-      [0, -200],
+      [60, 0],
       Extrapolation.CLAMP
     );
     const opacity = interpolate(
@@ -82,7 +82,7 @@ export function QuickActionsFAB({ bottomOffset = 100 }: QuickActionsFABProps) {
       Extrapolation.CLAMP
     );
     return {
-      transform: [{ translateY }],
+      transform: [{ translateX }],
       opacity,
     };
   });
@@ -105,19 +105,19 @@ export function QuickActionsFAB({ bottomOffset = 100 }: QuickActionsFABProps) {
         {ACTIONS.map((item, index) => (
           <View
             key={item.label}
-            style={[styles.actionItem, { bottom: (index + 1) * 60 }]}
+            style={[styles.actionItem, { left: (index + 1) * 60 }]}
           >
-            <Text style={[styles.actionLabel, { color: item.color }]}>
-              {item.label}
-            </Text>
             <Pressable
               onPress={() => handleActionPress(item.action)}
               style={[styles.actionButton, { backgroundColor: item.color }]}
             >
               <Ionicons name={item.icon} size={22} color="#FFFFFF" />
             </Pressable>
+            <Text style={[styles.actionLabel, { color: item.color }]}>
+              {item.label}
+            </Text>
           </View>
-        )).reverse()}
+        ))}
       </Animated.View>
 
       <Pressable onPress={toggleExpanded} style={styles.mainButtonWrapper}>
@@ -140,35 +140,38 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     position: "absolute",
-    bottom: 50,
+    bottom: 25,
+    flexDirection: "row-reverse",
     alignItems: "center",
   },
   actionItem: {
     position: "absolute",
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
-    right: 56,
+    left: 28,
   },
   actionLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
-    marginRight: 8,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    marginRight: -4,
+    backgroundColor: "rgba(0,0,0,0.8)",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    overflow: "hidden",
   },
   actionButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 6,
+    marginLeft: -4,
   },
   mainButtonWrapper: {
     width: 56,
