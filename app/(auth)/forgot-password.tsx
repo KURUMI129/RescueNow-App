@@ -21,6 +21,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { AuthHeader } from "@/components/auth/auth-header";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { getAppCopy } from "@/constants/app-copy";
 import { AppLanguage } from "@/constants/app-preferences";
 import { AUTH_THEME_COLORS } from "@/constants/auth-theme";
@@ -107,27 +109,20 @@ export default function ForgotPasswordScreen() {
             </Animated.View>
 
             <Animated.View entering={FadeInDown.delay(200).springify()}>
-              <Text style={[styles.label, { color: colors.textPrimary }]}>
-                {t.email}
-              </Text>
-              
-              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  placeholder={t.emailPlaceholder}
-                  placeholderTextColor={colors.inputPlaceholder}
-                  style={[styles.modernInput, { color: colors.textPrimary }]}
-                  value={email}
-                  onChangeText={(value) => {
-                    setEmail(value);
-                    if (sent) {
-                      setSent(false);
-                    }
-                  }}
-                />
-              </View>
+              <Input
+                label={t.email}
+                placeholder={t.emailPlaceholder}
+                value={email}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  if (sent) {
+                    setSent(false);
+                  }
+                }}
+                icon="email-outline"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
 
               {sent ? (
                 <View style={[styles.successBanner, { backgroundColor: `${colors.success}18`, borderColor: colors.success }]}>
@@ -148,25 +143,15 @@ export default function ForgotPasswordScreen() {
             </Animated.View>
 
             <Animated.View entering={FadeInDown.delay(300).springify()}>
-              <TouchableOpacity
-                accessibilityRole="button"
-                activeOpacity={0.8}
-                disabled={!canSubmit || isSubmitting}
+              <Button
+                title={t.sendLink}
                 onPress={handleRecover}
-                style={[
-                  styles.submitButton,
-                  (!canSubmit || isSubmitting) && styles.submitButtonDisabled,
-                  { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-                ]}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color={colors.onPrimary} size="small" />
-                ) : (
-                  <Text style={[styles.submitButtonText, { color: colors.onPrimary }]}>
-                    {t.sendLink}
-                  </Text>
-                )}
-              </TouchableOpacity>
+                loading={isSubmitting}
+                disabled={!canSubmit || isSubmitting}
+                variant="primary"
+                size="lg"
+                style={{ marginTop: 28 }}
+              />
 
               <TouchableOpacity
                 onPress={() => router.push("/(auth)/login")}

@@ -19,6 +19,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { AuthHeader } from "@/components/auth/auth-header";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { getAppCopy } from "@/constants/app-copy";
 import { AppLanguage, updateAppPreferences } from "@/constants/app-preferences";
 import { AUTH_THEME_COLORS } from "@/constants/auth-theme";
@@ -176,52 +178,32 @@ export default function RegisterScreen() {
             </Animated.View>
 
             <Animated.View entering={FadeInDown.delay(200).springify()}>
-              <Text style={[styles.label, { color: colors.textPrimary }]}>
-                {t.fullName}
-              </Text>
-              
-              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                <MaterialCommunityIcons name="account-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  placeholder={t.fullNamePlaceholder}
-                  placeholderTextColor={colors.inputPlaceholder}
-                  style={[styles.modernInput, { color: colors.textPrimary }]}
-                  value={fullName}
-                  onChangeText={setFullName}
-                />
-              </View>
+              <Input
+                label={t.fullName}
+                placeholder={t.fullNamePlaceholder}
+                value={fullName}
+                onChangeText={setFullName}
+                icon="account-outline"
+              />
 
               {/* Mantenemos teléfono opcional */}
-              <Text style={[styles.label, { color: colors.textPrimary }]}>
-                {t.phone} (Opcional)
-              </Text>
+              <Input
+                label={`${t.phone} (Opcional)`}
+                placeholder={t.phonePlaceholder}
+                value={phone}
+                onChangeText={setPhone}
+                icon="phone-outline"
+                keyboardType="phone-pad"
+              />
 
-              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                <MaterialCommunityIcons name="phone-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  keyboardType="phone-pad"
-                  placeholder={t.phonePlaceholder}
-                  placeholderTextColor={colors.inputPlaceholder}
-                  style={[styles.modernInput, { color: colors.textPrimary }]}
-                  value={phone}
-                  onChangeText={setPhone}
-                />
-              </View>
-
-              <Text style={[styles.label, { color: colors.textPrimary, marginTop: 12 }]}>
-                {language === "es" ? "Familiar / Emergencia (Opcional)" : "Emergency Contact (Optional)"}
-              </Text>
-              
-              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                <MaterialCommunityIcons name="heart-pulse" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  placeholder={language === "es" ? "Nombre completo" : "Full name"}
-                  placeholderTextColor={colors.inputPlaceholder}
-                  style={[styles.modernInput, { color: colors.textPrimary }]}
-                  value={trustedName}
-                  onChangeText={setTrustedName}
-                />
-              </View>
+              <Input
+                label={language === "es" ? "Familiar / Emergencia (Opcional)" : "Emergency Contact (Optional)"}
+                placeholder={language === "es" ? "Nombre completo" : "Full name"}
+                value={trustedName}
+                onChangeText={setTrustedName}
+                icon="heart-pulse"
+                style={{ marginTop: 12 }}
+              />
               
               <Text style={[styles.label, { color: colors.textPrimary, fontSize: 13, marginBottom: 4, marginTop: -4 }]}>
                 {language === "es" ? "Lada / Región" : "Country Code"}
@@ -241,81 +223,41 @@ export default function RegisterScreen() {
                 ))}
               </ScrollView>
 
-              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                <MaterialCommunityIcons name="phone-alert-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  keyboardType="phone-pad"
-                  placeholder={language === "es" ? "Número de emergencia a 10 dígitos" : "10-digit emergency number"}
-                  placeholderTextColor={colors.inputPlaceholder}
-                  style={[styles.modernInput, { color: colors.textPrimary }]}
-                  value={trustedPhone}
-                  onChangeText={setTrustedPhone}
-                  maxLength={10}
-                />
-              </View>
+              <Input
+                placeholder={language === "es" ? "Número de emergencia a 10 dígitos" : "10-digit emergency number"}
+                value={trustedPhone}
+                onChangeText={setTrustedPhone}
+                icon="phone-alert-outline"
+                keyboardType="phone-pad"
+              />
 
-              <Text style={[styles.label, { color: colors.textPrimary }]}>
-                {t.email}
-              </Text>
+              <Input
+                label={t.email}
+                placeholder={t.emailPlaceholder}
+                value={email}
+                onChangeText={setEmail}
+                icon="email-outline"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
 
-              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  placeholder={t.emailPlaceholder}
-                  placeholderTextColor={colors.inputPlaceholder}
-                  style={[styles.modernInput, { color: colors.textPrimary }]}
-                  value={email}
-                  onChangeText={setEmail}
-                />
-              </View>
+              <Input
+                label={t.password}
+                placeholder={t.passwordPlaceholder}
+                value={password}
+                onChangeText={setPassword}
+                icon="lock-outline"
+                variant="password"
+              />
 
-              <Text style={[styles.label, { color: colors.textPrimary }]}>
-                {t.password}
-              </Text>
-
-              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                <MaterialCommunityIcons name="lock-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  secureTextEntry={!showPassword}
-                  placeholder={t.passwordPlaceholder}
-                  placeholderTextColor={colors.inputPlaceholder}
-                  style={[styles.modernInput, { color: colors.textPrimary }]}
-                  value={password}
-                  onChangeText={setPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={styles.eyeBtn}>
-                  <MaterialCommunityIcons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={[styles.label, { color: colors.textPrimary }]}>
-                {t.confirmPassword}
-              </Text>
-
-              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                <MaterialCommunityIcons name="lock-check-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  secureTextEntry={!showConfirmPassword}
-                  placeholder={t.confirmPasswordPlaceholder}
-                  placeholderTextColor={colors.inputPlaceholder}
-                  style={[styles.modernInput, { color: colors.textPrimary }]}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                />
-                <TouchableOpacity onPress={() => setShowConfirmPassword(v => !v)} style={styles.eyeBtn}>
-                  <MaterialCommunityIcons
-                    name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color={confirmPassword.length > 0 && passwordsMatch ? colors.success : colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
+              <Input
+                label={t.confirmPassword}
+                placeholder={t.confirmPasswordPlaceholder}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                icon="lock-check-outline"
+                variant="password"
+              />
             </Animated.View>
 
             <Animated.View entering={FadeInDown.delay(300).springify()}>
@@ -326,27 +268,17 @@ export default function RegisterScreen() {
                 </Text>
               ) : null}
 
-              <TouchableOpacity
-                accessibilityRole="button"
-                activeOpacity={0.8}
-                disabled={!canSubmit || isSubmitting}
+              <Button
+                title={t.submit}
                 onPress={() => {
                   void handleRegister();
                 }}
-                style={[
-                  styles.submitButton,
-                  (!canSubmit || isSubmitting) && styles.submitButtonDisabled,
-                  { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-                ]}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color={colors.onPrimary} size="small" />
-                ) : (
-                  <Text style={[styles.submitButtonText, { color: colors.onPrimary }]}>
-                    {t.submit}
-                  </Text>
-                )}
-              </TouchableOpacity>
+                loading={isSubmitting}
+                disabled={!canSubmit || isSubmitting}
+                variant="primary"
+                size="lg"
+                style={{ marginTop: 28 }}
+              />
 
               {authError ? (
                 <Text style={[styles.errorText, { color: colors.danger, marginTop: 12, textAlign: "center" }]}>

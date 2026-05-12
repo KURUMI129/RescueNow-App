@@ -22,6 +22,8 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 
 export default function EditProfileScreen() {

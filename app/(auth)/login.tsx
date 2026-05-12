@@ -23,6 +23,7 @@ import { firebaseAuth, firestoreDb } from "@/lib/firebase";
 
 import { AuthHeader } from "@/components/auth/auth-header";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { getAppCopy } from "@/constants/app-copy";
 import {
   AppLanguage,
@@ -189,45 +190,24 @@ export default function LoginScreen() {
             </Animated.View>
 
             <Animated.View entering={FadeInDown.delay(200).springify()}>
-              <Text style={[styles.label, { color: colors.textPrimary }]}>
-                {language === "es" ? "Correo Electrónico o Teléfono" : "Email Address"}
-              </Text>
+              <Input
+                label={language === "es" ? "Correo Electrónico o Teléfono" : "Email Address"}
+                placeholder={language === "es" ? "ejemplo@correo.com" : t.emailPlaceholder}
+                value={email}
+                onChangeText={setEmail}
+                icon="email-outline"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
 
-              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  placeholder={language === "es" ? "ejemplo@correo.com" : t.emailPlaceholder}
-                  placeholderTextColor={colors.inputPlaceholder}
-                  style={[styles.modernInput, { color: colors.textPrimary }]}
-                />
-              </View>
-
-              <Text style={[styles.label, { color: colors.textPrimary }]}>
-                {t.password}
-              </Text>
-
-              <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                <MaterialCommunityIcons name="lock-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  placeholder={t.passwordPlaceholder}
-                  placeholderTextColor={colors.inputPlaceholder}
-                  style={[styles.modernInput, { color: colors.textPrimary }]}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={styles.eyeBtn}>
-                  <MaterialCommunityIcons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
+              <Input
+                label={t.password}
+                placeholder={t.passwordPlaceholder}
+                value={password}
+                onChangeText={setPassword}
+                icon="lock-outline"
+                variant="password"
+              />
 
               <TouchableOpacity
                 onPress={() => router.push("/(auth)/forgot-password")}

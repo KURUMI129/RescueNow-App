@@ -27,6 +27,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { getAppCopy } from "@/constants/app-copy";
 import {
     AccountRole,
@@ -215,7 +217,7 @@ export default function OptionsScreen() {
         <Animated.View entering={FadeInDown.delay(100).springify()}>
           
           {/* 1. SECCIÓN DE PERFIL CENTRADO */}
-          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.profileHeroCard, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
+          <Card elevated style={[styles.profileHeroCard, { borderColor: colors.cardBorder }]}>
             <View style={styles.avatarWrapper}>
               {subscriptionPlan === "premium" && (
                 <>
@@ -262,13 +264,13 @@ export default function OptionsScreen() {
               <MaterialCommunityIcons name="pencil-outline" size={15} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 14 }}>Editar Perfil</Text>
             </Pressable>
-          </BlurView>
+          </Card>
 
           {/* ACCESO RÁPIDO A FICHA MÉDICA */}
           <Pressable
             onPress={() => router.push("/(tabs)/medical-id")}
           >
-            <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.medicalCard, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
+            <Card style={[styles.medicalCard, { borderColor: colors.cardBorder }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={[styles.medicalIconWrap, { backgroundColor: 'rgba(225, 29, 72, 0.08)' }]}>
                 <Ionicons name="medical" size={24} color="#E11D48" />
@@ -279,13 +281,13 @@ export default function OptionsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </View>
-            </BlurView>
+            </Card>
           </Pressable>
 
           {/* 2. SECCIÓN VIP / SUSCRIPCIÓN */}
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(200).springify()}>
-          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.cardGroup, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
+          <Card style={[styles.cardGroup, { borderColor: colors.cardBorder }]}>
             <View style={styles.cardHeader}>
               <MaterialCommunityIcons name="crown" size={20} color={colors.accent} />
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Planes y Suscripción</Text>
@@ -307,10 +309,10 @@ export default function OptionsScreen() {
                 </Text>
               </Pressable>
             </View>
-          </BlurView>
+          </Card>
 
           {/* 3. SECCIÓN DE AJUSTES GLOBALES */}
-          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.cardGroup, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
+          <Card style={[styles.cardGroup, { borderColor: colors.cardBorder }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="settings-sharp" size={18} color={colors.textSecondary} />
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Ajustes Generales</Text>
@@ -331,10 +333,10 @@ export default function OptionsScreen() {
                 </Pressable>
               </View>
             </View>
-          </BlurView>
+          </Card>
 
           {/* 4. SECCIÓN CONTACTO DE CONFIANZA */}
-          <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.cardGroup, { borderColor: colors.cardBorder, backgroundColor: 'transparent' }]}>
+          <Card style={[styles.cardGroup, { borderColor: colors.cardBorder }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="shield-checkmark" size={18} color={colors.success} />
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Contacto de Emergencia</Text>
@@ -396,15 +398,16 @@ export default function OptionsScreen() {
                   <Text style={[styles.settingLabel, { flex: 1, color: colors.textPrimary }]}>Alertar automáticamente en S.O.S.</Text>
                   <Switch value={useTrustedContact} onValueChange={setUseTrustedContact} trackColor={{ false: colors.cardBorder, true: colors.primary }} thumbColor="#FFFFFF" />
                 </View>
-                <Pressable onPress={handleSaveContact} disabled={isSavingContact} style={[styles.saveContactBtn, { backgroundColor: colors.primary, marginTop: 16 }]}>
-                  {isSavingContact ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>Guardar Contacto</Text>
-                  )}
-                </Pressable>
+                <Button
+                  title="Guardar Contacto"
+                  onPress={handleSaveContact}
+                  loading={isSavingContact}
+                  disabled={isSavingContact}
+                  variant="primary"
+                  style={{ marginTop: 16 }}
+                />
             </View>
-          </BlurView>
+          </Card>
 
           {/* 5. CONOCE MÁS (Web) */}
           <Pressable
@@ -439,10 +442,13 @@ export default function OptionsScreen() {
           </Pressable>
 
           {/* 6. CERRAR SESIÓN */}
-          <Pressable onPress={handleLogout} style={[styles.logoutButton, { backgroundColor: '#E11D48' }]}>
-            <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={styles.logoutText}>Cerrar Sesión</Text>
-          </Pressable>
+          <Button
+            title="Cerrar Sesión"
+            onPress={handleLogout}
+            variant="danger"
+            size="lg"
+            style={{ marginTop: 10 }}
+          />
 
         </Animated.View>
       </ScrollView>
