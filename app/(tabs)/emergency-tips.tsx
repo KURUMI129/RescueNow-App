@@ -51,7 +51,7 @@ export default function EmergencyTipsScreen() {
         <View style={[styles.headerBar, { borderBottomColor: colors.cardBorder, borderBottomWidth: 1 }]}>
           <Pressable
             style={styles.backBtn}
-            onPress={() => router.navigate("/(tabs)")}
+            onPress={() => router.push("/(tabs)/options")}
           >
             <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           </Pressable>

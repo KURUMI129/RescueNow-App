@@ -102,7 +102,7 @@ export default function SafetyCheckScreen() {
         colors={HOME_THEME_COLORS[activeTheme].gradientBg}
         style={StyleSheet.absoluteFillObject}
       />
-      <Header title="Check-in de Seguridad" showBack onBack={() => router.back()} />
+        <Header title="Check-in de Seguridad" showBack onBack={() => router.push("/(tabs)/options")} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeInDown.delay(100).springify()}>

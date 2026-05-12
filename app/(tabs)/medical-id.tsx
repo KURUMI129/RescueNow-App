@@ -115,7 +115,7 @@ export default function MedicalIdScreen() {
       <SafeAreaView style={styles.safeArea}>
       {/* HEADER EXCLUSIVO MÉDICO */}
       <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.header, { borderBottomColor: 'transparent' }]}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Pressable onPress={() => router.push("/(tabs)/options")} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </Pressable>
         <Ionicons name="medical" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
