@@ -3,7 +3,6 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -23,6 +22,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { firebaseAuth, firestoreDb } from "@/lib/firebase";
 
 import { AuthHeader } from "@/components/auth/auth-header";
+import { Button } from "@/components/ui/Button";
 import { getAppCopy } from "@/constants/app-copy";
 import {
   AppLanguage,
@@ -242,27 +242,20 @@ export default function LoginScreen() {
             </Animated.View>
 
             <Animated.View entering={FadeInDown.delay(300).springify()}>
-              <TouchableOpacity
-                accessibilityRole="button"
-                activeOpacity={0.8}
-                disabled={isSubmitting}
+              <Button
+                title={t.submit}
                 onPress={() => {
                   void handleLogin();
                 }}
-                style={[
+                loading={isSubmitting}
+                disabled={isSubmitting}
+                variant="primary"
+                size="lg"
+                style={StyleSheet.flatten([
                   styles.submitButton,
-                  isSubmitting && styles.submitButtonDisabled,
-                  { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-                ]}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color={colors.onPrimary} size="small" />
-                ) : (
-                  <Text style={[styles.submitButtonText, { color: colors.onPrimary }]}>
-                    {t.submit}
-                  </Text>
-                )}
-              </TouchableOpacity>
+                  { shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+                ])}
+              />
 
               <View style={styles.biometricRow}>
                 <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
