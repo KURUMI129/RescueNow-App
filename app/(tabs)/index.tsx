@@ -43,6 +43,7 @@ import { fetchNearbyPOIs, distanceKm, type POIResult } from "@/lib/overpass-serv
 import { AppEvents, EVENT_SELECT_SERVICE_FILTER } from "@/lib/app-events";
 import { BottomSheetServices } from "@/components/home/bottom-sheet-services";
 import { RexAvatar } from "@/components/chatbot/rex-avatar";
+import { BatteryWarning } from "@/components/features/BatteryWarning";
 import { MAP_SERVICES } from "@/constants/services";
 
 // Mapa en escala de azules oscuros tipo radar/sonar de rescate
@@ -477,7 +478,9 @@ export default function HomeScreen() {
               {location ? `Satélites Conectados` : "Buscando satélites..."}
             </Text>
           </View>
-          <Pressable style={[styles.profileBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
+          <View style={styles.headerRight}>
+            <BatteryWarning />
+            <Pressable style={[styles.profileBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
             {user?.photoURL ? (
               <Image source={{ uri: user.photoURL }} style={styles.profileAvatar} />
             ) : (
@@ -487,7 +490,8 @@ export default function HomeScreen() {
                 </Text>
               </View>
             )}
-          </Pressable>
+            </Pressable>
+          </View>
         </BlurView>
       </Animated.View>
 
@@ -752,6 +756,7 @@ const styles = StyleSheet.create({
   header: { position: 'absolute', top: 0, width: '100%', paddingHorizontal: 16, zIndex: 10 },
   headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20, borderWidth: 1, shadowColor: "#0B1120", shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 0 },
   headerLeft: { flex: 1, paddingRight: 12 },
+  headerRight: { alignItems: "center", gap: 8 },
   headerSubtitle: { fontSize: 12, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' },
   headerTitle: { fontSize: 16, fontWeight: '800' },
   profileBtn: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
