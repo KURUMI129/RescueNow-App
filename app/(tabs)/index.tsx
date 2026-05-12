@@ -45,6 +45,7 @@ import { BottomSheetServices } from "@/components/home/bottom-sheet-services";
 import { RexAvatar } from "@/components/chatbot/rex-avatar";
 import { BatteryWarning } from "@/components/features/BatteryWarning";
 import { ContactShortcut } from "@/components/features/ContactShortcut";
+import { WeatherWidget } from "@/components/features/WeatherWidget";
 import { MAP_SERVICES } from "@/constants/services";
 
 // Mapa en escala de azules oscuros tipo radar/sonar de rescate
@@ -481,6 +482,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.headerRight}>
             <ContactShortcut />
+            <WeatherWidget/>
             <BatteryWarning />
             <Pressable style={[styles.profileBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
             {user?.photoURL ? (
