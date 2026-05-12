@@ -235,15 +235,14 @@ export default function OptionsScreen() {
         shouldDuckAndroid: true,
       });
 
-      const soundUri = sound === "siren" 
-        ? require("@/assets/audio/alarm.mp3")
-        : require("@/assets/audio/alarm.mp3");
-
-      const { sound: audioSound } = await Audio.Sound.createAsync(soundUri, { 
-        shouldPlay: true, 
-        volume: 0.6,
-        isLooping: sound === "alarm" || sound === "siren",
-      });
+      const { sound: audioSound } = await Audio.Sound.createAsync(
+        require("@/assets/audio/alarm.mp3"),
+        { 
+          shouldPlay: true, 
+          volume: 0.6,
+          isLooping: sound === "alarm" || sound === "siren",
+        }
+      );
 
       const duration = sound === "default" ? 300 : 600;
       setTimeout(async () => {
