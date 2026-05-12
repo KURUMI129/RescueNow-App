@@ -15,6 +15,7 @@ import {
     View,
 } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import * as Haptics from "expo-haptics";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { RESCUENOW_WEB_URL } from "@/constants/links";
@@ -266,18 +267,21 @@ export default function OptionsScreen() {
             </Pressable>
           </Card>
 
-          {/* ACCESO RÁPIDO A FICHA MÉDICA */}
+          {/* ACCESO RÁPIDO A PERFIL MÉDICO */}
           <Pressable
-            onPress={() => router.push("/(tabs)/medical-id")}
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push("/(tabs)/medical-id");
+            }}
           >
             <Card style={[styles.medicalCard, { borderColor: colors.cardBorder }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={[styles.medicalIconWrap, { backgroundColor: 'rgba(225, 29, 72, 0.08)' }]}>
-                <Ionicons name="medical" size={24} color="#E11D48" />
+                <MaterialCommunityIcons name="medical-bag" size={24} color="#E11D48" />
               </View>
               <View style={{ flex: 1, marginLeft: 16 }}>
-                <Text style={[styles.medicalCardTitle, { color: colors.textPrimary }]}>Ficha Médica S.O.S</Text>
-                <Text style={[styles.medicalCardSubtitle, { color: colors.textSecondary }]}>Tipo de sangre, alergias y condiciones</Text>
+                <Text style={[styles.medicalCardTitle, { color: colors.textPrimary }]}>Perfil Médico</Text>
+                <Text style={[styles.medicalCardSubtitle, { color: colors.textSecondary }]}>Ver tu información de emergencia</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </View>
