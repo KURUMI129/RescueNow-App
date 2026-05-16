@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(xargs grep -l \"getReactNativePersistence\")",
+      "Bash(npx firebase *)"
+    ]
+  }
+}

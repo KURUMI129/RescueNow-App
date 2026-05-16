@@ -1,8 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Animated as RNAnimated,
   Dimensions,
   Image,
@@ -10,14 +9,13 @@ import {
   Modal,
   PanResponder,
   Pressable,
-  ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import Animated, {
   FadeInDown,
-  FadeInUp,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -31,7 +29,7 @@ import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 
 
-import { getAppPreferences, updateAppPreferences } from "@/constants/app-preferences";
+import { getAppPreferences, recordIncident, updateAppPreferences } from "@/constants/app-preferences";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
@@ -46,7 +44,8 @@ import { RexAvatar } from "@/components/chatbot/rex-avatar";
 import { BatteryWarning } from "@/components/features/BatteryWarning";
 import { ContactShortcut } from "@/components/features/ContactShortcut";
 import { WeatherWidget } from "@/components/features/WeatherWidget";
-import { QuickActionsFAB } from "@/components/features/QuickActionsFAB";
+import { QuickActionsFAB, QuickAction } from "@/components/features/QuickActionsFAB";
+import { MedicalCard } from "@/components/features/MedicalCard";
 import { MAP_SERVICES } from "@/constants/services";
 
 // Mapa en escala de azules oscuros tipo radar/sonar de rescate
@@ -75,9 +74,45 @@ const RESCUE_DARK_MAP_STYLE: any[] = [
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // Medidas Bottom Sheet
-const SHEET_MIN_HEIGHT = 160; 
+const SHEET_MIN_HEIGHT = 160;
 const SHEET_MAX_HEIGHT = SCREEN_HEIGHT * 0.65;
 const SHEET_SNAP_THRESHOLD = SCREEN_HEIGHT * 0.4;
+
+// SOS countdown durations (segundos)
+// Manual: usuario presionó SOS conscientemente → tiempo corto para emergencia real
+// Crash:  detección automática → tiempo amplio para que el usuario pueda cancelar si está bien
+const SOS_COUNTDOWN_MANUAL = 5;
+const SOS_COUNTDOWN_CRASH = 10;
+
+// SOS modal strings (manual + crash detection)
+const SOS_COPY = {
+  es: {
+    manualTitle: "¡EMERGENCIA INICIADA!",
+    manualDesc:
+      "En breve se mandará un mensaje y tu ubicación exacta al contacto predeterminado y a los sistemas de emergencia.",
+    seconds: "segundos",
+    cancelAlert: "CANCELAR ALERTA",
+    crashTitle: "¿ESTÁS BIEN?",
+    crashSubtitle:
+      "Detectamos un posible accidente.\nSi no respondes, enviaremos ayuda automáticamente.",
+    secondsToAlert: "segundos para enviar alerta",
+    iAmFine: "ESTOY BIEN",
+    falseAlarm: "Fue una falsa alarma",
+  },
+  en: {
+    manualTitle: "EMERGENCY STARTED!",
+    manualDesc:
+      "We will send a message and your exact location to your trusted contact and emergency services shortly.",
+    seconds: "seconds",
+    cancelAlert: "CANCEL ALERT",
+    crashTitle: "ARE YOU OK?",
+    crashSubtitle:
+      "We detected a possible crash.\nIf you don't respond, we'll send help automatically.",
+    secondsToAlert: "seconds to send alert",
+    iAmFine: "I'M FINE",
+    falseAlarm: "False alarm",
+  },
+} as const;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -85,6 +120,7 @@ export default function HomeScreen() {
   const activeTheme = useActiveTheme();
   const colors = HOME_THEME_COLORS[activeTheme];
   const language = useAppLanguage();
+  const sosCopy = SOS_COPY[language === "en" ? "en" : "es"];
   
   const { location, locationAllowed, askLocationPermission } = useUserLocation();
   const { user } = useAuth();
@@ -153,13 +189,67 @@ export default function HomeScreen() {
     backgroundColor: `rgba(225, 29, 72, ${sosPulseOpacity.value})`,
   }));
 
-  const [showMedicalID, setShowMedicalID] = useState(false);
+  const [showMedicalCard, setShowMedicalCard] = useState(false);
+
+  // Acciones del FAB de "+" (rápidas, siempre disponibles, offline-safe)
+  // Memoizadas para evitar re-renders del QuickActionsFAB en cada render del Home
+  const quickActions: QuickAction[] = useMemo(() => [
+    {
+      label: language === "es" ? "Llamar 911" : "Call 911",
+      icon: "call",
+      color: "#E11D48",
+      action: () => {
+        void Linking.openURL("tel:911");
+      },
+    },
+    {
+      label: language === "es" ? "Ficha Médica" : "Medical ID",
+      icon: "medkit",
+      color: "#DC2626",
+      action: () => {
+        setShowMedicalCard(true);
+      },
+    },
+    {
+      label: language === "es" ? "Compartir ubicación" : "Share location",
+      icon: "share-outline",
+      color: "#0EA5E9",
+      action: async () => {
+        if (!location) return;
+        const url = `https://maps.google.com/?q=${location.coords.latitude},${location.coords.longitude}`;
+        try {
+          await Share.share({
+            message: language === "es"
+              ? `Mi ubicación actual: ${url}`
+              : `My current location: ${url}`,
+          });
+        } catch (e) {
+          console.warn("[ShareLocation] Error:", e);
+        }
+      },
+    },
+    {
+      label: language === "es" ? "Modo Viaje" : "Travel Mode",
+      icon: "navigate",
+      color: "#06B6D4",
+      action: () => {
+        // Path is registered in (tabs)/_layout but expo-router types regenerate
+        // only after the dev server runs once. Safe cast in the meantime.
+        router.push("/(tabs)/travel-mode" as never);
+      },
+    },
+    {
+      label: language === "es" ? "Check-in" : "Check-in",
+      icon: "shield-checkmark",
+      color: "#10B981",
+      action: () => {
+        router.push("/(tabs)/check-in" as never);
+      },
+    },
+  ], [language, location, router]);
   
   // Referencia para la alarma de audio
   const alarmSoundRef = useRef<Audio.Sound | null>(null);
-
-  // Medical Data para Offline
-  const [medicalData, setMedicalData] = useState({ bloodType: "", allergies: "", conditions: "", contact: "" });
 
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -174,13 +264,6 @@ export default function HomeScreen() {
       } else if (!prefs.hasPromptedContact) {
         setShowContactModal(true);
       }
-      
-      setMedicalData({
-         bloodType: prefs.bloodType || "No especificado",
-         allergies: prefs.allergies || "No especificadas",
-         conditions: prefs.medicalConditions || "No especificadas",
-         contact: prefs.trustedContactName ? `${prefs.trustedContactName} (${prefs.trustedContactPhone})` : "No registrado"
-      });
     };
     void checkPreferences();
   }, [askLocationPermission]);
@@ -189,8 +272,6 @@ export default function HomeScreen() {
 
   // SOS Countdown Mechanism y Alarma
   useEffect(() => {
-    let internalInterval: ReturnType<typeof setInterval> | null = null;
-    
     const playAlarm = async () => {
       try {
         // Obliga al celular a ignorar el modo silencio/vibrar (Especial para emergencias)
@@ -209,51 +290,56 @@ export default function HomeScreen() {
           );
           alarmSoundRef.current = sound;
         }
-        // Volumen al máximo del reproductor (1.0)
         await alarmSoundRef.current.setVolumeAsync(1.0);
         await alarmSoundRef.current.playAsync();
       } catch (e) {
         console.warn("No se pudo reproducir la alarma:", e);
       }
     };
-    
+
     const stopAlarm = async () => {
       if (alarmSoundRef.current) {
         await alarmSoundRef.current.stopAsync();
       }
     };
 
-    if (showSOSModal) {
-      setSosCountdown(10);
-      
-      // Solo hacer sonar la sirena si fue un accidente detectado automáticamente
-      if (crashTriggered) {
-        void playAlarm();
-      }
-      
-      internalInterval = setInterval(() => {
-        setSosCountdown((prev) => {
-          if (prev <= 1) {
-             if (internalInterval) clearInterval(internalInterval);
-             void stopAlarm();
-             triggerEmergency();
-             return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      countdownIntervalRef.current = internalInterval;
-    } else {
-      if (internalInterval) clearInterval(internalInterval);
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    if (!showSOSModal) {
+      // Modal cerrado → detener alarma si estaba sonando, no hacer nada más
       void stopAlarm();
+      return;
     }
-    
+
+    // Duración del countdown depende del modo:
+    //   Crash detection automático → 10s (margen para que el usuario reaccione)
+    //   SOS manual                → 5s (usuario ya decidió, sin perder tiempo)
+    const initialCountdown = crashTriggered ? SOS_COUNTDOWN_CRASH : SOS_COUNTDOWN_MANUAL;
+    setSosCountdown(initialCountdown);
+
+    // Solo sonar sirena en detección automática (manual ya implica conciencia)
+    if (crashTriggered) {
+      void playAlarm();
+    }
+
+    const interval = setInterval(() => {
+      setSosCountdown((prev) => {
+        const next = prev - 1;
+        if (next <= 0) {
+          clearInterval(interval);
+          void stopAlarm();
+          triggerEmergency();
+          return 0;
+        }
+        return next;
+      });
+    }, 1000);
+
+    countdownIntervalRef.current = interval;
+
     return () => {
-      if (internalInterval) clearInterval(internalInterval);
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      clearInterval(interval);
+      countdownIntervalRef.current = null;
       void stopAlarm();
-    }
+    };
   }, [showSOSModal, crashTriggered]);
 
   const triggerEmergency = async () => {
@@ -268,7 +354,7 @@ export default function HomeScreen() {
     const prefs = await getAppPreferences();
     const wasCrash = crashTriggered;
 
-    // 1. Save incident to Firestore (fire-and-forget — don't block navigation)
+    // 1a. Save incident to Firestore (fire-and-forget — don't block navigation)
     if (user) {
       void saveIncident(
         user.uid,
@@ -283,6 +369,14 @@ export default function HomeScreen() {
       );
     }
 
+    // 1b. Record incident locally (works offline, used by Historial screen)
+    void recordIncident({
+      timestamp: Date.now(),
+      type: wasCrash ? "crash_detection" : "manual",
+      location: emergencyLocation,
+      messageMethod: prefs.trustedContactPhone ? "sms" : "no_contact",
+    });
+
     // 2. Navigate IMMEDIATELY to 911 call screen
     //    The call screen will handle sending the message during the "dialing" phase
     router.push({
@@ -296,6 +390,7 @@ export default function HomeScreen() {
         medicalConditions: prefs.medicalConditions,
         contactPhone: prefs.trustedContactPhone,
         contactName: prefs.trustedContactName,
+        contactCountryCode: prefs.trustedContactCountryCode,
       },
     });
   };
@@ -557,7 +652,7 @@ export default function HomeScreen() {
           }
         ]}
       >
-        <QuickActionsFAB bottomOffset={0} />
+        <QuickActionsFAB bottomOffset={0} actions={quickActions} />
       </RNAnimated.View>
 
       {/* BOTTOM SHEET INTERACTIVO */}
@@ -664,19 +759,19 @@ export default function HomeScreen() {
       {/* SOS COUNTDOWN MODAL — MANUAL PRESS */}
       <Modal transparent visible={showSOSModal && !crashTriggered} animationType="fade">
 <Animated.View style={[styles.sosModalOverlay, sosPulseAnimatedStyle]}>
-            <Text style={styles.sosAlertTitle}>¡EMERGENCIA INICIADA!</Text>
-            <Text style={styles.sosAlertDesc}>En breve se mandará un mensaje y tu ubicación exacta al contacto predeterminado y a los sistemas de emergencia.</Text>
+            <Text style={styles.sosAlertTitle}>{sosCopy.manualTitle}</Text>
+            <Text style={styles.sosAlertDesc}>{sosCopy.manualDesc}</Text>
 
             <View style={styles.countdownContainer}>
               <Text style={styles.countdownNumber}>{sosCountdown}</Text>
-              <Text style={styles.countdownLabel}>segundos</Text>
+              <Text style={styles.countdownLabel}>{sosCopy.seconds}</Text>
             </View>
 
-            <Pressable 
+            <Pressable
                onPress={() => setShowSOSModal(false)}
                style={styles.sosCancelBtn}
             >
-               <Text style={styles.sosCancelText}>CANCELAR ALERTA</Text>
+               <Text style={styles.sosCancelText}>{sosCopy.cancelAlert}</Text>
             </Pressable>
         </Animated.View>
       </Modal>
@@ -692,71 +787,36 @@ export default function HomeScreen() {
             <MaterialCommunityIcons name="car-emergency" size={56} color="#FFFFFF" />
           </View>
 
-          <Text style={styles.crashTitle}>{"¿ESTÁS BIEN?"}</Text>
-          <Text style={styles.crashSubtitle}>
-            {"Detectamos un posible accidente.\nSi no respondes, enviaremos ayuda automáticamente."}
-          </Text>
+          <Text style={styles.crashTitle}>{sosCopy.crashTitle}</Text>
+          <Text style={styles.crashSubtitle}>{sosCopy.crashSubtitle}</Text>
 
           <View style={styles.crashCountdownCircle}>
             <Text style={styles.crashCountdownNumber}>{sosCountdown}</Text>
           </View>
-          <Text style={styles.crashCountdownLabel}>segundos para enviar alerta</Text>
+          <Text style={styles.crashCountdownLabel}>{sosCopy.secondsToAlert}</Text>
 
           <Pressable
             onPress={handleDismissCrashModal}
             style={styles.crashOkButton}
           >
             <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
-            <Text style={styles.crashOkText}>ESTOY BIEN</Text>
+            <Text style={styles.crashOkText}>{sosCopy.iAmFine}</Text>
           </Pressable>
 
           <Pressable
             onPress={handleDismissCrashModal}
             style={styles.crashCancelLink}
           >
-            <Text style={styles.crashCancelText}>Fue una falsa alarma</Text>
+            <Text style={styles.crashCancelText}>{sosCopy.falseAlarm}</Text>
           </Pressable>
         </View>
       </Modal>
 
-      {/* MEDICAL ID FULLSCREEN OVERLAY (OFFLINE SAFE) */}
-      <Modal transparent visible={showMedicalID} animationType="fade">
-        <View style={[styles.medicalOverlay, { backgroundColor: colors.background }]}>
-           <View style={[styles.medicalHeader, { backgroundColor: colors.danger }]}>
-             <MaterialCommunityIcons name="medical-bag" size={48} color="#FFF" style={{marginBottom: 8}} />
-             <Text style={styles.medicalHeaderTitle}>FICHA MÉDICA S.O.S</Text>
-             <Text style={styles.medicalHeaderSubtitle}>Esta persona ha solicitado ayuda de emergencia.</Text>
-           </View>
-           
-           <ScrollView contentContainerStyle={styles.medicalScroll} showsVerticalScrollIndicator={false}>
-             <View style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-                <Text style={[styles.medicalLabel, { color: colors.textSecondary }]}>TIPO DE SANGRE</Text>
-                <Text style={[styles.medicalValue, { color: colors.danger, fontSize: 32 }]}>{medicalData.bloodType}</Text>
-             </View>
-
-             <View style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-                <Text style={[styles.medicalLabel, { color: colors.textSecondary }]}>ALERGIAS</Text>
-                <Text style={[styles.medicalValue, { color: colors.textPrimary }]}>{medicalData.allergies}</Text>
-             </View>
-
-             <View style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-                <Text style={[styles.medicalLabel, { color: colors.textSecondary }]}>CONDICIONES MÉDICAS</Text>
-                <Text style={[styles.medicalValue, { color: colors.textPrimary, lineHeight: 24 }]}>{medicalData.conditions}</Text>
-             </View>
-
-             <View style={[styles.medicalCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-                <Text style={[styles.medicalLabel, { color: colors.textSecondary }]}>CONTACTO DE EMERGENCIA</Text>
-                <Text style={[styles.medicalValue, { color: colors.textPrimary }]}>{medicalData.contact}</Text>
-             </View>
-
-             <View style={{ height: 100 }} />
-           </ScrollView>
-
-           <Pressable style={styles.medicalDismissBtn} onPress={() => setShowMedicalID(false)}>
-             <Text style={styles.medicalDismissText}>X CERRAR FICHA MÉDICA</Text>
-           </Pressable>
-        </View>
-      </Modal>
+      {/* MEDICAL ID — Acceso rápido offline desde Quick Actions */}
+      <MedicalCard
+        visible={showMedicalCard}
+        onClose={() => setShowMedicalCard(false)}
+      />
 
     </View>
   );

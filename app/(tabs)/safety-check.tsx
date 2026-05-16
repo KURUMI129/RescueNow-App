@@ -184,7 +184,7 @@ export default function SafetyCheckScreen() {
           <Animated.View entering={FadeInDown.delay(300).springify()}>
             <Card style={[styles.card, { borderColor: colors.border }]}>
               <View style={styles.cardHeader}>
-                <Ionicons name="checkmark-circle-outline" size={20} color={colors.accent} />
+                <Ionicons name="checkmark-circle-outline" size={20} color={colors.secondary} />
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                   Check-in Manual
                 </Text>

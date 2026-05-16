@@ -1,6 +1,7 @@
+import { memo } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -10,7 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-interface QuickAction {
+export interface QuickAction {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
@@ -19,34 +20,10 @@ interface QuickAction {
 
 interface QuickActionsFABProps {
   bottomOffset?: number;
+  actions: QuickAction[];
 }
 
-const ACTIONS: QuickAction[] = [
-  {
-    label: "Llamar 911",
-    icon: "call",
-    color: "#E11D48",
-    action: () => Linking.openURL("tel:911"),
-  },
-  {
-    label: "Check-in",
-    icon: "shield-checkmark",
-    color: "#10B981",
-    action: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    },
-  },
-  {
-    label: "Compartir ubicación",
-    icon: "share-outline",
-    color: "#0EA5E9",
-    action: () => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    },
-  },
-];
-
-export function QuickActionsFAB({ bottomOffset = 100 }: QuickActionsFABProps) {
+function QuickActionsFABComponent({ bottomOffset = 100, actions }: QuickActionsFABProps) {
   const insets = useSafeAreaInsets();
   const expanded = useSharedValue(0);
 
@@ -102,7 +79,7 @@ export function QuickActionsFAB({ bottomOffset = 100 }: QuickActionsFABProps) {
   return (
     <Animated.View style={[styles.container, containerStyle]}>
       <Animated.View style={[styles.actionsContainer, actionsContainerStyle]}>
-        {ACTIONS.map((item, index) => (
+        {actions.map((item, index) => (
           <View
             key={item.label}
             style={[styles.actionItem, { left: (index + 1) * 60 }]}
@@ -193,3 +170,5 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
 });
+
+export const QuickActionsFAB = memo(QuickActionsFABComponent);

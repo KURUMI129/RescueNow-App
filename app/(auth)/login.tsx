@@ -25,6 +25,7 @@ import { AuthHeader } from "@/components/auth/auth-header";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { getAppCopy } from "@/constants/app-copy";
+import { isValidEmail } from "@/lib/validation";
 import {
   AppLanguage,
   updateAppPreferences,
@@ -96,6 +97,10 @@ export default function LoginScreen() {
     }
     if (!password.trim()) {
       setAuthError(language === "es" ? "Ingresa tu contraseña." : "Enter your password.");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setAuthError(language === "es" ? "El formato del correo no es válido." : "Email format is not valid.");
       return;
     }
 
@@ -195,7 +200,7 @@ export default function LoginScreen() {
                 placeholder={language === "es" ? "ejemplo@correo.com" : t.emailPlaceholder}
                 value={email}
                 onChangeText={setEmail}
-                icon="email-outline"
+                icon="mail-outline"
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -205,7 +210,7 @@ export default function LoginScreen() {
                 placeholder={t.passwordPlaceholder}
                 value={password}
                 onChangeText={setPassword}
-                icon="lock-outline"
+                icon="lock-closed-outline"
                 variant="password"
               />
 

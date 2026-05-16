@@ -22,6 +22,12 @@ import { AuthHeader } from "@/components/auth/auth-header";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { getAppCopy } from "@/constants/app-copy";
+import {
+  checkPasswordRules,
+  isStrongPassword,
+  isValidEmail,
+  passwordRuleLabel,
+} from "@/lib/validation";
 import { AppLanguage, updateAppPreferences } from "@/constants/app-preferences";
 import { AUTH_THEME_COLORS } from "@/constants/auth-theme";
 import { useAppLanguage } from "@/hooks/use-app-language";
@@ -58,16 +64,19 @@ export default function RegisterScreen() {
   const passwordsMatch =
     password.trim().length > 0 && password === confirmPassword;
 
+  const passwordRules = useMemo(() => checkPasswordRules(password), [password]);
+  const strongPassword = useMemo(() => isStrongPassword(password), [password]);
+  const validEmail = useMemo(() => isValidEmail(email), [email]);
+
   // Valida datos base del formulario
   const canSubmit = useMemo(() => {
     return (
       fullName.trim().length > 3 &&
-      email.trim().length > 4 &&
-      password.trim().length > 5 &&
-      confirmPassword.trim().length > 5 &&
+      validEmail &&
+      strongPassword &&
       passwordsMatch
     );
-  }, [confirmPassword, email, fullName, password, passwordsMatch]);
+  }, [fullName, validEmail, strongPassword, passwordsMatch]);
 
   // Layout animations handled by react-native-reanimated
 
@@ -183,7 +192,7 @@ export default function RegisterScreen() {
                 placeholder={t.fullNamePlaceholder}
                 value={fullName}
                 onChangeText={setFullName}
-                icon="account-outline"
+                icon="person-outline"
               />
 
               {/* Mantenemos teléfono opcional */}
@@ -192,7 +201,7 @@ export default function RegisterScreen() {
                 placeholder={t.phonePlaceholder}
                 value={phone}
                 onChangeText={setPhone}
-                icon="phone-outline"
+                icon="call-outline"
                 keyboardType="phone-pad"
               />
 
@@ -201,7 +210,7 @@ export default function RegisterScreen() {
                 placeholder={language === "es" ? "Nombre completo" : "Full name"}
                 value={trustedName}
                 onChangeText={setTrustedName}
-                icon="heart-pulse"
+                icon="heart-outline"
                 style={{ marginTop: 12 }}
               />
               
@@ -227,7 +236,7 @@ export default function RegisterScreen() {
                 placeholder={language === "es" ? "Número de emergencia a 10 dígitos" : "10-digit emergency number"}
                 value={trustedPhone}
                 onChangeText={setTrustedPhone}
-                icon="phone-alert-outline"
+                icon="alert-circle-outline"
                 keyboardType="phone-pad"
               />
 
@@ -236,7 +245,7 @@ export default function RegisterScreen() {
                 placeholder={t.emailPlaceholder}
                 value={email}
                 onChangeText={setEmail}
-                icon="email-outline"
+                icon="mail-outline"
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -246,16 +255,41 @@ export default function RegisterScreen() {
                 placeholder={t.passwordPlaceholder}
                 value={password}
                 onChangeText={setPassword}
-                icon="lock-outline"
+                icon="lock-closed-outline"
                 variant="password"
               />
+
+              {password.length > 0 && (
+                <View style={{ marginTop: -8, marginBottom: 12, paddingHorizontal: 4 }}>
+                  {passwordRules.map((rule) => (
+                    <View
+                      key={rule.key}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}
+                    >
+                      <MaterialCommunityIcons
+                        name={rule.ok ? "check-circle" : "circle-outline"}
+                        size={14}
+                        color={rule.ok ? colors.success : colors.textSecondary}
+                      />
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: rule.ok ? colors.success : colors.textSecondary,
+                        }}
+                      >
+                        {passwordRuleLabel(rule.key, language as "es" | "en")}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               <Input
                 label={t.confirmPassword}
                 placeholder={t.confirmPasswordPlaceholder}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                icon="lock-check-outline"
+                icon="shield-checkmark-outline"
                 variant="password"
               />
             </Animated.View>

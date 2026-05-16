@@ -5,7 +5,7 @@ import { Redirect, Tabs, useRouter } from "expo-router";
 
 import { DynamicToast } from "@/components/ui/dynamic-toast";
 import { getAppPreferences } from "@/constants/app-preferences";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function TabLayout() {
   const router = useRouter();
@@ -14,29 +14,26 @@ export default function TabLayout() {
   const navigationCopy = getAppCopy(language).navigation;
 
   const [showToast, setShowToast] = useState(false);
+  const hasShownWarningRef = useRef(false);
 
   useEffect(() => {
     const checkInfo = async () => {
+      if (hasShownWarningRef.current) return;
       const prefs = await getAppPreferences();
-      // Mostramos la tostada constantemente si no hay teléfono guardado
+      // Mostrar la tostada UNA SOLA VEZ por sesión si falta contacto de emergencia
       if (!prefs.trustedContactPhone || prefs.trustedContactPhone.trim().length === 0) {
+        hasShownWarningRef.current = true;
         setShowToast(true);
       }
     };
 
-    // Primera revisión a los 8 segundos
+    // Revisión única a los 8 segundos
     const initialTimeout = setTimeout(() => {
       void checkInfo();
     }, 8000);
 
-    // Intervalo infinito cada 40 segundos (Demo Exclusiva)
-    const interval = setInterval(() => {
-      void checkInfo();
-    }, 40000);
-
     return () => {
       clearTimeout(initialTimeout);
-      clearInterval(interval);
     };
   }, []);
 
@@ -121,6 +118,24 @@ export default function TabLayout() {
         />
         <Tabs.Screen
           name="emergency-tips"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="travel-mode"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="check-in"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="incident-history"
           options={{
             href: null,
           }}

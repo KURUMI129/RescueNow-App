@@ -430,6 +430,27 @@ export default function OptionsScreen() {
             </Card>
           </Pressable>
 
+          {/* HISTORIAL DE EMERGENCIAS */}
+          <Pressable
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push("/(tabs)/incident-history" as never);
+            }}
+          >
+            <Card style={[styles.medicalCard, { borderColor: colors.cardBorder }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.medicalIconWrap, { backgroundColor: 'rgba(225, 29, 72, 0.08)' }]}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#E11D48" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 16 }}>
+                <Text style={[styles.medicalCardTitle, { color: colors.textPrimary }]}>Historial de Emergencias</Text>
+                <Text style={[styles.medicalCardSubtitle, { color: colors.textSecondary }]}>SOS manual y detecciones automáticas</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </View>
+            </Card>
+          </Pressable>
+
           {/* 2. SECCIÓN VIP / SUSCRIPCIÓN */}
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(200).springify()}>

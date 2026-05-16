@@ -74,26 +74,47 @@ export default function PremiumScreen() {
               </BlurView>
 
               <Text style={styles.featuresHeading}>Tus Beneficios VIP Activos</Text>
-              
+
               <View style={styles.comparisonContainer}>
                 <View style={[styles.featureRow, { borderColor: "rgba(0,180,219,0.15)", backgroundColor: "rgba(0,180,219,0.05)" }]}>
                   <View style={styles.featureInfo}>
-                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>IA en Tíempo Real Sin Límites</Text>
+                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>IA en Tiempo Real Sin Límites</Text>
                      <Text style={styles.featureSub}>Acceso directo a Claude Neural Engine (Haiku 4.5) sin pausas publicitarias ni restricciones.</Text>
                   </View>
                   <Ionicons name="flash" size={24} color="#00B4DB" />
                 </View>
                 <View style={[styles.featureRow, { borderColor: "rgba(0,180,219,0.15)", backgroundColor: "rgba(0,180,219,0.05)" }]}>
                   <View style={styles.featureInfo}>
-                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>Diagnósticos Avanzados</Text>
-                     <Text style={styles.featureSub}>Lectura de códigos e instrucciones exactas de mecánica profunda a cualquier hora.</Text>
+                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>Modo Viaje con Seguimiento</Text>
+                     <Text style={styles.featureSub}>Comparte tu trayecto en tiempo real con tu contacto de confianza. Aviso al iniciar y al llegar.</Text>
+                  </View>
+                  <Ionicons name="navigate" size={24} color="#00B4DB" />
+                </View>
+                <View style={[styles.featureRow, { borderColor: "rgba(0,180,219,0.15)", backgroundColor: "rgba(0,180,219,0.05)" }]}>
+                  <View style={styles.featureInfo}>
+                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>Check-in Diario con Racha</Text>
+                     <Text style={styles.featureSub}>Notificación diaria, mensaje automático al contacto y racha gamificada para mantener el hábito.</Text>
+                  </View>
+                  <Ionicons name="shield-checkmark" size={24} color="#00B4DB" />
+                </View>
+                <View style={[styles.featureRow, { borderColor: "rgba(0,180,219,0.15)", backgroundColor: "rgba(0,180,219,0.05)" }]}>
+                  <View style={styles.featureInfo}>
+                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>Historial Completo + Estadísticas</Text>
+                     <Text style={styles.featureSub}>Acceso a todas tus emergencias (sin límite) con análisis: Total, Manuales, Automáticas, Últimos 7 días.</Text>
+                  </View>
+                  <Ionicons name="stats-chart" size={24} color="#00B4DB" />
+                </View>
+                <View style={[styles.featureRow, { borderColor: "rgba(0,180,219,0.15)", backgroundColor: "rgba(0,180,219,0.05)" }]}>
+                  <View style={styles.featureInfo}>
+                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>Diagnósticos Mecánicos Avanzados</Text>
+                     <Text style={styles.featureSub}>Lectura de códigos del tablero, asesoría paso a paso y videos tutoriales contextuales.</Text>
                   </View>
                   <Ionicons name="car-sport" size={24} color="#00B4DB" />
                 </View>
                 <View style={[styles.featureRow, { borderColor: "rgba(0,180,219,0.15)", backgroundColor: "rgba(0,180,219,0.05)" }]}>
                   <View style={styles.featureInfo}>
-                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>Escudo Legal</Text>
-                     <Text style={styles.featureSub}>Respaldos técnicos para evitar que seguros o ajustadores te manipulen.</Text>
+                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>Escudo Legal Post-Accidente</Text>
+                     <Text style={styles.featureSub}>Asesoría para tratar con seguros, ajustadores y tránsito sin que te manipulen.</Text>
                   </View>
                   <Ionicons name="shield-half" size={24} color="#00B4DB" />
                 </View>
@@ -117,24 +138,89 @@ export default function PremiumScreen() {
                 <Text style={styles.priceDesc}>Cancela en cualquier momento. Sin contratos ocultos.</Text>
               </BlurView>
 
-              <Text style={styles.featuresHeading}>Lo que incluye</Text>
-              
-              <View style={styles.comparisonContainer}>
+              {/* Free benefits (siempre incluidos) */}
+              <Text style={styles.featuresHeading}>Tu plan gratuito ya incluye</Text>
 
+              <View style={styles.comparisonContainer}>
                 <View style={styles.featureRow}>
                   <View style={styles.featureInfo}>
-                     <Text style={styles.featureTitle}>IA Sin Límites</Text>
-                     <Text style={styles.featureSub}>Respuestas detalladas e ilimitadas con Claude Neural Engine (Haiku 4.5).</Text>
+                     <Text style={styles.featureTitle}>Botón SOS Manual (5 segundos)</Text>
+                     <Text style={styles.featureSub}>Activación rápida con mensaje y ubicación al contacto.</Text>
                   </View>
-                  <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
+                  <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+                </View>
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Detección Automática de Accidente</Text>
+                     <Text style={styles.featureSub}>El acelerómetro detecta impactos fuertes y dispara SOS solo.</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+                </View>
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Ficha Médica Offline</Text>
+                     <Text style={styles.featureSub}>Tipo de sangre, alergias y contacto siempre accesibles.</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+                </View>
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Historial de las últimas 5 emergencias</Text>
+                     <Text style={styles.featureSub}>Revisa registros recientes con ubicación y estado del mensaje.</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+                </View>
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Chatbot Rex básico</Text>
+                     <Text style={styles.featureSub}>Tips superficiales para emergencias y mecánica básica.</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+                </View>
+              </View>
+
+              {/* Premium exclusive */}
+              <Text style={[styles.featuresHeading, { marginTop: 8 }]}>Lo que desbloqueas con Premium</Text>
+
+              <View style={styles.comparisonContainer}>
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Modo Viaje con seguimiento</Text>
+                     <Text style={styles.featureSub}>Comparte tu trayecto en tiempo real con tu contacto: aviso al iniciar y al llegar.</Text>
+                  </View>
+                  <Ionicons name="navigate" size={22} color="#FFD700" />
                 </View>
 
                 <View style={styles.featureRow}>
                   <View style={styles.featureInfo}>
-                     <Text style={styles.featureTitle}>Diagnóstico Mecánico Paso a Paso</Text>
-                     <Text style={styles.featureSub}>Análisis de ruidos, fallas y códigos del tablero con guía detallada.</Text>
+                     <Text style={styles.featureTitle}>Check-in Diario con Racha</Text>
+                     <Text style={styles.featureSub}>Notificación diaria + mensaje automático al contacto y racha gamificada.</Text>
                   </View>
-                  <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
+                  <Ionicons name="shield-checkmark" size={22} color="#FFD700" />
+                </View>
+
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Historial completo + Estadísticas</Text>
+                     <Text style={styles.featureSub}>Todas tus emergencias sin límite + métricas (Total, Manuales, Auto, Últimos 7 días).</Text>
+                  </View>
+                  <Ionicons name="stats-chart" size={22} color="#FFD700" />
+                </View>
+
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>IA Rex Sin Límites</Text>
+                     <Text style={styles.featureSub}>Respuestas detalladas e ilimitadas con Claude Neural Engine (Haiku 4.5).</Text>
+                  </View>
+                  <Ionicons name="flash" size={22} color="#FFD700" />
+                </View>
+
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Diagnósticos Mecánicos Avanzados</Text>
+                     <Text style={styles.featureSub}>Lectura de códigos del tablero + videos tutoriales contextuales en YouTube.</Text>
+                  </View>
+                  <Ionicons name="car-sport" size={22} color="#FFD700" />
                 </View>
 
                 <View style={styles.featureRow}>
@@ -142,38 +228,21 @@ export default function PremiumScreen() {
                      <Text style={styles.featureTitle}>Asesoría Legal y de Seguros</Text>
                      <Text style={styles.featureSub}>Qué hacer ante choque, peritajes o policías de tránsito.</Text>
                   </View>
-                  <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
-                </View>
-
-                <View style={styles.featureRow}>
-                  <View style={styles.featureInfo}>
-                     <Text style={styles.featureTitle}>Mantenimiento Vehicular</Text>
-                     <Text style={styles.featureSub}>Tablas de revisión y tips según tu kilometraje.</Text>
-                  </View>
-                  <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
+                  <Ionicons name="shield-half" size={22} color="#FFD700" />
                 </View>
 
                 <View style={styles.featureRow}>
                   <View style={styles.featureInfo}>
                      <Text style={styles.featureTitle}>Primeros Auxilios Guiados</Text>
-                     <Text style={styles.featureSub}>Soporte prioritario y pasos de emergencia médica inmediatos.</Text>
+                     <Text style={styles.featureSub}>Pasos detallados de emergencia médica más allá del básico.</Text>
                   </View>
-                  <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
+                  <Ionicons name="medical" size={22} color="#FFD700" />
                 </View>
-
-                <View style={styles.featureRow}>
-                  <View style={styles.featureInfo}>
-                     <Text style={styles.featureTitle}>Videos Tutoriales Exclusivos</Text>
-                     <Text style={styles.featureSub}>Tutoriales en video paso a paso para cada procedimiento mecánico.</Text>
-                  </View>
-                  <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
-                </View>
-
               </View>
 
               <View style={styles.freePlanNotice}>
                  <Text style={styles.freePlanText}>
-                   El usuario gratis está limitado a tips básicos, recomendaciones superficiales de clima y apoyo inicial urgente.
+                   Premium da acceso a las funciones de seguridad activa (Modo Viaje, Check-in) y de análisis (historial completo). El plan gratuito mantiene todas las funciones críticas de emergencia para que nadie quede sin protección básica.
                  </Text>
               </View>
             </>

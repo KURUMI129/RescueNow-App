@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== USERS COLLECTION =====
+    // Only the authenticated user can read/write their own profile
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false; // Never allow account deletion from client
+    }
+
+    // ===== MEDICAL PROFILES =====
+    // Only the owner can read or modify their medical info
+    match /medical-profiles/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ===== INCIDENTS COLLECTION =====
+    // Owner can read their own incidents
+    // Any authenticated user can create an incident (for the SOS flow)
+    match /incidents/{incidentId} {
+      allow read: if request.auth != null
+                  && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false; // Incidents are immutable
+    }
+
+    // ===== TRAVEL SESSIONS (Premium) =====
+    // For shared travel mode tracking
+    match /travel-sessions/{sessionId} {
+      allow read: if request.auth != null
+                  && resource.data.userId == request.auth.uid;
+      allow create, update: if request.auth != null
+                            && request.resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+    }
+
+    // ===== CHECK-INS (Premium) =====
+    match /check-ins/{checkInId} {
+      allow read: if request.auth != null
+                  && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ===== DENY EVERYTHING ELSE =====
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

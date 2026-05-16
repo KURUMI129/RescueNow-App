@@ -119,7 +119,7 @@ export default function ForgotPasswordScreen() {
                     setSent(false);
                   }
                 }}
-                icon="email-outline"
+                icon="mail-outline"
                 keyboardType="email-address"
                 autoCapitalize="none"
               />

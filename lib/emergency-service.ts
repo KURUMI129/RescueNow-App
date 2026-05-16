@@ -1,5 +1,5 @@
 import * as SMS from "expo-sms";
-import { Linking, Platform } from "react-native";
+import { Linking } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { withRetry } from "./api-retry";
@@ -41,6 +41,31 @@ function buildEmergencyMessage(
 }
 
 /**
+ * Build a WhatsApp-compatible phone number using the explicit country code
+ * stored in the user's preferences. Falls back to legacy "+52 if 10 digits"
+ * behavior only when no countryCode is supplied.
+ */
+export function buildInternationalPhone(
+  contactPhone: string,
+  countryCode?: string,
+): string {
+  const cleanPhone = contactPhone.replace(/[^0-9]/g, "");
+
+  // If contactPhone already starts with country code digits (no +), keep it
+  if (countryCode) {
+    const cleanCode = countryCode.replace(/[^0-9]/g, "");
+    // Avoid double-prefixing if the user typed the code into the phone field
+    if (cleanPhone.startsWith(cleanCode)) {
+      return cleanPhone;
+    }
+    return `${cleanCode}${cleanPhone}`;
+  }
+
+  // Legacy fallback — assume Mexico (+52) if 10 digits and no code provided
+  return cleanPhone.length === 10 ? `52${cleanPhone}` : cleanPhone;
+}
+
+/**
  * Send emergency message via WhatsApp (requires internet).
  * Opens WhatsApp with the pre-filled message to the contact's number.
  * Returns true if WhatsApp was opened successfully.
@@ -48,12 +73,10 @@ function buildEmergencyMessage(
 async function sendEmergencyWhatsApp(
   contactPhone: string,
   message: string,
+  countryCode?: string,
 ): Promise<boolean> {
   try {
-    // Format phone — remove non-digits, ensure country code
-    const cleanPhone = contactPhone.replace(/[^0-9]/g, "");
-    // If phone doesn't start with country code, assume Mexico (+52)
-    const formattedPhone = cleanPhone.length === 10 ? `52${cleanPhone}` : cleanPhone;
+    const formattedPhone = buildInternationalPhone(contactPhone, countryCode);
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
@@ -112,11 +135,19 @@ async function sendEmergencySMSNative(
  */
 export async function sendEmergencyMessage(
   contactPhone: string,
-  contactName: string,
+  _contactName: string,
   location: EmergencyLocation,
   userName: string,
+  countryCode?: string,
 ): Promise<{ method: "whatsapp" | "sms" | "failed"; success: boolean }> {
   const message = buildEmergencyMessage(userName, location);
+
+  // Validate phone — at least 7 digits is required
+  const cleanPhone = contactPhone.replace(/[^0-9]/g, "");
+  if (cleanPhone.length < 7) {
+    console.warn("[Emergency] Invalid contact phone:", contactPhone);
+    return { method: "failed", success: false };
+  }
 
   // Check network connectivity
   let isConnected = false;
@@ -130,15 +161,18 @@ export async function sendEmergencyMessage(
 
   // Online → try WhatsApp first
   if (isConnected) {
-    const whatsappSent = await sendEmergencyWhatsApp(contactPhone, message);
+    const whatsappSent = await sendEmergencyWhatsApp(contactPhone, message, countryCode);
     if (whatsappSent) {
       return { method: "whatsapp", success: true };
     }
     // WhatsApp failed (not installed?) → fall through to SMS
   }
 
-  // Offline or WhatsApp failed → use SMS
-  const smsSent = await sendEmergencySMSNative(contactPhone, message);
+  // Offline or WhatsApp failed → use SMS (uses native dialer with country code if provided)
+  const smsRecipient = countryCode
+    ? `${countryCode}${cleanPhone}`
+    : contactPhone;
+  const smsSent = await sendEmergencySMSNative(smsRecipient, message);
   if (smsSent) {
     return { method: "sms", success: true };
   }
@@ -149,11 +183,12 @@ export async function sendEmergencyMessage(
 // Keep the old export name for backward compatibility
 export const sendEmergencySMS = async (
   contactPhone: string,
-  contactName: string,
+  _contactName: string,
   location: EmergencyLocation,
   userName: string,
+  countryCode?: string,
 ): Promise<boolean> => {
-  const result = await sendEmergencyMessage(contactPhone, contactName, location, userName);
+  const result = await sendEmergencyMessage(contactPhone, _contactName, location, userName, countryCode);
   return result.success;
 };
 

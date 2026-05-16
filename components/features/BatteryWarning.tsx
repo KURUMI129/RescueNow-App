@@ -45,7 +45,7 @@ export function BatteryWarning() {
 
   return (
     <BlurView intensity={60} tint={activeTheme} style={[styles.container, { backgroundColor: tokens.colors.warning + "20" }]}>
-      <Ionicons name="battery-alert" size={20} color={tokens.colors.warning} />
+      <Ionicons name="battery-dead-outline" size={20} color={tokens.colors.warning} />
       <Text style={[styles.text, { color: tokens.colors.warning }]}>
         {battery.level}% {battery.isCharging ? "• Cargando" : "• Batería baja"}
       </Text>

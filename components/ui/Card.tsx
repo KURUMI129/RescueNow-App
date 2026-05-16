@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { StyleSheet, TouchableOpacity, View, ViewStyle } from "react-native";
+import { StyleProp, StyleSheet, TouchableOpacity, View, ViewStyle } from "react-native";
 
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import { DESIGN_TOKENS } from "@/constants/design-tokens";
@@ -8,7 +8,7 @@ interface CardProps {
   children: ReactNode;
   onPress?: () => void;
   elevated?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function Card({ children, onPress, elevated = false, style }: CardProps) {

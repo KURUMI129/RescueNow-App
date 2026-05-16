@@ -76,7 +76,10 @@ export function useCrashDetection({ onCrashDetected, enabled = true }: UseCrashD
     return () => {
       if (subscription) {
         subscription.remove();
+        subscription = null;
       }
+      // Safety net: ensure no stray accelerometer listeners survive HMR reloads
+      Accelerometer.removeAllListeners();
     };
   }, [enabled, handleAccelerometerData]);
 

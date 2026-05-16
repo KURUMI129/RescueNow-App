@@ -42,6 +42,7 @@ export default function EmergencyCallScreen() {
     allergies?: string;
     medicalConditions?: string;
     contactPhone?: string;
+    contactCountryCode?: string;
     contactName?: string;
   }>();
 
@@ -197,6 +198,7 @@ export default function EmergencyCallScreen() {
           longitude: parseFloat(params.longitude ?? "0"),
         },
         params.userName ?? "Paciente",
+        params.contactCountryCode,
       );
 
       if (result.success) {
@@ -210,28 +212,6 @@ export default function EmergencyCallScreen() {
       setMessageStatus("failed");
     }
   }, [params]);
-
-  // Helper: wait for the app to return to foreground
-  const waitForForeground = useCallback((): Promise<void> => {
-    return new Promise((resolve) => {
-      // If already in foreground, resolve immediately
-      if (AppState.currentState === "active") {
-        resolve();
-        return;
-      }
-      const sub = AppState.addEventListener("change", (state) => {
-        if (state === "active") {
-          sub.remove();
-          resolve();
-        }
-      });
-      // Safety timeout — don't wait forever (30 seconds max)
-      setTimeout(() => {
-        sub.remove();
-        resolve();
-      }, 30000);
-    });
-  }, []);
 
   // Store callbacks in refs so the simulation effect doesn't re-run
   const sendMessageRef = useRef(sendMessageAsync);

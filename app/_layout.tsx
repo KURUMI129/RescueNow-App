@@ -1,33 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
-import { View } from "react-native";
 import { useActiveTheme } from "@/hooks/use-active-theme";
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
+import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
 import AnimatedSplash from "./components/animated-splash";
-import { getAppCopy } from "@/constants/app-copy";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
-import { useAppLanguage } from "@/hooks/use-app-language";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { AuthProvider } from "@/lib/auth-context";
+import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 
 export const unstable_settings = {
   anchor: "(auth)",
 };
 
 export default function RootLayout() {
-  const language = useAppLanguage();
   const activeTheme = useActiveTheme();
   const colors = HOME_THEME_COLORS[activeTheme];
-  const navigationCopy = getAppCopy(language).navigation;
   const { isCompleted, isLoading } = useOnboarding();
   const [isReady, setIsReady] = useState(false);
 
@@ -44,42 +35,49 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, []);
 
-  const navigationTheme = {
-    ...DarkTheme,
-    colors: {
-      ...DarkTheme.colors,
-      primary: colors.primary,
-      background: colors.background,
-      card: colors.surface,
-      text: colors.textPrimary,
-      border: colors.cardBorder,
-    },
-  };
+  // Memoize navigation theme so child screens don't re-render when the
+  // RootLayout re-renders for unrelated reasons.
+  const navigationTheme = useMemo(
+    () => ({
+      ...DarkTheme,
+      colors: {
+        ...DarkTheme.colors,
+        primary: colors.primary,
+        background: colors.background,
+        card: colors.surface,
+        text: colors.textPrimary,
+        border: colors.cardBorder,
+      },
+    }),
+    [colors],
+  );
 
   return (
-    <AuthProvider>
-      <ThemeProvider value={navigationTheme}>
-        {!isReady && <AnimatedSplash />}
-        <Stack>
-          <Stack.Screen
-            name="onboarding"
-            options={{ headerShown: false, statusBarHidden: true }}
-          />
-          <Stack.Screen
-            name="(auth)"
-            options={{ headerShown: false, statusBarHidden: true }}
-          />
-          <Stack.Screen
-            name="(tabs)"
-            options={{ headerShown: false, statusBarHidden: true }}
-          />
-          <Stack.Screen
-            name="premium"
-            options={{ headerShown: false, presentation: "modal", statusBarHidden: true }}
-          />
-        </Stack>
-        <StatusBar hidden animated={false} />
-      </ThemeProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider value={navigationTheme}>
+          {!isReady && <AnimatedSplash />}
+          <Stack>
+            <Stack.Screen
+              name="onboarding"
+              options={{ headerShown: false, statusBarHidden: true }}
+            />
+            <Stack.Screen
+              name="(auth)"
+              options={{ headerShown: false, statusBarHidden: true }}
+            />
+            <Stack.Screen
+              name="(tabs)"
+              options={{ headerShown: false, statusBarHidden: true }}
+            />
+            <Stack.Screen
+              name="premium"
+              options={{ headerShown: false, presentation: "modal", statusBarHidden: true }}
+            />
+          </Stack>
+          <StatusBar hidden animated={false} />
+        </ThemeProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

@@ -51,7 +51,7 @@ export default function TutorialScreen() {
           <Ionicons name="heart" size={64} color={tokens.colors.primary} />
         </View>
 
-        <Text style={[styles.title, { color: tokens.colors.text }]}>
+        <Text style={[styles.title, { color: tokens.colors.textPrimary }]}>
           Bienvenido a RescueNow
         </Text>
 
@@ -62,7 +62,7 @@ export default function TutorialScreen() {
                 <Ionicons name={step.icon} size={28} color={tokens.colors.primary} />
               </View>
               <View style={styles.stepTextContainer}>
-                <Text style={[styles.stepTitle, { color: tokens.colors.text }]}>
+                <Text style={[styles.stepTitle, { color: tokens.colors.textPrimary }]}>
                   {step.title}
                 </Text>
                 <Text style={[styles.stepDescription, { color: tokens.colors.textSecondary }]}>
