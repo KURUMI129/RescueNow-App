@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(grep -E \"\\\\.env$|\\\\.env\\\\.\")",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(ls ..)",
+      "Read(//c/Users/karol/OneDrive - Instituto Tecnologico de la Piedad/Documents/Inovatec/**)"
     ]
   }
 }
