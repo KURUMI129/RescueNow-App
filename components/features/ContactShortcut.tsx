@@ -1,40 +1,47 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, Pressable } from "react-native";
+import { Alert, Linking, Pressable, StyleSheet, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
-import { Linking } from "react-native";
 
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import { HOME_THEME_COLORS } from "@/constants/home-theme";
-
-interface Contact {
-  name: string;
-  phone: string;
-}
+import { getAppPreferences, subscribeToAppPreferences } from "@/constants/app-preferences";
 
 export function ContactShortcut() {
   const activeTheme = useActiveTheme();
   const colors = HOME_THEME_COLORS[activeTheme];
-  const [trustedContact, setTrustedContact] = useState<Contact | null>(null);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+52");
 
   useEffect(() => {
-    AsyncStorage.getItem("@rescuenow_trusted_contact").then((data) => {
-      if (data) {
-        const contact = JSON.parse(data) as Contact;
-        setTrustedContact(contact);
-      }
+    void getAppPreferences().then((prefs) => {
+      setName(prefs.trustedContactName);
+      setPhone(prefs.trustedContactPhone);
+      setCountryCode(prefs.trustedContactCountryCode);
+    });
+    return subscribeToAppPreferences((prefs) => {
+      setName(prefs.trustedContactName);
+      setPhone(prefs.trustedContactPhone);
+      setCountryCode(prefs.trustedContactCountryCode);
     });
   }, []);
 
-  if (!trustedContact?.name) return null;
+  if (!name || !phone) return null;
 
   const handleCall = async () => {
-    if (!trustedContact.phone) return;
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const supported = await Linking.canOpenURL(`tel:${trustedContact.phone}`);
-    if (supported) {
-      await Linking.openURL(`tel:${trustedContact.phone}`);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const cleanPhone = phone.replace(/\s+/g, "");
+    const fullNumber = cleanPhone.startsWith("+") ? cleanPhone : `${countryCode}${cleanPhone}`;
+    try {
+      // Skip canOpenURL - Android 11+ needs a <queries> entry for it to return
+      // true, but openURL still works. Just try it.
+      await Linking.openURL(`tel:${fullNumber}`);
+    } catch {
+      Alert.alert(
+        "No se pudo llamar",
+        `No hay app de teléfono disponible. Número: ${fullNumber}`,
+      );
     }
   };
 
@@ -47,9 +54,9 @@ export function ContactShortcut() {
         pressed && styles.pressed,
       ]}
     >
-      <Ionicons name="call" size={20} color={colors.success} />
+      <Ionicons name="call" size={16} color={colors.success} />
       <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
-        {trustedContact.name}
+        {name}
       </Text>
     </Pressable>
   );
@@ -59,18 +66,13 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 10,
+    gap: 6,
+    maxWidth: 140,
   },
-  pressed: {
-    opacity: 0.7,
-  },
-  name: {
-    fontSize: 14,
-    fontWeight: "700",
-    flex: 1,
-  },
+  pressed: { opacity: 0.7 },
+  name: { fontSize: 12, fontWeight: "700", flex: 1 },
 });

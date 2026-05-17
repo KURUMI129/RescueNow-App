@@ -6,11 +6,12 @@ import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, View, Pressable, Al
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Header } from "@/components/ui/Header";
+import { getAppPreferences, type SubscriptionPlan } from "@/constants/app-preferences";
 
 const STORAGE_KEY = "@rescuenow_checkin_v1";
 
@@ -36,15 +37,20 @@ export default function SafetyCheckScreen() {
   const [enabled, setEnabled] = useState(false);
   const [interval, setInterval] = useState(4);
   const [isLoading, setIsLoading] = useState(true);
+  const [plan, setPlan] = useState<SubscriptionPlan>("free");
 
   const loadSettings = useCallback(async () => {
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      const [stored, prefs] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY),
+        getAppPreferences(),
+      ]);
       if (stored) {
         const parsed: CheckInSettings = JSON.parse(stored);
         setEnabled(parsed.enabled);
         setInterval(parsed.interval);
       }
+      setPlan(prefs.subscriptionPlan);
     } catch (error) {
       console.warn("Failed to load check-in settings:", error);
     } finally {
@@ -92,6 +98,36 @@ export default function SafetyCheckScreen() {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <Text style={{ color: colors.textPrimary }}>Cargando...</Text>
+      </View>
+    );
+  }
+
+  if (plan !== "premium") {
+    return (
+      <View style={styles.safeArea}>
+        <LinearGradient
+          colors={HOME_THEME_COLORS[activeTheme].gradientBg}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <Header title="Check-in de Seguridad" showBack onBack={() => router.push("/(tabs)/options")} />
+        <View style={styles.gateBox}>
+          <Animated.View entering={FadeInUp.springify()} style={[styles.gateCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.gateIconWrap, { backgroundColor: colors.success + "20" }]}>
+              <MaterialCommunityIcons name="shield-check" size={48} color={colors.success} />
+            </View>
+            <Text style={[styles.gateTitle, { color: colors.textPrimary }]}>Función Premium</Text>
+            <Text style={[styles.gateDesc, { color: colors.textSecondary }]}>
+              El Check-in de Seguridad con recordatorios automáticos está disponible para miembros Premium. Mantén informados a tus contactos sin pensarlo.
+            </Text>
+            <Pressable
+              onPress={() => router.push("/premium")}
+              style={[styles.goPremiumBtn, { backgroundColor: colors.warning }]}
+            >
+              <Ionicons name="star" size={18} color="#FFFFFF" />
+              <Text style={styles.goPremiumText}>Ir a Premium</Text>
+            </Pressable>
+          </Animated.View>
+        </View>
       </View>
     );
   }
@@ -243,4 +279,31 @@ const styles = StyleSheet.create({
   intervalButtonText: { fontSize: 14, fontWeight: "800" },
   manualDescription: { fontSize: 13, paddingHorizontal: 16, marginBottom: 16 },
   manualButton: { marginHorizontal: 16, marginBottom: 16 },
+  gateBox: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  gateCard: {
+    width: "100%",
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 28,
+    alignItems: "center",
+  },
+  gateIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  gateTitle: { fontSize: 22, fontWeight: "900", textAlign: "center", marginBottom: 8 },
+  gateDesc: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 20 },
+  goPremiumBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  goPremiumText: { color: "#FFFFFF", fontWeight: "800", fontSize: 14 },
 });

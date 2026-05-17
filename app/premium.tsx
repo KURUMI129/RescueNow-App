@@ -5,11 +5,15 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { getAppPreferences, updateAppPreferences, SubscriptionPlan } from "@/constants/app-preferences";
+import { firestoreDb } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [plan, setPlan] = useState<SubscriptionPlan>("free");
   const [loading, setLoading] = useState(true);
 
@@ -19,6 +23,25 @@ export default function PremiumScreen() {
       setLoading(false);
     });
   }, []);
+
+  // Persists plan changes locally AND to Firestore. Without the Firestore
+  // write, auth-context.tsx re-reads the old plan on next app launch and
+  // silently overwrites the local toggle.
+  const setSubscriptionPlan = async (newPlan: SubscriptionPlan) => {
+    await updateAppPreferences({ subscriptionPlan: newPlan });
+    setPlan(newPlan);
+    if (user) {
+      try {
+        await setDoc(
+          doc(firestoreDb, "users", user.uid),
+          { subscriptionPlan: newPlan, updatedAt: serverTimestamp() },
+          { merge: true },
+        );
+      } catch (e) {
+        console.warn("[Premium] Firestore plan sync failed:", e);
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -118,14 +141,25 @@ export default function PremiumScreen() {
                   </View>
                   <Ionicons name="shield-half" size={24} color="#00B4DB" />
                 </View>
+                <View style={[styles.featureRow, { borderColor: "rgba(0,180,219,0.15)", backgroundColor: "rgba(0,180,219,0.05)" }]}>
+                  <View style={styles.featureInfo}>
+                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>Check-in de Seguridad con Intervalos</Text>
+                     <Text style={styles.featureSub}>Recordatorios programados cada 1-12 hrs para confirmar que estás bien.</Text>
+                  </View>
+                  <MaterialCommunityIcons name="shield-check" size={24} color="#00B4DB" />
+                </View>
+                <View style={[styles.featureRow, { borderColor: "rgba(0,180,219,0.15)", backgroundColor: "rgba(0,180,219,0.05)" }]}>
+                  <View style={styles.featureInfo}>
+                     <Text style={[styles.featureTitle, {color: '#FFF'}]}>Sonidos S.O.S. Personalizados</Text>
+                     <Text style={styles.featureSub}>Alarma, Sirena y Silencioso desbloqueados, además del Predeterminado.</Text>
+                  </View>
+                  <Ionicons name="volume-high" size={24} color="#00B4DB" />
+                </View>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.cancelLink}
-                onPress={async () => {
-                  await updateAppPreferences({ subscriptionPlan: "free" });
-                  setPlan("free");
-                }}
+                onPress={() => setSubscriptionPlan("free")}
               >
                 <Text style={styles.cancelText}>Cancelar Suscripción</Text>
               </TouchableOpacity>
@@ -238,6 +272,22 @@ export default function PremiumScreen() {
                   </View>
                   <Ionicons name="medical" size={22} color="#FFD700" />
                 </View>
+
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Check-in de Seguridad con Intervalos</Text>
+                     <Text style={styles.featureSub}>Recordatorios cada 1-12 hrs para confirmar que estás bien. Manual y automático.</Text>
+                  </View>
+                  <MaterialCommunityIcons name="shield-check" size={22} color="#FFD700" />
+                </View>
+
+                <View style={styles.featureRow}>
+                  <View style={styles.featureInfo}>
+                     <Text style={styles.featureTitle}>Sonidos S.O.S. Personalizados</Text>
+                     <Text style={styles.featureSub}>Desbloquea Alarma, Sirena y Silencioso. El plan free solo trae el Predeterminado.</Text>
+                  </View>
+                  <Ionicons name="volume-high" size={22} color="#FFD700" />
+                </View>
               </View>
 
               <View style={styles.freePlanNotice}>
@@ -251,12 +301,9 @@ export default function PremiumScreen() {
 
         {!isPremium && (
           <View style={styles.footer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.buyButton}
-              onPress={async () => {
-                await updateAppPreferences({ subscriptionPlan: "premium" });
-                setPlan("premium");
-              }}
+              onPress={() => setSubscriptionPlan("premium")}
             >
               <LinearGradient
                  colors={["#FFD700", "#D4AF37", "#B8860B"]}

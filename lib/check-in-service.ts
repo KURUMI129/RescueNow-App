@@ -1,8 +1,32 @@
-import * as Notifications from "expo-notifications";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 
 import { sendTravelMessage } from "./travel-mode-service";
 
+// Expo Go (SDK 53+) removed remote push notification support. Even importing
+// expo-notifications at module load prints a red error banner in Expo Go, so
+// we ONLY require() the module lazily inside dev/standalone builds.
+const IS_EXPO_GO =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
 const NOTIFICATION_IDENTIFIER = "rescuenow_daily_check_in";
+
+type NotificationsModule = typeof import("expo-notifications");
+
+let cachedNotifications: NotificationsModule | null = null;
+
+function loadNotifications(): NotificationsModule | null {
+  if (IS_EXPO_GO) return null;
+  if (cachedNotifications) return cachedNotifications;
+  try {
+    // require() is intentional: keeps the import out of the static graph so
+    // Metro/Expo Go does not eagerly evaluate the module.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cachedNotifications = require("expo-notifications") as NotificationsModule;
+    return cachedNotifications;
+  } catch {
+    return null;
+  }
+}
 
 // =============== MESSAGE BUILDER ===============
 
@@ -31,12 +55,6 @@ export function buildCheckInMessage(
 
 // =============== STREAK LOGIC ===============
 
-/**
- * Compute the new streak given the previous check-in timestamp.
- *  - Same calendar day: keep streak (no double-count).
- *  - Yesterday: +1.
- *  - Older or never: reset to 1.
- */
 export function computeNextStreak(
   previousCheckIn: number | null,
   previousStreak: number,
@@ -51,9 +69,9 @@ export function computeNextStreak(
   const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
   const diffDays = Math.round((todayDay - prevDay) / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return Math.max(previousStreak, 1); // already checked in today
+  if (diffDays === 0) return Math.max(previousStreak, 1);
   if (diffDays === 1) return previousStreak + 1;
-  return 1; // streak broken
+  return 1;
 }
 
 // =============== SENDING TO CONTACT ===============
@@ -72,13 +90,21 @@ export async function sendCheckInToContact(
 // =============== LOCAL NOTIFICATION SCHEDULING ===============
 
 export async function requestNotificationsPermission(): Promise<boolean> {
-  const settings = await Notifications.getPermissionsAsync();
-  if (settings.granted) return true;
-  const req = await Notifications.requestPermissionsAsync();
-  return !!req.granted;
+  const Notifications = loadNotifications();
+  if (!Notifications) return false;
+  try {
+    const settings = await Notifications.getPermissionsAsync();
+    if (settings.granted) return true;
+    const req = await Notifications.requestPermissionsAsync();
+    return !!req.granted;
+  } catch {
+    return false;
+  }
 }
 
 export async function cancelCheckInNotification(): Promise<void> {
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
   try {
     await Notifications.cancelScheduledNotificationAsync(NOTIFICATION_IDENTIFIER);
   } catch {
@@ -91,6 +117,11 @@ export async function scheduleDailyCheckInNotification(
   minute: number,
   language: "es" | "en" = "es",
 ): Promise<boolean> {
+  const Notifications = loadNotifications();
+  if (!Notifications) {
+    console.info("[CheckIn] Skipping notification scheduling (Expo Go or missing module).");
+    return false;
+  }
   const allowed = await requestNotificationsPermission();
   if (!allowed) return false;
 
@@ -111,7 +142,7 @@ export async function scheduleDailyCheckInNotification(
         hour,
         minute,
         repeats: true,
-      } as Notifications.CalendarTriggerInput,
+      } as any,
     });
     return true;
   } catch (e) {

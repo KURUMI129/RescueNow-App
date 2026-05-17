@@ -50,7 +50,11 @@ F) HISTORIAL DE EMERGENCIAS: se accede desde "Opciones > Historial de Emergencia
 
 G) COMPARTIR UBICACIÓN (todos los planes): acción rápida del menú "+" que abre la hoja de compartir nativa con un link de Google Maps de la ubicación actual.
 
-H) LLAMAR 911 (todos los planes): acción rápida del menú "+" que abre el marcador con el 911 ya escrito.`;
+H) LLAMAR 911 (todos los planes): acción rápida del menú "+" que abre el marcador con el 911 ya escrito.
+
+I) CHECK-IN DE SEGURIDAD CON INTERVALOS (PREMIUM): se accede desde "Opciones > Check-in de Seguridad". Permite activar recordatorios automáticos cada 1, 2, 4, 8 o 12 horas para que el usuario confirme que está bien. Es distinto del Check-in Diario de la cruceta (el de la racha). Si el usuario es FREE y pregunta, dile que es Premium y que el plan gratuito tiene el SOS manual y la detección automática como protección base.
+
+J) SONIDOS S.O.S. PERSONALIZADOS (PREMIUM): en "Opciones > Sonido S.O.S." el plan free solo puede usar el sonido "Predeterminado". Premium desbloquea Alarma, Sirena y Silencioso. La vibración es gratuita para todos. Si el usuario FREE pregunta por desbloquear más sonidos, indícale que es Premium.`;
 
 const SYSTEM_PROMPT_FREE = `${SYSTEM_PROMPT_BASE}
 
@@ -141,7 +145,7 @@ export function getWelcomeMessage(userName: string, plan: "free" | "premium"): W
 
   if (plan === "premium") {
     return {
-      intro: `${introPrefix} Soy **Rex Premium** 🐕‍🦺, tu asistente personal de emergencia VIP.\n\nComo miembro Premium, tienes acceso completo a:\n\n1. Diagnóstico avanzado de fallas mecánicas\n2. Asesoría legal detallada post-accidente\n3. Primeros auxilios paso a paso\n4. Modo Viaje con seguimiento en tiempo real\n5. Check-in diario automático con racha\n6. Historial completo de emergencias con estadísticas\n\n¿En qué te puedo ayudar hoy?`,
+      intro: `${introPrefix} Soy **Rex Premium** 🐕‍🦺, tu asistente personal de emergencia VIP.\n\nComo miembro Premium, tienes acceso completo a:\n\n1. Diagnóstico avanzado de fallas mecánicas\n2. Asesoría legal detallada post-accidente\n3. Primeros auxilios paso a paso\n4. Modo Viaje con seguimiento en tiempo real\n5. Check-in diario automático con racha\n6. Check-in de Seguridad con recordatorios programables\n7. Sonidos S.O.S. personalizados\n8. Historial completo de emergencias y ubicaciones con estadísticas\n\n¿En qué te puedo ayudar hoy?`,
       fact: formattedFact
     };
   }
@@ -294,14 +298,16 @@ const OFFLINE_RESPONSES: Record<string, string> = {
   gasolinera: "⛽ Usa el filtro 'Gasolina' en el mapa de la pantalla principal para encontrar la gasolinera más cercana.",
   mecanico: "🔧 Usa el filtro 'Mecánico' en el mapa de la pantalla principal para encontrar talleres cercanos.",
   grua: "🚛 Selecciona la opción 'Grúa' en la pantalla principal. Si es una emergencia grave, usa el botón SOS.",
-  premium: "🌟 Con el plan PREMIUM obtienes:\n\n🔧 Diagnósticos mecánicos completos\n🗺️ Modo Viaje con seguimiento\n✅ Check-in Diario con racha\n📋 Historial completo de emergencias + estadísticas\n⚖️ Asesoría legal detallada post-accidente\n🏥 Primeros auxilios avanzados\n\nPuedes activarlo en MI PERFIL.",
+  premium: "🌟 Con el plan PREMIUM obtienes:\n\n🔧 Diagnósticos mecánicos completos\n🗺️ Modo Viaje con seguimiento\n✅ Check-in Diario con racha\n🛡️ Check-in de Seguridad con recordatorios cada 1-12 hrs\n🔔 Sonidos S.O.S. personalizados (Alarma, Sirena, Silencioso)\n📋 Historial completo de emergencias + estadísticas\n📍 Historial de Ubicaciones detallado\n⚖️ Asesoría legal detallada post-accidente\n🏥 Primeros auxilios avanzados\n\nPuedes activarlo en MI PERFIL.",
   auxilios: "🏥 Primeros Auxilios Básicos:\n\n1. Asegura la escena, no te pongas en riesgo.\n2. Llama al 911 o presiona el botón SOS.\n3. Si la persona no respira, inicia RCP (30 compresiones fuertes en el pecho).\n4. Controla hemorragias aplicando presión directa con un paño limpio.",
   viaje: "🗺️ MODO VIAJE (Premium):\n\n1. Elige duración (1, 2, 4 u 8 horas) y destino opcional.\n2. Toca INICIAR VIAJE SEGURO: tu contacto recibe un mensaje con tu ubicación de partida.\n3. Un timer en vivo muestra el tiempo transcurrido.\n4. Al llegar, toca FINALICÉ EL VIAJE: tu contacto recibe la confirmación.\n\nPensado para viajes solos, mujeres viajando solas o trayectos largos.",
   checkin: "✅ CHECK-IN DIARIO (Premium):\n\n1. Activa el switch en la pantalla Check-in.\n2. Elige la hora (8am, 9am, 12pm u 8pm).\n3. Cada día recibes una notificación recordatoria.\n4. Toca ESTOY BIEN para que se envíe un mensaje automático a tu contacto con tu racha.\n\nIdeal para personas que viven solas o adultos mayores.",
   historial: "📋 HISTORIAL DE EMERGENCIAS:\n\nVe cada vez que activaste el SOS o el sistema detectó un accidente, con fecha, ubicación y si el mensaje se envió.\n\nFREE: ves las últimas 5 emergencias.\nPREMIUM: historial completo + estadísticas (Total, Manuales, Automáticos, Últimos 7 días).\n\nLo abres en OPCIONES > HISTORIAL DE EMERGENCIAS.",
   ficha: "🏥 FICHA MÉDICA OFFLINE:\n\nAccedes a ella desde el botón + en la pantalla principal > FICHA MÉDICA.\n\nMuestra tipo de sangre, alergias, condiciones médicas y contacto de emergencia. Funciona SIN INTERNET.\n\nPensada para rescatistas que necesitan info rápida si no puedes hablar.\n\nLa editas en OPCIONES.",
   sos: "🚨 BOTÓN SOS ROJO:\n\nEl botón rojo grande en la pantalla principal. Al presionarlo:\n\n1. Aparece un countdown de 5 SEGUNDOS (cancelable).\n2. Si no cancelas, envía mensaje con tu ubicación al contacto de confianza por WhatsApp (online) o SMS (offline).\n3. Abre la pantalla de llamada al 911 con tu ficha médica.\n\nSi el sistema detecta un accidente solo (impacto fuerte), también dispara SOS con 10 segundos para cancelar.",
-  default: "👋 Soy Rex 🐕. Si no tienes Internet, solo puedo responder palabras clave básicas como: 'batería', 'motor', 'accidente', 'sos', 'ficha médica', 'modo viaje', 'check-in', 'historial', 'gasolina'.\n\n¿En qué te ayudo?",
+  safetycheckin: "🛡️ CHECK-IN DE SEGURIDAD CON INTERVALOS (Premium):\n\nEn OPCIONES > CHECK-IN DE SEGURIDAD.\n\n1. Activa el switch.\n2. Elige cada cuánto quieres recordatorios: 1, 2, 4, 8 o 12 horas.\n3. Puedes hacer también un check-in manual con un toque.\n\nDiferente al Check-in Diario de la cruceta (ese es de racha). Este es para personas que quieren confirmar varias veces al día que están bien.\n\nFREE: no disponible.\nPREMIUM: activa intervalos personalizados.",
+  sossounds: "🔔 SONIDOS S.O.S.:\n\nEn OPCIONES > SONIDO S.O.S. eliges qué sonido reproduce el botón SOS.\n\nFREE: solo el sonido PREDETERMINADO.\nPREMIUM: desbloquea ALARMA, SIRENA y SILENCIOSO.\n\nLa vibración es gratuita para todos los planes.",
+  default: "👋 Soy Rex 🐕. Si no tienes Internet, solo puedo responder palabras clave básicas como: 'batería', 'motor', 'accidente', 'sos', 'ficha médica', 'modo viaje', 'check-in', 'sonido sos', 'historial', 'gasolina'.\n\n¿En qué te ayudo?",
 };
 
 // ====== CHECK CONNECTIVITY ======
@@ -424,6 +430,8 @@ function getOfflineResponse(message: string, plan: "free" | "premium"): string {
     [["historial", "historial de emergencias", "incidentes", "registros de emergencia", "mis emergencias"], "historial"],
     [["ficha medica", "ficha médica", "medical id", "tipo de sangre", "alergias", "datos medicos", "datos médicos"], "ficha"],
     [["boton sos", "botón sos", "como funciona el sos", "que hace el sos", "sos rojo"], "sos"],
+    [["check-in de seguridad", "checkin seguridad", "recordatorio seguridad", "intervalo de seguridad", "checkin intervalos"], "safetycheckin"],
+    [["sonido sos", "sonidos sos", "alarma sos", "sirena", "cambiar sonido", "sonido de alerta"], "sossounds"],
     // General categories
     [["emergencia", "emerjencia", "emergensia", "sos", "ayuda urgente", "ayda", "911", "auxilio"], "emergencia"],
     [["accidente", "acidente", "accidnte", "aczidente", "choque", "choke", "volcadura", "golpe"], "accidente"],

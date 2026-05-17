@@ -214,7 +214,11 @@ export default function IncidentHistoryScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} accessibilityRole="button">
+        <Pressable
+          onPress={() => router.replace("/(tabs)/options")}
+          style={styles.backBtn}
+          accessibilityRole="button"
+        >
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           <Text style={[styles.backText, { color: colors.textPrimary }]}>{t.back}</Text>
         </Pressable>

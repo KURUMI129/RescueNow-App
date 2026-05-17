@@ -29,9 +29,14 @@ export function CrashSensitivitySlider({
   return (
     <Card style={cardStyle}>
       <View style={styles.header}>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]} numberOfLines={2}>{label}</Text>
         <View style={[styles.badge, { backgroundColor: colors.primary + "15" }]}>
-          <Text style={[styles.badgeText, { color: colors.primary }]}>
+          <Text
+            style={[styles.badgeText, { color: colors.primary }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
+          >
             Nivel {threshold}: {CRASH_SENSITIVITY_LABELS[threshold]}
           </Text>
         </View>
@@ -64,18 +69,22 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
+    gap: 8,
   },
   label: {
     fontSize: 14,
     fontWeight: "800",
+    flex: 1,
+    flexShrink: 1,
   },
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
+    maxWidth: 140,
+    flexShrink: 0,
   },
   badgeText: {
     fontSize: 12,

@@ -25,7 +25,12 @@ import Animated, {
 import { BlurView } from "expo-blur";
 import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
-import { get911VoiceScript, sendEmergencyMessage } from "@/lib/emergency-service";
+import {
+  get911VoiceScript,
+  sendEmergencyMessage,
+  reverseGeocodeLocation,
+  type ResolvedAddress,
+} from "@/lib/emergency-service";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -51,6 +56,8 @@ export default function EmergencyCallScreen() {
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
   const [currentDialogue, setCurrentDialogue] = useState("");
   const [messageStatus, setMessageStatus] = useState<MessageStatus>("pending");
+  const [address, setAddress] = useState<ResolvedAddress | null>(null);
+  const addressRef = useRef<ResolvedAddress | null>(null);
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callStartedRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
@@ -230,12 +237,29 @@ export default function EmergencyCallScreen() {
       setIsUserSpeaking(false);
       setCurrentDialogue("");
       setMessageStatus("pending");
+      setAddress(null);
+      addressRef.current = null;
       callStartedRef.current = false;
 
       if (callStartedRef.current) return;
       callStartedRef.current = true;
 
     let cancelled = false;
+
+    // Kick off reverse geocoding in parallel with the dialing phase.
+    // We have ~3.5s of dialing + 2.5s ringing + 5s waiting for the
+    // (silent) patient = ~11s before the script is spoken at phase 5,
+    // which is plenty of headroom for a single reverseGeocodeAsync call.
+    void (async () => {
+      const p = paramsRef.current;
+      const lat = parseFloat(p.latitude ?? "0");
+      const lon = parseFloat(p.longitude ?? "0");
+      if (!lat || !lon) return;
+      const resolved = await reverseGeocodeLocation({ latitude: lat, longitude: lon });
+      if (cancelled || !resolved) return;
+      addressRef.current = resolved;
+      setAddress(resolved);
+    })();
 
     const runCallSimulation = async () => {
       const p = paramsRef.current;
@@ -289,6 +313,7 @@ export default function EmergencyCallScreen() {
           allergies: p.allergies ?? "",
           medicalConditions: p.medicalConditions ?? "",
         },
+        addressRef.current,
       );
       setCurrentDialogue(`🤖 RescueNow:\n"${script}"`);
       await safeSpeakRef.current(script, { rate: 0.85, pitch: 0.95 });
@@ -466,11 +491,22 @@ export default function EmergencyCallScreen() {
                 </View>
                 <View style={styles.medicalRowContent}>
                   <Text style={styles.medicalLabel}>Ubicación del accidente</Text>
-                  <Text style={styles.medicalValue}>
-                    {params.latitude && params.longitude
-                      ? `${parseFloat(params.latitude).toFixed(5)}, ${parseFloat(params.longitude).toFixed(5)}`
-                      : "No disponible"}
-                  </Text>
+                  {address ? (
+                    <>
+                      <Text style={styles.medicalValue}>{address.display}</Text>
+                      {params.latitude && params.longitude && (
+                        <Text style={styles.medicalCoordHint}>
+                          {parseFloat(params.latitude).toFixed(5)}, {parseFloat(params.longitude).toFixed(5)}
+                        </Text>
+                      )}
+                    </>
+                  ) : (
+                    <Text style={styles.medicalValue}>
+                      {params.latitude && params.longitude
+                        ? `${parseFloat(params.latitude).toFixed(5)}, ${parseFloat(params.longitude).toFixed(5)}`
+                        : "No disponible"}
+                    </Text>
+                  )}
                 </View>
               </View>
             </BlurView>
@@ -911,6 +947,13 @@ const styles = StyleSheet.create({
     color: "#E11D48",
     fontSize: 20,
     fontWeight: "900",
+  },
+  medicalCoordHint: {
+    color: "rgba(255, 255, 255, 0.35)",
+    fontSize: 11,
+    fontWeight: "500",
+    marginTop: 4,
+    fontVariant: ["tabular-nums"],
   },
   paramedicsNote: {
     flexDirection: "row",

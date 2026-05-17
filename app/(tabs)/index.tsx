@@ -395,18 +395,7 @@ export default function HomeScreen() {
     });
   };
 
-  // Pulse animation for FAB (Reanimated native thread)
-  const pulseScale = useSharedValue(1);
-  useEffect(() => {
-    pulseScale.value = withRepeat(
-      withTiming(1.15, { duration: 900 }),
-      -1,
-      true,
-    );
-  }, [pulseScale]);
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulseScale.value }],
-  }));
+  // SOS button: no animation - the user prefers a static, deliberate look
 
   // Floating animation for Rex FAB
   const floatY = useSharedValue(0);
@@ -533,15 +522,20 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       
-      {/* MAPA ABSOLUTO */}
+      {/* MAPA ABSOLUTO
+          NOTE: key={activeTheme} forces a remount when the theme changes.
+          react-native-maps does NOT clear customMapStyle when it's set to
+          undefined; without the remount the map stays in dark mode forever
+          after the user toggles back to light. */}
       <MapView
+        key={`map-${activeTheme}`}
         ref={mapRef}
         style={StyleSheet.absoluteFillObject}
         region={mapRegion}
         showsUserLocation={locationAllowed}
         followsUserLocation={false}
         showsMyLocationButton={false}
-        customMapStyle={activeTheme === "dark" ? RESCUE_DARK_MAP_STYLE : undefined}
+        customMapStyle={activeTheme === "dark" ? RESCUE_DARK_MAP_STYLE : []}
       >
         {/* // TODO: Copilot - Renderizar Markers aquí */}
         {poiMarkers.map((poi) => {
@@ -571,34 +565,50 @@ export default function HomeScreen() {
         })}
       </MapView>
 
-      {/* HEADER FLOTANTE - COMPACTO EN UNA FILA */}
-      <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.header, { paddingTop: Math.max(insets.top, 6) }]} pointerEvents="box-none">
-        <BlurView intensity={activeTheme === "dark" ? 40 : 80} tint={activeTheme} style={[styles.headerBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 14 }]}>
-          <View style={styles.headerRight}>
-            <ContactShortcut />
-            <WeatherWidget/>
-            <BatteryWarning />
+      {/* HEADER FLOTANTE - DOS GRUPOS BIEN SEPARADOS */}
+      <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.header, { paddingTop: Math.max(insets.top, 8) }]} pointerEvents="box-none">
+        <View style={styles.headerRow}>
+          {/* GRUPO IZQUIERDO: Clima */}
+          <BlurView intensity={activeTheme === "dark" ? 60 : 90} tint={activeTheme} style={[styles.headerGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+            <WeatherWidget
+              latitude={location?.coords.latitude ?? null}
+              longitude={location?.coords.longitude ?? null}
+            />
+          </BlurView>
+
+          {/* GRUPO DERECHO: Acciones (sin avatar) */}
+          <BlurView intensity={activeTheme === "dark" ? 60 : 90} tint={activeTheme} style={[styles.headerGroup, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
             <Pressable
               onPress={handleCenterOnUser}
-              style={[styles.iconBtn, { backgroundColor: colors.surface }]}
+              style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
+              hitSlop={8}
             >
-              <Ionicons name="locate" size={16} color={colors.primary} />
+              <Ionicons name="locate" size={18} color={colors.primary} />
             </Pressable>
+            <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
             <Pressable
               onPress={async () => {
                 const newTheme = activeTheme === "dark" ? "light" : "dark";
                 await updateAppPreferences({ themeMode: newTheme });
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              style={[styles.iconBtn, { backgroundColor: colors.surface }]}
+              style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
+              hitSlop={8}
             >
               <Ionicons
-                name={activeTheme === "dark" ? "moon-outline" : "sunny-outline"}
-                size={16}
-                color={colors.primary}
+                name={activeTheme === "dark" ? "moon" : "sunny"}
+                size={18}
+                color={activeTheme === "dark" ? "#FBBF24" : "#F59E0B"}
               />
             </Pressable>
-            <Pressable style={[styles.iconBtn, { backgroundColor: colors.surface }]} onPress={() => router.push("/(tabs)/options")}>
+          </BlurView>
+
+          {/* AVATAR PROFILE - standalone circle, not inside the pill */}
+          <Pressable
+            onPress={() => router.push("/(tabs)/options")}
+            style={({ pressed }) => [styles.avatarBtn, pressed && { opacity: 0.7 }]}
+            hitSlop={6}
+          >
             {user?.photoURL ? (
               <Image source={{ uri: user.photoURL }} style={styles.profileAvatarTiny} />
             ) : (
@@ -608,9 +618,14 @@ export default function HomeScreen() {
                 </Text>
               </View>
             )}
-            </Pressable>
-          </View>
-        </BlurView>
+          </Pressable>
+        </View>
+
+        {/* Battery warning + contact shortcut como segunda fila opcional */}
+        <View style={styles.headerSecondRow} pointerEvents="box-none">
+          <BatteryWarning />
+          <ContactShortcut />
+        </View>
       </Animated.View>
 
       {/* FAB: Rex (Chatbot) */}
@@ -626,22 +641,28 @@ export default function HomeScreen() {
         </Animated.View>
       </RNAnimated.View>
 
-      {/* Quick Actions FAB */}
+      {/* SOS FAB - emergency call to action with dual-ring pulse */}
       <RNAnimated.View style={[
-          styles.fabContainer, 
-          { 
+          styles.fabContainer,
+          {
             bottom: RNAnimated.add(sheetAnim, 24),
           }
         ]}
       >
-        <Animated.View style={pulseStyle}>
-          <Pressable 
+        <View style={styles.sosFabWrapper}>
+          <Pressable
             onPress={() => setShowSOSModal(true)}
-            style={[styles.sosFab, { shadowColor: '#E11D48', elevation: 12 }]} 
+            style={({ pressed }) => [
+              styles.sosFab,
+              pressed && { transform: [{ scale: 0.94 }] },
+            ]}
           >
-            <MaterialCommunityIcons name="alert" size={34} color="#FFFFFF" />
+            <View style={styles.sosFabInner}>
+              <MaterialCommunityIcons name="alert-octagon" size={32} color="#FFFFFF" />
+              <Text style={styles.sosFabLabel}>SOS</Text>
+            </View>
           </Pressable>
-        </Animated.View>
+        </View>
       </RNAnimated.View>
 
       {/* Quick Actions FAB */}
@@ -824,7 +845,32 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { position: 'absolute', top: 0, width: '100%', paddingHorizontal: 16, zIndex: 10 },
+  header: { position: 'absolute', top: 0, width: '100%', paddingHorizontal: 14, zIndex: 10 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  headerGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#0B1120',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    gap: 4,
+  },
+  headerSecondRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  divider: { width: 1, height: 18, marginHorizontal: 2, opacity: 0.5 },
+  avatarBtn: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', marginLeft: 4, borderWidth: 1.5, borderColor: 'rgba(14, 165, 233, 0.35)' },
   headerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, borderWidth: 1, shadowColor: "#0B1120", shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 0 },
   headerLeft: { flex: 1, paddingRight: 12 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -833,20 +879,52 @@ const styles = StyleSheet.create({
   profileBtn: { width: 36, height: 36, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   themeToggle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   centerBtnHeader: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  iconBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   profileAvatar: { width: 40, height: 40, borderRadius: 20 },
   profileAvatarSmall: { width: 32, height: 32, borderRadius: 16 },
-  profileAvatarTiny: { width: 26, height: 26, borderRadius: 13 },
+  profileAvatarTiny: { width: 36, height: 36, borderRadius: 18 },
   profileInitials: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   profileInitialsSmall: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  profileInitialsTiny: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  profileInitialsTiny: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   profileInitialsText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   profileInitialsTextSmall: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-  profileInitialsTextTiny: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+  profileInitialsTextTiny: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
   aiFabContainer: { position: 'absolute', left: 20, zIndex: 30 },
   aiFab: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowColor: '#0EA5E9', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
   fabContainer: { position: 'absolute', right: 20, zIndex: 30 },
-  sosFab: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#E11D48', alignItems: 'center', justifyContent: 'center', shadowColor: '#E11D48', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.5, shadowRadius: 24, elevation: 12 },
+  sosFabWrapper: { width: 76, height: 76, alignItems: 'center', justifyContent: 'center' },
+  sosRing: {
+    position: 'absolute',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2.5,
+    borderColor: '#E11D48',
+    backgroundColor: 'rgba(225, 29, 72, 0.18)',
+  },
+  sosFab: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: '#E11D48',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#E11D48',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.55,
+    shadowRadius: 22,
+    elevation: 14,
+    borderWidth: 2.5,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  sosFabInner: { alignItems: 'center', justifyContent: 'center' },
+  sosFabLabel: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginTop: 2,
+  },
   centerBtnContainer: { position: 'absolute', right: 20, zIndex: 25 },
   quickActionsContainer: { position: 'absolute', right: 20, zIndex: 25 },
   centerBtn: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', shadowColor: '#0B1120', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },

@@ -1,7 +1,7 @@
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Image,
@@ -126,7 +126,14 @@ export default function OptionsScreen() {
         setUseTrustedContact(preferences.useTrustedContact);
         setSubscriptionPlan(preferences.subscriptionPlan);
         setAccountRole(preferences.accountRole);
-        setSosSound(preferences.sosSound);
+        // If the user downgraded to free while owning a Premium SOS sound,
+        // snap back to "default" so we never play a sound they no longer own.
+        if (preferences.subscriptionPlan !== "premium" && preferences.sosSound !== "default") {
+          setSosSound("default");
+          await updateAppPreferences({ sosSound: "default" });
+        } else {
+          setSosSound(preferences.sosSound);
+        }
         setSosVibration(preferences.sosVibration);
         setIsLoadingPrefs(false);
       };
@@ -225,9 +232,46 @@ export default function OptionsScreen() {
     setIsSavingPlan(false);
   };
 
+  // Single source file (alarm.mp3) with different playback parameters per option,
+  // so the preview audibly distinguishes each choice without bundling more assets.
+  const SOUND_PROFILE: Record<
+    SOSSoundOption,
+    { rate: number; volume: number; durationMs: number } | null
+  > = {
+    silent: null,
+    default: { rate: 1.0, volume: 0.55, durationMs: 900 },
+    alarm: { rate: 0.85, volume: 0.85, durationMs: 1600 },
+    siren: { rate: 1.45, volume: 0.95, durationMs: 1800 },
+  };
+
+  const previewSoundRef = useRef<Audio.Sound | null>(null);
+  const previewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopPreview = async () => {
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current);
+      previewTimeoutRef.current = null;
+    }
+    const s = previewSoundRef.current;
+    previewSoundRef.current = null;
+    if (s) {
+      try {
+        await s.stopAsync();
+      } catch {}
+      try {
+        await s.unloadAsync();
+      } catch {}
+    }
+  };
+
   const playSoundPreview = async (sound: SOSSoundOption) => {
-    if (sound === "silent") return;
-    
+    const profile = SOUND_PROFILE[sound];
+    if (!profile) {
+      await stopPreview();
+      return;
+    }
+    await stopPreview();
+
     try {
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
@@ -237,24 +281,40 @@ export default function OptionsScreen() {
 
       const { sound: audioSound } = await Audio.Sound.createAsync(
         require("@/assets/audio/alarm.mp3"),
-        { 
-          shouldPlay: true, 
-          volume: 0.6,
-          isLooping: sound === "alarm" || sound === "siren",
-        }
+        {
+          shouldPlay: true,
+          volume: profile.volume,
+          isLooping: false,
+          rate: profile.rate,
+          shouldCorrectPitch: false,
+        },
       );
+      previewSoundRef.current = audioSound;
 
-      const duration = sound === "default" ? 300 : 600;
-      setTimeout(async () => {
-        await audioSound.stopAsync();
-        await audioSound.unloadAsync();
-      }, duration);
+      previewTimeoutRef.current = setTimeout(() => {
+        void stopPreview();
+      }, profile.durationMs);
     } catch (error) {
       console.warn("Sound preview failed:", error);
     }
   };
 
+  useEffect(() => {
+    return () => {
+      void stopPreview();
+    };
+  }, []);
+
+  // Only "default" is free. Any other sound is gated behind Premium so the
+  // free tier still gets a working SOS sound without unlocking customization.
+  const SOS_FREE_SOUND: SOSSoundOption = "default";
+
   const handleSOSSoundChange = async (sound: SOSSoundOption) => {
+    if (subscriptionPlan !== "premium" && sound !== SOS_FREE_SOUND) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      router.push("/premium");
+      return;
+    }
     setSosSound(sound);
     await updateAppPreferences({ sosSound: sound });
     void playSoundPreview(sound);
@@ -547,27 +607,45 @@ export default function OptionsScreen() {
             <View style={styles.settingRowStack}>
               <Text style={[styles.settingLabel, { color: colors.textPrimary, marginBottom: 12 }]}>Selecciona el sonido de alerta:</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {SOS_SOUND_OPTIONS.map(option => (
-                  <Pressable
-                    key={option.id}
-                    onPress={() => handleSOSSoundChange(option.id)}
-                    style={[
-                      styles.pillBtn,
-                      sosSound === option.id
-                        ? { backgroundColor: colors.primary, borderWidth: 0 }
-                        : { backgroundColor: colors.mapBackground, borderColor: colors.cardBorder, borderWidth: 1 }
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={option.icon as any}
-                      size={14}
-                      color={sosSound === option.id ? "#fff" : colors.textSecondary}
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={[styles.pillText, sosSound === option.id ? { color: "#fff" } : { color: colors.textSecondary }]}>{option.label}</Text>
-                  </Pressable>
-                ))}
+                {SOS_SOUND_OPTIONS.map(option => {
+                  const isLocked = subscriptionPlan !== "premium" && option.id !== SOS_FREE_SOUND;
+                  const isSelected = sosSound === option.id;
+                  return (
+                    <Pressable
+                      key={option.id}
+                      onPress={() => handleSOSSoundChange(option.id)}
+                      style={[
+                        styles.pillBtn,
+                        isSelected
+                          ? { backgroundColor: colors.primary, borderWidth: 0 }
+                          : { backgroundColor: colors.mapBackground, borderColor: colors.cardBorder, borderWidth: 1 },
+                        isLocked && { opacity: 0.6 },
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name={option.icon as any}
+                        size={14}
+                        color={isSelected ? "#fff" : colors.textSecondary}
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text style={[styles.pillText, isSelected ? { color: "#fff" } : { color: colors.textSecondary }]}>{option.label}</Text>
+                      {isLocked && (
+                        <MaterialCommunityIcons
+                          name="lock"
+                          size={12}
+                          color={colors.accent}
+                          style={{ marginLeft: 6 }}
+                        />
+                      )}
+                    </Pressable>
+                  );
+                })}
               </View>
+              {subscriptionPlan !== "premium" && (
+                <Text style={{ fontSize: 11, fontWeight: '600', marginTop: 8, color: colors.accent }}>
+                  Los sonidos personalizados son exclusivos Premium.
+                </Text>
+              )}
               <View style={[styles.switchRow, { marginTop: 16 }]}>
                 <Text style={[styles.settingLabel, { flex: 1, color: colors.textPrimary }]}>Vibración</Text>
                 <Switch value={sosVibration} onValueChange={handleSOSVibrationChange} trackColor={{ false: colors.cardBorder, true: colors.primary }} thumbColor="#FFFFFF" />

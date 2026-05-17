@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -6,8 +6,10 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
   interpolate,
   Extrapolation,
+  SharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -23,88 +25,132 @@ interface QuickActionsFABProps {
   actions: QuickAction[];
 }
 
+const ITEM_SIZE = 48;
+const ITEM_SPACING = 58;
+const MAIN_SIZE = 56;
+const LABEL_AREA = 150;
+
+interface ActionRowProps {
+  item: QuickAction;
+  index: number;
+  expanded: SharedValue<number>;
+  onPress: (action: () => void) => void;
+}
+
+function ActionRow({ item, index, expanded, onPress }: ActionRowProps) {
+  const itemStyle = useAnimatedStyle(() => {
+    const scale = interpolate(expanded.value, [0, 1], [0.4, 1], Extrapolation.CLAMP);
+    const opacity = interpolate(
+      expanded.value,
+      [0, 0.4, 1],
+      [0, 0.1, 1],
+      Extrapolation.CLAMP,
+    );
+    return {
+      transform: [{ scale }],
+      opacity,
+      // Hide from touch when collapsed so the invisible row doesn't eat taps
+      pointerEvents: expanded.value > 0.5 ? "auto" : "none",
+    } as any;
+  });
+
+  // Each item sits at its own bottom offset inside the tall container,
+  // so it is never translated outside the parent bounds (Android would
+  // otherwise drop the touch events).
+  const bottom = MAIN_SIZE + 4 + index * ITEM_SPACING;
+
+  return (
+    <Animated.View
+      style={[styles.actionItem, { bottom }, itemStyle]}
+      pointerEvents="box-none"
+    >
+      <View style={styles.actionLabelWrap}>
+        <Text style={styles.actionLabel} numberOfLines={1}>{item.label}</Text>
+      </View>
+      <Pressable
+        onPress={() => onPress(item.action)}
+        hitSlop={8}
+        style={({ pressed }) => [
+          styles.actionButton,
+          { backgroundColor: item.color },
+          pressed && { transform: [{ scale: 0.92 }] },
+        ]}
+      >
+        <Ionicons name={item.icon} size={20} color="#FFFFFF" />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 function QuickActionsFABComponent({ bottomOffset = 100, actions }: QuickActionsFABProps) {
   const insets = useSafeAreaInsets();
   const expanded = useSharedValue(0);
+  // Track target state in a ref so taps mid-animation always flip correctly
+  // (reading expanded.value directly returns interpolated values during the
+  // spring, which caused the FAB to skip toggles).
+  const isOpenRef = useRef(false);
+  const [, force] = useState(0);
 
   const toggleExpanded = () => {
-    const newValue = expanded.value === 0 ? 1 : 0;
-    expanded.value = withSpring(newValue, {
-      damping: 15,
-      stiffness: 150,
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const next = isOpenRef.current ? 0 : 1;
+    isOpenRef.current = !isOpenRef.current;
+    expanded.value = withSpring(next, {
+      damping: 14,
+      stiffness: 140,
     });
+    force((n) => n + 1);
   };
 
   const handleActionPress = (action: () => void) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    action();
-    expanded.value = withSpring(0, { damping: 15, stiffness: 150 });
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    isOpenRef.current = false;
+    expanded.value = withTiming(0, { duration: 200 });
+    force((n) => n + 1);
+    setTimeout(action, 120);
   };
 
-  const containerStyle = useAnimatedStyle(() => ({
-    bottom: bottomOffset + insets.bottom,
-  }));
-
-  const actionsContainerStyle = useAnimatedStyle(() => {
-    const translateX = interpolate(
-      expanded.value,
-      [0, 1],
-      [60, 0],
-      Extrapolation.CLAMP
-    );
-    const opacity = interpolate(
-      expanded.value,
-      [0, 0.5, 1],
-      [0, 0.5, 1],
-      Extrapolation.CLAMP
-    );
-    return {
-      transform: [{ translateX }],
-      opacity,
-    };
-  });
-
   const mainButtonStyle = useAnimatedStyle(() => {
-    const rotation = interpolate(
-      expanded.value,
-      [0, 1],
-      [0, 45],
-      Extrapolation.CLAMP
-    );
-    return {
-      transform: [{ rotate: `${rotation}deg` }],
-    };
+    const rotation = interpolate(expanded.value, [0, 1], [0, 135], Extrapolation.CLAMP);
+    return { transform: [{ rotate: `${rotation}deg` }] };
   });
+
+  // Container has to be tall enough to contain every expanded item; otherwise
+  // Android clips child touch areas to the parent View bounds.
+  const containerHeight = MAIN_SIZE + 8 + actions.length * ITEM_SPACING;
 
   return (
-    <Animated.View style={[styles.container, containerStyle]}>
-      <Animated.View style={[styles.actionsContainer, actionsContainerStyle]}>
-        {actions.map((item, index) => (
-          <View
-            key={item.label}
-            style={[styles.actionItem, { left: (index + 1) * 60 }]}
-          >
-            <Pressable
-              onPress={() => handleActionPress(item.action)}
-              style={[styles.actionButton, { backgroundColor: item.color }]}
-            >
-              <Ionicons name={item.icon} size={22} color="#FFFFFF" />
-            </Pressable>
-            <Text style={[styles.actionLabel, { color: item.color }]}>
-              {item.label}
-            </Text>
-          </View>
-        ))}
-      </Animated.View>
+    <View
+      style={[
+        styles.container,
+        {
+          bottom: bottomOffset + insets.bottom,
+          height: containerHeight,
+          width: ITEM_SIZE + LABEL_AREA,
+        },
+      ]}
+      pointerEvents="box-none"
+    >
+      {actions.map((item, index) => (
+        <ActionRow
+          key={item.label}
+          item={item}
+          index={index}
+          expanded={expanded}
+          onPress={handleActionPress}
+        />
+      ))}
 
-      <Pressable onPress={toggleExpanded} style={styles.mainButtonWrapper}>
-        <Animated.View style={mainButtonStyle}>
-          <View style={styles.mainButton}>
-            <Ionicons name="add" size={32} color="#FFFFFF" />
-          </View>
+      <Pressable
+        onPress={toggleExpanded}
+        style={styles.mainButtonWrapper}
+        hitSlop={10}
+      >
+        <Animated.View style={[styles.mainButton, mainButtonStyle]}>
+          <Ionicons name="add" size={30} color="#FFFFFF" />
         </Animated.View>
       </Pressable>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -112,60 +158,66 @@ const styles = StyleSheet.create({
   container: {
     position: "absolute",
     right: 20,
-    alignItems: "center",
-    zIndex: 25,
-  },
-  actionsContainer: {
-    position: "absolute",
-    bottom: 25,
-    flexDirection: "row-reverse",
-    alignItems: "center",
+    alignItems: "flex-end",
+    justifyContent: "flex-end",
+    zIndex: 35,
   },
   actionItem: {
     position: "absolute",
-    flexDirection: "row-reverse",
+    right: (MAIN_SIZE - ITEM_SIZE) / 2,
+    flexDirection: "row",
     alignItems: "center",
-    left: 28,
+  },
+  actionLabelWrap: {
+    backgroundColor: "rgba(11, 17, 32, 0.92)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 10,
+    maxWidth: LABEL_AREA - 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   actionLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
-    marginRight: -4,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-    overflow: "hidden",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
   },
   actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: ITEM_SIZE,
+    height: ITEM_SIZE,
+    borderRadius: ITEM_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 6,
-    marginLeft: -4,
+    shadowRadius: 8,
+    elevation: 8,
   },
   mainButtonWrapper: {
-    width: 56,
-    height: 56,
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: MAIN_SIZE,
+    height: MAIN_SIZE,
     alignItems: "center",
     justifyContent: "center",
   },
   mainButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: MAIN_SIZE,
+    height: MAIN_SIZE,
+    borderRadius: MAIN_SIZE / 2,
     backgroundColor: "#0EA5E9",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#0EA5E9",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.45,
     shadowRadius: 16,
     elevation: 10,
   },

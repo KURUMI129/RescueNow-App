@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 import { Header } from "@/components/ui/Header";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { useActiveTheme } from "@/hooks/use-active-theme";
 import { DESIGN_TOKENS } from "@/constants/design-tokens";
+import { getAppPreferences, type SubscriptionPlan } from "@/constants/app-preferences";
 
 const LOCATION_HISTORY_KEY = "@rescuenow_location_history_v1";
 
@@ -28,13 +30,23 @@ const TYPE_CONFIG: Record<LocationType, { icon: string; color: string; label: st
 };
 
 export default function LocationHistoryScreen() {
+  const router = useRouter();
   const [history, setHistory] = useState<LocationEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [plan, setPlan] = useState<SubscriptionPlan>("free");
   const activeTheme = useActiveTheme();
   const tokens = DESIGN_TOKENS[activeTheme];
 
+  // Sub-screens are registered as hidden tabs (href: null), so router.back()
+  // pops to the previously focused tab — which is always "index" (home), not
+  // Options. Explicitly route to Options to keep the user in their flow.
+  const handleBack = useCallback(() => {
+    router.replace("/(tabs)/options");
+  }, [router]);
+
   useEffect(() => {
     loadHistory();
+    void getAppPreferences().then((prefs) => setPlan(prefs.subscriptionPlan));
   }, []);
 
   const loadHistory = async () => {
@@ -94,8 +106,32 @@ export default function LocationHistoryScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header title="Historial de Ubicaciones" showBack />
+        <Header title="Historial de Ubicaciones" showBack onBack={handleBack} />
         <EmptyState type="loading" title="Cargando historial..." />
+      </View>
+    );
+  }
+
+  if (plan !== "premium") {
+    return (
+      <View style={[styles.container, { backgroundColor: tokens.colors.background }]}>
+        <Header title="Historial de Ubicaciones" showBack onBack={handleBack} />
+        <View style={styles.gateBox}>
+          <View style={[styles.gateIconWrap, { backgroundColor: tokens.colors.warning + "20" }]}>
+            <MaterialCommunityIcons name="map-marker-path" size={48} color={tokens.colors.warning} />
+          </View>
+          <Text style={[styles.gateTitle, { color: tokens.colors.textPrimary }]}>Función Premium</Text>
+          <Text style={[styles.gateDesc, { color: tokens.colors.textSecondary }]}>
+            El historial de ubicaciones detallado está disponible para miembros Premium.
+          </Text>
+          <Pressable
+            onPress={() => router.push("/premium")}
+            style={[styles.goPremiumBtn, { backgroundColor: tokens.colors.warning }]}
+          >
+            <Ionicons name="star" size={18} color="#FFFFFF" />
+            <Text style={styles.goPremiumText}>Ir a Premium</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -103,7 +139,7 @@ export default function LocationHistoryScreen() {
   if (history.length === 0) {
     return (
       <View style={styles.container}>
-        <Header title="Historial de Ubicaciones" showBack />
+        <Header title="Historial de Ubicaciones" showBack onBack={handleBack} />
         <EmptyState
           type="empty"
           title="Sin historial"
@@ -116,7 +152,7 @@ export default function LocationHistoryScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Historial de Ubicaciones" showBack />
+      <Header title="Historial de Ubicaciones" showBack onBack={handleBack} />
       <FlatList
         data={history}
         keyExtractor={(item) => item.id}
@@ -169,5 +205,44 @@ const styles = StyleSheet.create({
   },
   coordinates: {
     fontSize: 13,
+  },
+  gateBox: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  gateIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  gateTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  gateDesc: {
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  goPremiumBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  goPremiumText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 14,
   },
 });

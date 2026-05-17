@@ -1,4 +1,5 @@
 import * as SMS from "expo-sms";
+import * as Location from "expo-location";
 import { Linking } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
@@ -239,16 +240,82 @@ export async function saveIncident(
   }
 }
 
+export type ResolvedAddress = {
+  spoken: string;   // human-friendly string read aloud by TTS
+  display: string;  // pretty multi-line for the medical card
+};
+
+/**
+ * Reverse-geocode coordinates into a real street address.
+ * Uses expo-location's native reverseGeocodeAsync (Apple/Google Geocoder),
+ * which requires foreground location permission (already granted by SOS flow).
+ *
+ * Returns null if the lookup fails or the device is offline — callers must
+ * fall back to plain coordinates.
+ */
+export async function reverseGeocodeLocation(
+  location: EmergencyLocation,
+): Promise<ResolvedAddress | null> {
+  try {
+    const results = await Location.reverseGeocodeAsync({
+      latitude: location.latitude,
+      longitude: location.longitude,
+    });
+
+    const first = results[0];
+    if (!first) return null;
+
+    // Build the parts of a real-world address. Different platforms populate
+    // different fields, so we filter falsy values and join.
+    const street = first.street ?? "";
+    const number = first.streetNumber ?? "";
+    const streetLine = [street, number].filter(Boolean).join(" ").trim();
+
+    const district = first.district ?? first.subregion ?? "";
+    const city = first.city ?? first.region ?? "";
+    const postal = first.postalCode ?? "";
+
+    const spokenParts = [
+      streetLine && `en ${streetLine}`,
+      district && `colonia ${district}`,
+      city,
+    ].filter(Boolean) as string[];
+
+    const displayParts = [
+      streetLine,
+      district,
+      [city, postal].filter(Boolean).join(", "),
+    ].filter(Boolean) as string[];
+
+    if (spokenParts.length === 0) return null;
+
+    return {
+      spoken: spokenParts.join(", "),
+      display: displayParts.join("\n"),
+    };
+  } catch (e) {
+    console.warn("[Emergency] reverseGeocode failed:", e);
+    return null;
+  }
+}
+
 /**
  * Generate the voice script for the simulated 911 call.
  * Used by expo-speech (TTS) — works 100% offline.
+ *
+ * If a resolved address is provided, the script speaks the street name like a
+ * real emergency call. Otherwise it falls back to coordinates.
  */
 export function get911VoiceScript(
   userName: string,
   location: EmergencyLocation,
   medicalData: MedicalData,
+  address?: ResolvedAddress | null,
 ): string {
-  const coords = `latitud ${location.latitude.toFixed(4)}, longitud ${location.longitude.toFixed(4)}`;
+  const locationPhrase = address?.spoken
+    ? `La ubicación es ${address.spoken}.`
+    : `La ubicación es latitud ${location.latitude.toFixed(4)}, longitud ${location.longitude.toFixed(4)}.`;
+
   const blood = medicalData.bloodType || "desconocido";
   const allergies = medicalData.allergies || "sin alergias registradas";
   const conditions = medicalData.medicalConditions || "sin condiciones registradas";
@@ -256,7 +323,7 @@ export function get911VoiceScript(
   return [
     `Habla el sistema de emergencia RescueNow.`,
     `Se reporta un accidente vehicular.`,
-    `La ubicación es ${coords}.`,
+    locationPhrase,
     `El paciente se llama ${userName}.`,
     `Tipo de sangre ${blood}, con alergias a ${allergies}.`,
     `Condiciones médicas: ${conditions}.`,
