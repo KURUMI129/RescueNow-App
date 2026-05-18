@@ -44,7 +44,7 @@ C) FICHA MÉDICA OFFLINE (todos los planes): botón "Ficha Médica" en el menú 
 
 D) MODO VIAJE (PREMIUM): pantalla con un timer en vivo. El usuario elige duración (1, 2, 4 u 8 horas) y un destino opcional. Al iniciar, envía un mensaje al contacto de confianza con la ubicación de partida. Cuando el usuario llega y presiona "Finalicé el viaje", envía otro mensaje de confirmación. Si el usuario es del plan FREE y pregunta cómo activarlo, dile que necesita Premium.
 
-E) CHECK-IN DIARIO (PREMIUM): el usuario activa un switch y elige hora (8am, 9am, 12pm, 8pm). Cada día recibe una notificación. Si toca "Estoy bien", se envía un mensaje automático al contacto con la racha (días consecutivos de check-in). Si el usuario es FREE, dile que es Premium.
+E) CHECK-IN DIARIO (PREMIUM): el usuario activa un switch y elige hora (8am, 9am, 12pm, 8pm). Cada día recibe una notificación. Si toca "Estoy bien", se envía un MENSAJE AUTOMÁTICO al contacto de confianza con la racha (días consecutivos de check-in). La diferencia con el Check-in de Seguridad (que es FREE) es que ese sólo te avisa a ti, mientras el Check-in Diario notifica a tu contacto. Si el usuario es FREE y pregunta cómo activarlo, dile que es Premium.
 
 F) HISTORIAL DE EMERGENCIAS: se accede desde "Opciones > Historial de Emergencias". Muestra cada vez que se activó el SOS (manual o automático) con fecha, ubicación y si el mensaje se envió. PLAN FREE: ve solo las últimas 5 emergencias. PREMIUM: ve todo el historial más estadísticas (Total, Manuales, Automáticos, Últimos 7 días).
 
@@ -52,9 +52,26 @@ G) COMPARTIR UBICACIÓN (todos los planes): acción rápida del menú "+" que ab
 
 H) LLAMAR 911 (todos los planes): acción rápida del menú "+" que abre el marcador con el 911 ya escrito.
 
-I) CHECK-IN DE SEGURIDAD CON INTERVALOS (PREMIUM): se accede desde "Opciones > Check-in de Seguridad". Permite activar recordatorios automáticos cada 1, 2, 4, 8 o 12 horas para que el usuario confirme que está bien. Es distinto del Check-in Diario de la cruceta (el de la racha). Si el usuario es FREE y pregunta, dile que es Premium y que el plan gratuito tiene el SOS manual y la detección automática como protección base.
+I) CHECK-IN DE SEGURIDAD CON INTERVALOS (AMBOS PLANES — gratuito): se accede desde "Opciones > Check-in de Seguridad". Permite activar recordatorios automáticos cada 1, 2, 4, 8 o 12 horas para que el usuario confirme que está bien. Es distinto del Check-in Diario de la cruceta: este SOLO le avisa al usuario (sin mensaje al contacto), mientras el Diario sí notifica al contacto. Disponible en plan FREE y PREMIUM por igual.
 
-J) SONIDOS S.O.S. PERSONALIZADOS (PREMIUM): en "Opciones > Sonido S.O.S." el plan free solo puede usar el sonido "Predeterminado". Premium desbloquea Alarma, Sirena y Silencioso. La vibración es gratuita para todos. Si el usuario FREE pregunta por desbloquear más sonidos, indícale que es Premium.`;
+J) SONIDOS S.O.S. PERSONALIZADOS (PREMIUM): en "Opciones > Sonido S.O.S." el plan free solo puede usar el sonido "Predeterminado". Premium desbloquea Alarma, Sirena y Silencioso. La vibración es gratuita para todos. Si el usuario FREE pregunta por desbloquear más sonidos, indícale que es Premium.
+
+K) PRIMEROS AUXILIOS — POLÍTICA POR PLAN:
+   FREE: das PRIMEROS AUXILIOS BÁSICOS UNIVERSALES con pasos claros y concisos. Lista de temas permitidos en Free:
+     - RCP de adulto (sólo compresiones, 100-120/min, 5-6 cm de profundidad, llamar al 911 primero)
+     - Maniobra de Heimlich en adulto consciente
+     - Control de hemorragia (presión directa, NO retirar tela, elevar miembro)
+     - Quemaduras menores (agua tibia/fría 10-20 min, nada de hielo/aceite/pasta dental, NO reventar ampollas)
+     - Desmayo (recostar, elevar piernas, 911 si no despierta en 1 min)
+     - Convulsiones (NO sujetar, NO meter nada en boca, acomodar de lado, cronometrar)
+   PREMIUM: además de los básicos, da PRIMEROS AUXILIOS AVANZADOS guiados paso a paso:
+     - Uso de DEA / desfibrilador
+     - RCP pediátrico / RCP de bebé
+     - Manejo de lesión cervical o columna sospechada
+     - Emergencias en el embarazo
+     - Heridas penetrantes con objeto clavado
+     - Triage en múltiples víctimas
+   Si un usuario FREE pregunta por uno avanzado, da el básico (si aplica) y aclara que el detalle paso a paso de DEA/cervical/pediátrico/embarazo es Premium. Si es crítico AHORA, recuérdale el 911.`;
 
 const SYSTEM_PROMPT_FREE = `${SYSTEM_PROMPT_BASE}
 
@@ -64,12 +81,17 @@ Tus capacidades PERMITIDAS en este plan:
 ✅ MECÁNICA BÁSICA SUPERFICIAL: Pasos paso a paso muy elementales si se poncha una llanta, si preguntan cómo revisar el nivel de aceite, o si se baja la batería y necesitan puente.
 ✅ SEGURO Y CLIMA: Consejos básicos si va a llover, o cómo calmarse frente a un choque laminero.
 ✅ LLAMADAS DE EMERGENCIA: Cómo marcar al 911 de forma general.
+✅ PRIMEROS AUXILIOS BÁSICOS UNIVERSALES (con pasos claros): RCP de adulto sólo compresiones, Maniobra de Heimlich en adulto consciente, control de hemorragia con presión directa, quemaduras menores (agua tibia/fría, sin hielo/aceite), desmayo (recostar, elevar piernas), convulsiones (NO sujetar, NO meter cosas en la boca, acomodar de lado). Estos SÍ los respondes en plan Free.
 
-RESTRICCIÓN DE LONGITUD Y CONTEXTO (LA REGLA CLAVE Y MÁS IMPORTANTE BÁSICOS):
-Aunque puedes y DEBES responder dudas básicas (como revisar el aceite o lidiar con ruidos), TUS RESPUESTAS DEBEN SER EXTREMADAMENTE CORTAS Y SUPERFICIALES. No uses más de 2 pasos o 3 líneas, NADA de explicaciones técnicas largas ni los "porqués" de la falla.
+RESTRICCIÓN DE LONGITUD (PARA MECÁNICA, NO PARA PRIMEROS AUXILIOS):
+Para dudas mecánicas básicas: respuestas EXTREMADAMENTE CORTAS Y SUPERFICIALES. No uses más de 2 pasos o 3 líneas, NADA de explicaciones técnicas largas.
+EXCEPCIÓN — PRIMEROS AUXILIOS: aquí SÍ das pasos completos (3-6 pasos claros), porque pueden salvar una vida. La brevedad no aplica cuando alguien puede morir si te equivocas en los pasos.
 
-EL FORMATO PUBLICITARIO OBLIGATORIO:
-Inmediatamente después de darle esa pequeñísima ayuda superficial, DEBES rematar obligatoriamente (con simpatía y sin sonar como robot) diciendo algo como: "Para obtener el diagnóstico especializado, pasos detallados y la certeza de arreglar tu falla al 100%, ¡anímate a explorar nuestras increíbles ventajas Premium en tu Perfil!". Así 'obligamos' psicológicamente al usuario a sentir que necesita la experiencia completa.
+EL FORMATO PUBLICITARIO OBLIGATORIO (SOLO PARA DUDAS MECÁNICAS, NO PARA PRIMEROS AUXILIOS):
+Cuando termines de responder una duda MECÁNICA básica, DEBES rematar (con simpatía) diciendo algo como: "Para obtener el diagnóstico especializado, pasos detallados y la certeza de arreglar tu falla al 100%, ¡anímate a explorar nuestras increíbles ventajas Premium en tu Perfil!". NO uses este remate en respuestas de primeros auxilios — sería de mal gusto en una emergencia médica.
+
+PRIMEROS AUXILIOS AVANZADOS (DEA, RCP pediátrico/bebé, lesión cervical, embarazo, heridas penetrantes):
+Si el usuario pregunta uno de estos, da el básico relacionado (si aplica) y aclara que el paso a paso completo con video y supervisión está en Premium. Si la situación es crítica AHORA, recuérdale el 911 sin rodeos.
 `;
 
 const SYSTEM_PROMPT_PREMIUM = `${SYSTEM_PROMPT_BASE}
@@ -82,7 +104,7 @@ Como el usuario ya es Premium, NO SE LO RECUERDES a cada rato. Está PROHIBIDO u
 ✅ LEGAL Y SEGUROS: Asesoría completa post-choque, cómo lidiar con seguros y autoridades de tránsito.
 ✅ FINANZAS Y RUTAS: Precios estimados de gasolina, refacciones y recomendaciones de viaje.
 ✅ MANTENIMIENTO: Tablas de revisión exhaustiva según el kilometraje del vehículo.
-✅ EMERGENCIAS VIP: Primeros auxilios quirúrgicos y psicológicos (cómo calmar pasajeros).
+✅ PRIMEROS AUXILIOS AVANZADOS PASO A PASO: uso de DEA / desfibrilador, RCP pediátrico y de bebé, manejo de lesión cervical o sospecha de columna, emergencias en el embarazo, heridas penetrantes con objeto clavado, triage en múltiples víctimas, primeros auxilios psicológicos (calmar pasajeros, manejar shock emocional). Da pasos completos con detalle, no resumas.
 
 REGLA DE VIDEOS TUTORIALES (EXCLUSIVO PREMIUM):
 Cuando tu respuesta incluya un procedimiento práctico o manual donde al usuario le serviría VER cómo se hace (cambiar llanta, revisar aceite, pasar corriente, cambiar fusibles, revisar frenos, etc.), DEBES seguir este orden EXACTO en tu respuesta:
@@ -145,13 +167,13 @@ export function getWelcomeMessage(userName: string, plan: "free" | "premium"): W
 
   if (plan === "premium") {
     return {
-      intro: `${introPrefix} Soy **Rex Premium** 🐕‍🦺, tu asistente personal de emergencia VIP.\n\nComo miembro Premium, tienes acceso completo a:\n\n1. Diagnóstico avanzado de fallas mecánicas\n2. Asesoría legal detallada post-accidente\n3. Primeros auxilios paso a paso\n4. Modo Viaje con seguimiento en tiempo real\n5. Check-in diario automático con racha\n6. Check-in de Seguridad con recordatorios programables\n7. Sonidos S.O.S. personalizados\n8. Historial completo de emergencias y ubicaciones con estadísticas\n\n¿En qué te puedo ayudar hoy?`,
+      intro: `${introPrefix} Soy **Rex Premium** 🐕‍🦺, tu asistente personal de emergencia VIP.\n\nComo miembro Premium, tienes acceso completo a:\n\n1. Diagnóstico avanzado de fallas mecánicas\n2. Asesoría legal detallada post-accidente\n3. Primeros auxilios avanzados paso a paso (DEA, pediátrico, cervical, embarazo)\n4. Modo Viaje con seguimiento en tiempo real\n5. Check-in Diario con racha + mensaje automático al contacto\n6. Sonidos S.O.S. personalizados (Alarma, Sirena, Silencioso)\n7. Historial completo de emergencias y ubicaciones con estadísticas\n\n¿En qué te puedo ayudar hoy?`,
       fact: formattedFact
     };
   }
 
   return {
-    intro: `${introPrefix} Soy **Rex** 🐕, tu asistente de emergencia.\n\nPuedo ayudarte con:\n\n1. Problemas mecánicos básicos\n2. Qué hacer en caso de accidente\n3. Encontrar gasolineras y talleres\n4. Botón SOS y ficha médica offline\n5. Tu historial de emergencias (últimas 5)\n\n¿En qué te puedo ayudar?`,
+    intro: `${introPrefix} Soy **Rex** 🐕, tu asistente de emergencia.\n\nPuedo ayudarte con:\n\n1. Problemas mecánicos básicos\n2. Qué hacer en caso de accidente\n3. Primeros auxilios básicos (RCP, Heimlich, hemorragia, quemadura, desmayo, convulsión)\n4. Botón SOS y ficha médica offline\n5. Check-in de Seguridad con recordatorios cada 1-12 hrs\n6. Encontrar gasolineras y talleres\n7. Tu historial de emergencias (últimas 5)\n\n¿En qué te puedo ayudar?`,
     fact: formattedFact
   };
 }
@@ -169,8 +191,8 @@ export function getQuickSuggestions(plan: "free" | "premium"): string[] {
   }
   return [
     "¿Qué hago si mi batería murió? 🔋",
+    "Alguien no respira, ¿cómo hago RCP? 🫀",
     "¿Cómo funciona el botón SOS? 🚨",
-    "¿Dónde está mi Ficha Médica? 🏥",
     "¿Qué ofrece Premium? 🌟",
   ];
 }
@@ -298,16 +320,22 @@ const OFFLINE_RESPONSES: Record<string, string> = {
   gasolinera: "⛽ Usa el filtro 'Gasolina' en el mapa de la pantalla principal para encontrar la gasolinera más cercana.",
   mecanico: "🔧 Usa el filtro 'Mecánico' en el mapa de la pantalla principal para encontrar talleres cercanos.",
   grua: "🚛 Selecciona la opción 'Grúa' en la pantalla principal. Si es una emergencia grave, usa el botón SOS.",
-  premium: "🌟 Con el plan PREMIUM obtienes:\n\n🔧 Diagnósticos mecánicos completos\n🗺️ Modo Viaje con seguimiento\n✅ Check-in Diario con racha\n🛡️ Check-in de Seguridad con recordatorios cada 1-12 hrs\n🔔 Sonidos S.O.S. personalizados (Alarma, Sirena, Silencioso)\n📋 Historial completo de emergencias + estadísticas\n📍 Historial de Ubicaciones detallado\n⚖️ Asesoría legal detallada post-accidente\n🏥 Primeros auxilios avanzados\n\nPuedes activarlo en MI PERFIL.",
-  auxilios: "🏥 Primeros Auxilios Básicos:\n\n1. Asegura la escena, no te pongas en riesgo.\n2. Llama al 911 o presiona el botón SOS.\n3. Si la persona no respira, inicia RCP (30 compresiones fuertes en el pecho).\n4. Controla hemorragias aplicando presión directa con un paño limpio.",
+  premium: "🌟 Con el plan PREMIUM obtienes (todo lo del FREE más):\n\n🔧 Diagnósticos mecánicos completos\n🗺️ Modo Viaje con seguimiento\n✅ Check-in Diario con racha + mensaje automático al contacto\n🔔 Sonidos S.O.S. personalizados (Alarma, Sirena, Silencioso)\n📋 Historial completo de emergencias + estadísticas\n📍 Historial de Ubicaciones detallado\n⚖️ Asesoría legal detallada post-accidente\n🏥 Primeros auxilios AVANZADOS (DEA, pediátrico, cervical, embarazo)\n\nPuedes activarlo en MI PERFIL.\n\nNota: el Check-in de Seguridad (1-12 hrs) y los primeros auxilios BÁSICOS están en FREE.",
+  auxilios: "🏥 Primeros Auxilios Básicos (Free):\n\n1. Asegura la escena, no te pongas en riesgo.\n2. Llama al 911 o presiona el botón SOS.\n3. Si la persona no respira, inicia RCP de adulto (30 compresiones fuertes en el centro del pecho, 5-6 cm, ritmo de Stayin' Alive).\n4. Controla hemorragias con presión directa y tela limpia. No retires la tela aunque se empape.\n5. Si se atraganta: Maniobra de Heimlich (compresiones bajo el esternón, hacia arriba y adentro).\n\nPregúntame por uno específico (RCP, Heimlich, hemorragia, quemadura, desmayo, convulsión).\n\nPara DEA, pediátrico, cervical o embarazo necesitas Premium.",
+  rcp: "🫀 RCP de adulto (sólo compresiones):\n\n1. Llama al 911 ANTES de empezar.\n2. Recuesta a la persona en suelo firme.\n3. Manos una sobre otra en el centro del pecho (línea de pezones).\n4. Brazos rectos, comprime 5-6 cm.\n5. Ritmo 100-120/min (canción Stayin' Alive).\n6. No pares hasta que llegue ayuda o veas respuesta.\n\nNO des boca a boca si no estás entrenado. Sólo compresiones.\nRCP pediátrico/bebé y uso de DEA están en Premium.",
+  heimlich: "🥡 Heimlich (atragantamiento, adulto consciente):\n\n1. Pregunta: ¿te estás ahogando? Si no puede hablar/toser, actúa.\n2. Párate detrás, abraza por la cintura.\n3. Puño cerrado justo arriba del ombligo (debajo del esternón).\n4. Sujeta el puño con la otra mano y comprime RÁPIDO hacia ARRIBA y ADENTRO.\n5. Repite hasta que expulse el objeto.\n\nSi pierde el conocimiento → RCP + 911.\nHeimlich en bebés y embarazadas tiene técnica distinta, está en Premium.",
+  hemorragia: "🩸 Cómo parar una hemorragia:\n\n1. Llama al 911.\n2. Presiona FUERTE y CONSTANTE con tela limpia o gasa sobre la herida.\n3. NO quites la tela aunque se empape — agrega otra capa encima.\n4. Si es brazo o pierna, eleva el miembro sobre el nivel del corazón.\n5. Mantén presión sin pausa hasta que llegue ayuda.\n\nNO uses torniquete improvisado salvo entrenamiento.\nHeridas con objeto clavado: NO lo saques, presiona alrededor.",
+  quemadura: "🔥 Quemadura menor:\n\n1. Pon la zona bajo agua tibia o fría (NO helada) 10-20 min.\n2. NO uses hielo, aceite, pasta dental ni mantequilla.\n3. NO revientes ampollas.\n4. Cubre con tela limpia y suelta.\n5. Ibuprofeno si tienes a la mano.\n\nLlama al 911 si: es más grande que tu palma, está en cara/manos/genitales, es eléctrica o química, o la persona es niño/anciano.",
+  desmayo: "😵 Si alguien se desmaya:\n\n1. Recuéstalo en el piso.\n2. Eleva sus piernas ~30 cm.\n3. Afloja ropa apretada (cuello, cinturón).\n4. Verifica que respire normal.\n5. Si despierta, espera 5 min antes de que se levante.\n\nLlama al 911 si: no despierta en 1 min, tiene dolor de pecho, le cuesta respirar, o historial cardíaco.\nSi NO respira → RCP inmediato.",
+  convulsion: "⚡ Durante una convulsión:\n\n1. NO sujetes ni intentes detener los movimientos.\n2. NO metas NADA en su boca (es mito que se traga la lengua).\n3. Acomoda de lado para que la saliva drene.\n4. Algo blando bajo la cabeza (chamarra).\n5. Aleja objetos peligrosos.\n6. Cronometra duración.\n\nLlama al 911 si: dura más de 5 min, hay varias seguidas, es la primera vez, está embarazada o se lesionó.",
   viaje: "🗺️ MODO VIAJE (Premium):\n\n1. Elige duración (1, 2, 4 u 8 horas) y destino opcional.\n2. Toca INICIAR VIAJE SEGURO: tu contacto recibe un mensaje con tu ubicación de partida.\n3. Un timer en vivo muestra el tiempo transcurrido.\n4. Al llegar, toca FINALICÉ EL VIAJE: tu contacto recibe la confirmación.\n\nPensado para viajes solos, mujeres viajando solas o trayectos largos.",
   checkin: "✅ CHECK-IN DIARIO (Premium):\n\n1. Activa el switch en la pantalla Check-in.\n2. Elige la hora (8am, 9am, 12pm u 8pm).\n3. Cada día recibes una notificación recordatoria.\n4. Toca ESTOY BIEN para que se envíe un mensaje automático a tu contacto con tu racha.\n\nIdeal para personas que viven solas o adultos mayores.",
   historial: "📋 HISTORIAL DE EMERGENCIAS:\n\nVe cada vez que activaste el SOS o el sistema detectó un accidente, con fecha, ubicación y si el mensaje se envió.\n\nFREE: ves las últimas 5 emergencias.\nPREMIUM: historial completo + estadísticas (Total, Manuales, Automáticos, Últimos 7 días).\n\nLo abres en OPCIONES > HISTORIAL DE EMERGENCIAS.",
   ficha: "🏥 FICHA MÉDICA OFFLINE:\n\nAccedes a ella desde el botón + en la pantalla principal > FICHA MÉDICA.\n\nMuestra tipo de sangre, alergias, condiciones médicas y contacto de emergencia. Funciona SIN INTERNET.\n\nPensada para rescatistas que necesitan info rápida si no puedes hablar.\n\nLa editas en OPCIONES.",
   sos: "🚨 BOTÓN SOS ROJO:\n\nEl botón rojo grande en la pantalla principal. Al presionarlo:\n\n1. Aparece un countdown de 5 SEGUNDOS (cancelable).\n2. Si no cancelas, envía mensaje con tu ubicación al contacto de confianza por WhatsApp (online) o SMS (offline).\n3. Abre la pantalla de llamada al 911 con tu ficha médica.\n\nSi el sistema detecta un accidente solo (impacto fuerte), también dispara SOS con 10 segundos para cancelar.",
-  safetycheckin: "🛡️ CHECK-IN DE SEGURIDAD CON INTERVALOS (Premium):\n\nEn OPCIONES > CHECK-IN DE SEGURIDAD.\n\n1. Activa el switch.\n2. Elige cada cuánto quieres recordatorios: 1, 2, 4, 8 o 12 horas.\n3. Puedes hacer también un check-in manual con un toque.\n\nDiferente al Check-in Diario de la cruceta (ese es de racha). Este es para personas que quieren confirmar varias veces al día que están bien.\n\nFREE: no disponible.\nPREMIUM: activa intervalos personalizados.",
+  safetycheckin: "🛡️ CHECK-IN DE SEGURIDAD CON INTERVALOS (Free y Premium):\n\nEn OPCIONES > CHECK-IN DE SEGURIDAD.\n\n1. Activa el switch.\n2. Elige cada cuánto quieres recordatorios: 1, 2, 4, 8 o 12 horas.\n3. Puedes hacer también un check-in manual con un toque.\n\nDisponible en plan FREE. NO envía mensaje al contacto; sólo te avisa a ti.\n\nDiferente al Check-in Diario (Premium), que SÍ envía un mensaje automático al contacto con tu racha de días consecutivos.",
   sossounds: "🔔 SONIDOS S.O.S.:\n\nEn OPCIONES > SONIDO S.O.S. eliges qué sonido reproduce el botón SOS.\n\nFREE: solo el sonido PREDETERMINADO.\nPREMIUM: desbloquea ALARMA, SIRENA y SILENCIOSO.\n\nLa vibración es gratuita para todos los planes.",
-  default: "👋 Soy Rex 🐕. Si no tienes Internet, solo puedo responder palabras clave básicas como: 'batería', 'motor', 'accidente', 'sos', 'ficha médica', 'modo viaje', 'check-in', 'sonido sos', 'historial', 'gasolina'.\n\n¿En qué te ayudo?",
+  default: "👋 Soy Rex 🐕. Si no tienes Internet, sólo puedo responder palabras clave básicas como:\n\n• Mecánica: 'batería', 'motor', 'llanta', 'gasolina'\n• Emergencia: 'accidente', 'sos', 'ficha médica'\n• Primeros auxilios: 'RCP', 'atragantamiento', 'hemorragia', 'quemadura', 'desmayo', 'convulsión'\n• App: 'modo viaje', 'check-in', 'sonido sos', 'historial'\n\n¿En qué te ayudo?",
 };
 
 // ====== CHECK CONNECTIVITY ======
@@ -442,7 +470,14 @@ function getOfflineResponse(message: string, plan: "free" | "premium"): string {
     [["mecánico", "mecanico", "mecanoco", "mecanko", "mecanuco", "taller", "tallr", "reparar", "repara", "falla", "faya"], "mecanico"],
     [["grúa", "grua", "grúua", "grüa", "remolque", "remolke", "arrastrar", "arastra"], "grua"],
     [["premium", "premiun", "prenium", "plan", "suscripción", "suscripcion", "suscripcin", "mejorar", "upgrade", "upgred"], "premium"],
-    [["primeros auxilios", "respira", "sangra", "herido", "inconsciente", "rcp"], "auxilios"],
+    // Primeros auxilios — específicos primero, general al final
+    [["rcp", "reanimacion", "reanimación", "no respira", "paro cardiaco", "paro cardíaco"], "rcp"],
+    [["atragant", "heimlich", "se ahoga", "no puede respirar"], "heimlich"],
+    [["hemorragia", "sangrado", "sangra", "desangra", "corte profundo"], "hemorragia"],
+    [["quemadura", "quemado", "quemé", "queme", "ampolla"], "quemadura"],
+    [["desmayo", "desmayado", "se desmayó", "se desmayo", "sincope", "síncope", "pierde el conocimiento"], "desmayo"],
+    [["convulsión", "convulsion", "epilepsia", "convulsionando"], "convulsion"],
+    [["primeros auxilios", "auxilios", "herido", "inconsciente"], "auxilios"],
   ];
 
   for (const [words, key] of keywords) {
